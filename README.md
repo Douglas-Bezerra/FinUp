@@ -30,7 +30,9 @@ FinUp/
 ```bash
 git clone URL_DO_REPOSITORIO
 cd FinUp
-2. Configurar o Firebase
+
+**### 2. Configurar o Firebase**
+
 bash
 
 # Login no Firebase
@@ -39,7 +41,8 @@ firebase login
 # Iniciar o emulador (mantenha rodando)
 firebase emulators:start --only dataconnect
 
-3. Rodar a Aplicação Web
+**### 3. Rodar a Aplicação Web**
+
 bash
 
 cd web-app
@@ -47,7 +50,8 @@ npm install
 npm run dev
 # Acesse: http://localhost:5173
 
-4. Rodar a Aplicação Mobile
+**### 4. Rodar a Aplicação Mobile**
+
 bash
 
 cd mobile-app
@@ -82,8 +86,10 @@ Adicionando Novas Queries/Mutações
 
 👥 Equipe
 Nome	Função
-[Seu Nome]	Desenvolvimento Web e Backend
-[Nome do Colega]	Desenvolvimento Mobile
+Carlos Cumpiam   Desenvolvimento Web e Backend
+Carlos Furlan    Desenvolvimento Web e Backend
+Douglas Bezerra  Desenvolvimento Mobile
+
 📝 Licença
 
 MIT
@@ -92,7 +98,7 @@ text
 
 ---
 
-### Passo 8: Adicionar e Commitar as Mudanças
+**### Passo 8: Adicionar e Commitar as Mudanças**
 
 ```bash
 # 1. Verifique o status
