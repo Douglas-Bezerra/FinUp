@@ -1,0 +1,210 @@
+# schema.gql
+# ESQUEMA DE BANCO DE DADOS RELACIONAL - FinUp  - finup-app6
+# Firebase Data Connect (PostgreSQL / PGlite)
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. USUÁRIOS E ACESSO
+# ------------------------------------------------------------------------------
+
+type Usuario @table {
+  id: String! @default(expr: "uuidV4()")
+  nome: String!
+  email: String!
+  papel: String! # 'PRINCIPAL' ou 'SECUNDARIO'
+  
+  # Auto-relacionamento (Hierarquia Principal / Secundário)
+  usuarioPai: Usuario @ref(fields: "usuarioPaiId")
+  usuarioPaiId: String
+
+  dataCriacao: Timestamp! @default(expr: "request.time")
+}
+
+type ConviteAcesso @table {
+  id: String! @default(expr: "uuidV4()")
+  
+  usuarioPrincipal: Usuario! @ref(fields: "usuarioPrincipalId")
+  usuarioPrincipalId: String!
+  
+  emailConvidado: String!
+  statusConvite: String! # 'PENDENTE', 'ACEITO', 'EXPIRADO'
+  dataCriacao: Timestamp! @default(expr: "request.time")
+}
+
+# ------------------------------------------------------------------------------
+# 2. DOMÍNIOS FINANCEIROS E CATEGORIAS
+# ------------------------------------------------------------------------------
+
+type InstituicaoBancaria @table {
+  id: String! @default(expr: "uuidV4()")
+  nome: String!
+  codigoBancario: String!
+  corHex: String!
+}
+
+type Categoria @table {
+  id: String! @default(expr: "uuidV4()")
+  nome: String!
+  
+  # Auto-relacionamento para subcategorias
+  categoriaPai: Categoria @ref(fields: "categoriaPaiId")
+  categoriaPaiId: String
+
+  icone: String!
+  tipo: String! # 'RECEITA', 'DESPESA', 'AMBAS'
+}
+
+type Conta @table {
+  id: String! @default(expr: "uuidV4()")
+  
+  usuario: Usuario! @ref(fields: "usuarioId")
+  usuarioId: String!
+
+  instituicao: InstituicaoBancaria! @ref(fields: "instituicaoId")
+  instituicaoId: String!
+
+  nomeConta: String!
+  tipoConta: String! # 'CORRENTE', 'POUPANCA', 'CARTAO_CREDITO', 'CAIXINHA'
+  saldoAtual: Float!
+  limiteTotal: Float
+  diaFechamento: Int
+  diaVencimento: Int
+  ativo: Boolean! @default(value: true)
+}
+
+type CartaoPlastico @table {
+  id: String! @default(expr: "uuidV4()")
+
+  conta: Conta! @ref(fields: "contaId")
+  contaId: String!
+
+  usuarioPortador: Usuario! @ref(fields: "usuarioPortadorId")
+  usuarioPortadorId: String!
+
+  nomeExibicao: String!
+  validade: Date!
+  bandeira: String! # 'ELO', 'VISA', 'MASTERCARD'
+  ativo: Boolean! @default(value: true)
+}
+
+type OrcamentoMeta @table {
+  id: String! @default(expr: "uuidV4()")
+
+  usuario: Usuario! @ref(fields: "usuarioId")
+  usuarioId: String!
+
+  categoria: Categoria! @ref(fields: "categoriaId")
+  categoriaId: String!
+
+  valorTeto: Float!
+  mesAno: Date!
+}
+
+# ------------------------------------------------------------------------------
+# 3. COMPRAS PARCELADAS E RECORRÊNCIAS
+# ------------------------------------------------------------------------------
+
+type Parcelamento @table {
+  id: String! @default(expr: "uuidV4()")
+  descricao: String!
+  valorTotal: Float!
+  totalParcelas: Int!
+  dataInicio: Date!
+}
+
+type Recorrencia @table {
+  id: String! @default(expr: "uuidV4()")
+  descricao: String!
+  valorEstimado: Float!
+  diaVencimento: Int!
+  dataProximaExecucao: Date!
+  dataFim: Date
+}
+
+type FaturaCartao @table {
+  id: String! @default(expr: "uuidV4()")
+
+  conta: Conta! @ref(fields: "contaId")
+  contaId: String!
+
+  mesReferencia: Date!
+  valorTotal: Float!
+  valorPago: Float!
+  statusFatura: String! # 'ABERTA', 'FECHADA', 'PAGA'
+}
+
+# ------------------------------------------------------------------------------
+# 4. TRANSAÇÕES E OPERAÇÕES
+# ------------------------------------------------------------------------------
+
+type Transacao @table {
+  id: String! @default(expr: "uuidV4()")
+
+  conta: Conta! @ref(fields: "contaId")
+  contaId: String!
+
+  cartaoPlastico: CartaoPlastico @ref(fields: "cartaoPlasticoId")
+  cartaoPlasticoId: String
+
+  categoria: Categoria! @ref(fields: "categoriaId")
+  categoriaId: String!
+
+  parcelamento: Parcelamento @ref(fields: "parcelamentoId")
+  parcelamentoId: String
+
+  recorrencia: Recorrencia @ref(fields: "recorrenciaId")
+  recorrenciaId: String
+
+  fatura: FaturaCartao @ref(fields: "faturaId")
+  faturaId: String
+
+  criadoPorUsuario: Usuario! @ref(fields: "criadoPorUsuarioId")
+  criadoPorUsuarioId: String!
+
+  atualizadoPorUsuario: Usuario @ref(fields: "atualizadoPorUsuarioId")
+  atualizadoPorUsuarioId: String
+
+  descricao: String!
+  valor: Float!
+  dataTransacao: Timestamp!
+  status: String! # 'EFETIVADO', 'PENDENTE'
+  tipoMovimentacao: String! # 'RECEITA', 'DESPESA', 'TRANSFERENCIA'
+  parcelaAtual: Int
+  observacao: String
+  estornado: Boolean! @default(value: false)
+
+  dataCriacao: Timestamp! @default(expr: "request.time")
+  dataAtualizacao: Timestamp! @default(expr: "request.time")
+}
+
+type Transferencia @table {
+  id: String! @default(expr: "uuidV4()")
+
+  transacaoOrigem: Transacao! @ref(fields: "transacaoOrigemId")
+  transacaoOrigemId: String!
+
+  transacaoDestino: Transacao! @ref(fields: "transacaoDestinoId")
+  transacaoDestinoId: String!
+}
+
+# ------------------------------------------------------------------------------
+# 5. AUDITORIA E LOGS
+# ------------------------------------------------------------------------------
+
+type LogTransacao @table {
+  id: String! @default(expr: "uuidV4()")
+
+  # Mantém a referência do ID mesmo se a transação for excluída
+  transacaoId: String!
+
+  usuario: Usuario! @ref(fields: "usuarioId")
+  usuarioId: String!
+
+  acao: String! # 'CRIAR', 'EDITAR', 'EXCLUIR'
+  dataAcao: Timestamp! @default(expr: "request.time")
+  descricaoSnapshot: String!
+
+  # Estruturas JSONB representadas pelo tipo nativo Any
+  valoresAntigos: Any
+  valoresNovos: Any
+}

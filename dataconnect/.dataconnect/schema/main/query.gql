@@ -1,0 +1,756 @@
+extend type Query {
+  """
+  ✨ Look up a single `CartaoPlastico` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  cartaoPlastico(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: CartaoPlastico_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: CartaoPlastico_FirstRow
+  ): CartaoPlastico @fdc_generated(from: "CartaoPlastico", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `Categoria` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  categoria(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: Categoria_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Categoria_FirstRow
+  ): Categoria @fdc_generated(from: "Categoria", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `Conta` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  conta(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: Conta_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Conta_FirstRow
+  ): Conta @fdc_generated(from: "Conta", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `ConviteAcesso` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  conviteAcesso(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: ConviteAcesso_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: ConviteAcesso_FirstRow
+  ): ConviteAcesso @fdc_generated(from: "ConviteAcesso", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `FaturaCartao` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  faturaCartao(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: FaturaCartao_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: FaturaCartao_FirstRow
+  ): FaturaCartao @fdc_generated(from: "FaturaCartao", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `InstituicaoBancaria` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  instituicaoBancaria(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: InstituicaoBancaria_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: InstituicaoBancaria_FirstRow
+  ): InstituicaoBancaria @fdc_generated(from: "InstituicaoBancaria", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `LogTransacao` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  logTransacao(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: LogTransacao_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: LogTransacao_FirstRow
+  ): LogTransacao @fdc_generated(from: "LogTransacao", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `OrcamentoMeta` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  orcamentoMeta(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: OrcamentoMeta_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: OrcamentoMeta_FirstRow
+  ): OrcamentoMeta @fdc_generated(from: "OrcamentoMeta", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `Parcelamento` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  parcelamento(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: Parcelamento_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Parcelamento_FirstRow
+  ): Parcelamento @fdc_generated(from: "Parcelamento", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `Recorrencia` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  recorrencia(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: Recorrencia_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Recorrencia_FirstRow
+  ): Recorrencia @fdc_generated(from: "Recorrencia", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `Transacao` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  transacao(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: Transacao_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Transacao_FirstRow
+  ): Transacao @fdc_generated(from: "Transacao", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `Transferencia` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  transferencia(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: Transferencia_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Transferencia_FirstRow
+  ): Transferencia @fdc_generated(from: "Transferencia", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `Usuario` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  usuario(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: Usuario_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Usuario_FirstRow
+  ): Usuario @fdc_generated(from: "Usuario", purpose: QUERY_SINGLE)
+  """
+  ✨ List `CartaoPlastico` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  cartaoPlasticos(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: CartaoPlastico_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [CartaoPlastico_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: CartaoPlastico_Having
+  ): [CartaoPlastico!]! @fdc_generated(from: "CartaoPlastico", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `Categoria` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  categorias(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: Categoria_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [Categoria_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: Categoria_Having
+  ): [Categoria!]! @fdc_generated(from: "Categoria", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `Conta` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  contas(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: Conta_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [Conta_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: Conta_Having
+  ): [Conta!]! @fdc_generated(from: "Conta", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `ConviteAcesso` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  conviteAcessos(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: ConviteAcesso_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [ConviteAcesso_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: ConviteAcesso_Having
+  ): [ConviteAcesso!]! @fdc_generated(from: "ConviteAcesso", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `FaturaCartao` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  faturaCartaos(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: FaturaCartao_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [FaturaCartao_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: FaturaCartao_Having
+  ): [FaturaCartao!]! @fdc_generated(from: "FaturaCartao", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `InstituicaoBancaria` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  instituicaoBancarias(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: InstituicaoBancaria_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [InstituicaoBancaria_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: InstituicaoBancaria_Having
+  ): [InstituicaoBancaria!]! @fdc_generated(from: "InstituicaoBancaria", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `LogTransacao` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  logTransacaos(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: LogTransacao_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [LogTransacao_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: LogTransacao_Having
+  ): [LogTransacao!]! @fdc_generated(from: "LogTransacao", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `OrcamentoMeta` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  orcamentoMetas(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: OrcamentoMeta_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [OrcamentoMeta_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: OrcamentoMeta_Having
+  ): [OrcamentoMeta!]! @fdc_generated(from: "OrcamentoMeta", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `Parcelamento` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  parcelamentos(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: Parcelamento_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [Parcelamento_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: Parcelamento_Having
+  ): [Parcelamento!]! @fdc_generated(from: "Parcelamento", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `Recorrencia` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  recorrencias(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: Recorrencia_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [Recorrencia_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: Recorrencia_Having
+  ): [Recorrencia!]! @fdc_generated(from: "Recorrencia", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `Transacao` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  transacaos(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: Transacao_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [Transacao_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: Transacao_Having
+  ): [Transacao!]! @fdc_generated(from: "Transacao", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `Transferencia` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  transferencias(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: Transferencia_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [Transferencia_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: Transferencia_Having
+  ): [Transferencia!]! @fdc_generated(from: "Transferencia", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `Usuario` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  usuarios(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: Usuario_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [Usuario_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: Usuario_Having
+  ): [Usuario!]! @fdc_generated(from: "Usuario", purpose: QUERY_MULTIPLE)
+}

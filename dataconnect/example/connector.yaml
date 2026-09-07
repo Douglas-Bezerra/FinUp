@@ -1,0 +1,13 @@
+# connector.yaml
+# Arquivo de Configuração do Connector no Firebase
+#==================================================
+
+connectorId: example
+generate:
+  javascriptSdk:
+    outputDir: "../../web-app/src/dataconnect-generated"
+    package: "@dataconnect/generated"
+    packageJsonDir: ..\..\web-app
+    react: true
+    angular: false
+    clientCache: {}

@@ -1,0 +1,17 @@
+# dataconnect.yaml
+# Arquivo de Configuração do Data Connect no Firebase
+#=====================================================
+
+specVersion: "v1"
+serviceId: "finup"
+location: "us-central1"
+schema:
+  source: "./schema"
+  datasource:
+    postgresql:
+      database: "fdcdb"
+      cloudSql:
+        instanceId: "finup-fdc"
+connectorDirs:
+  - "./example"
+  

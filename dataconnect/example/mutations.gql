@@ -1,0 +1,56 @@
+# mutations.gql
+# Arquivo de Mutações no Firebase para operações de Escrita - FinUp App
+# ==============================================================================
+
+# 1. Cadastrar um novo usuário no sistema
+mutation CriarUsuario($nome: String!, $email: String!, $papel: String!) @auth(level: USER) {
+  usuario_insert(data: {
+    nome: $nome,
+    email: $email,
+    papel: $papel
+  })
+}
+
+# 2. Cadastrar uma nova conta financeira
+mutation CriarConta(
+  $usuarioId: String!,
+  $instituicaoId: String!,
+  $nomeConta: String!,
+  $tipoConta: String!,
+  $saldoAtual: Float!,
+  $limiteTotal: Float
+) @auth(level: USER) {
+  conta_insert(data: {
+    usuarioId: $usuarioId,
+    instituicaoId: $instituicaoId,
+    nomeConta: $nomeConta,
+    tipoConta: $tipoConta,
+    saldoAtual: $saldoAtual,
+    limiteTotal: $limiteTotal,
+    ativo: true
+  })
+}
+
+# 3. Registrar uma nova transação financeira
+mutation CriarTransacao(
+  $contaId: String!,
+  $categoriaId: String!,
+  $criadoPorUsuarioId: String!,
+  $descricao: String!,
+  $valor: Float!,
+  $dataTransacao: Timestamp!,
+  $tipoMovimentacao: String!,
+  $status: String!
+) @auth(level: USER) {
+  transacao_insert(data: {
+    contaId: $contaId,
+    categoriaId: $categoriaId,
+    criadoPorUsuarioId: $criadoPorUsuarioId,
+    descricao: $descricao,
+    valor: $valor,
+    dataTransacao: $dataTransacao,
+    tipoMovimentacao: $tipoMovimentacao,
+    status: $status,
+    estornado: false
+  })
+}

@@ -1,0 +1,21 @@
+# seed_data.gql
+# Arquivo de Dados de Exemplo no Firebase para operações de Escrita - FinUp App
+# ==============================================================================
+
+# Inserir uma instituição bancária
+mutation InserirInstituicao {
+  instituicaoBancaria_insert(data: {
+    nome: "Banco do Brasil",
+    codigoBancario: "001",
+    corHex: "#FFA500"
+  })
+}
+
+# Inserir uma categoria
+mutation InserirCategoria {
+  categoria_insert(data: {
+    nome: "Alimentação",
+    icone: "🍔",
+    tipo: "DESPESA"
+  })
+}

@@ -1,0 +1,1588 @@
+extend type Mutation {
+  """
+  ✨ Insert a single `CartaoPlastico` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  cartaoPlastico_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: CartaoPlastico_Data!
+  ): CartaoPlastico_KeyOutput! @fdc_generated(from: "CartaoPlastico", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert a single `Categoria` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  categoria_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: Categoria_Data!
+  ): Categoria_KeyOutput! @fdc_generated(from: "Categoria", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert a single `Conta` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  conta_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: Conta_Data!
+  ): Conta_KeyOutput! @fdc_generated(from: "Conta", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert a single `ConviteAcesso` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  conviteAcesso_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: ConviteAcesso_Data!
+  ): ConviteAcesso_KeyOutput! @fdc_generated(from: "ConviteAcesso", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert a single `FaturaCartao` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  faturaCartao_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: FaturaCartao_Data!
+  ): FaturaCartao_KeyOutput! @fdc_generated(from: "FaturaCartao", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert a single `InstituicaoBancaria` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  instituicaoBancaria_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: InstituicaoBancaria_Data!
+  ): InstituicaoBancaria_KeyOutput! @fdc_generated(from: "InstituicaoBancaria", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert a single `LogTransacao` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  logTransacao_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: LogTransacao_Data!
+  ): LogTransacao_KeyOutput! @fdc_generated(from: "LogTransacao", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert a single `OrcamentoMeta` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  orcamentoMeta_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: OrcamentoMeta_Data!
+  ): OrcamentoMeta_KeyOutput! @fdc_generated(from: "OrcamentoMeta", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert a single `Parcelamento` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  parcelamento_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: Parcelamento_Data!
+  ): Parcelamento_KeyOutput! @fdc_generated(from: "Parcelamento", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert a single `Recorrencia` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  recorrencia_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: Recorrencia_Data!
+  ): Recorrencia_KeyOutput! @fdc_generated(from: "Recorrencia", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert a single `Transacao` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  transacao_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: Transacao_Data!
+  ): Transacao_KeyOutput! @fdc_generated(from: "Transacao", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert a single `Transferencia` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  transferencia_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: Transferencia_Data!
+  ): Transferencia_KeyOutput! @fdc_generated(from: "Transferencia", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert a single `Usuario` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  usuario_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: Usuario_Data!
+  ): Usuario_KeyOutput! @fdc_generated(from: "Usuario", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert `CartaoPlastico` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  cartaoPlastico_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [CartaoPlastico_Data!]!
+  ): [CartaoPlastico_KeyOutput!]! @fdc_generated(from: "CartaoPlastico", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert `Categoria` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  categoria_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [Categoria_Data!]!
+  ): [Categoria_KeyOutput!]! @fdc_generated(from: "Categoria", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert `Conta` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  conta_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [Conta_Data!]!
+  ): [Conta_KeyOutput!]! @fdc_generated(from: "Conta", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert `ConviteAcesso` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  conviteAcesso_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [ConviteAcesso_Data!]!
+  ): [ConviteAcesso_KeyOutput!]! @fdc_generated(from: "ConviteAcesso", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert `FaturaCartao` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  faturaCartao_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [FaturaCartao_Data!]!
+  ): [FaturaCartao_KeyOutput!]! @fdc_generated(from: "FaturaCartao", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert `InstituicaoBancaria` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  instituicaoBancaria_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [InstituicaoBancaria_Data!]!
+  ): [InstituicaoBancaria_KeyOutput!]! @fdc_generated(from: "InstituicaoBancaria", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert `LogTransacao` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  logTransacao_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [LogTransacao_Data!]!
+  ): [LogTransacao_KeyOutput!]! @fdc_generated(from: "LogTransacao", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert `OrcamentoMeta` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  orcamentoMeta_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [OrcamentoMeta_Data!]!
+  ): [OrcamentoMeta_KeyOutput!]! @fdc_generated(from: "OrcamentoMeta", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert `Parcelamento` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  parcelamento_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [Parcelamento_Data!]!
+  ): [Parcelamento_KeyOutput!]! @fdc_generated(from: "Parcelamento", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert `Recorrencia` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  recorrencia_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [Recorrencia_Data!]!
+  ): [Recorrencia_KeyOutput!]! @fdc_generated(from: "Recorrencia", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert `Transacao` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  transacao_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [Transacao_Data!]!
+  ): [Transacao_KeyOutput!]! @fdc_generated(from: "Transacao", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert `Transferencia` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  transferencia_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [Transferencia_Data!]!
+  ): [Transferencia_KeyOutput!]! @fdc_generated(from: "Transferencia", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert `Usuario` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  usuario_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [Usuario_Data!]!
+  ): [Usuario_KeyOutput!]! @fdc_generated(from: "Usuario", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert or update a single `CartaoPlastico` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `CartaoPlastico`.
+  """
+  cartaoPlastico_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: CartaoPlastico_Data!
+  ): CartaoPlastico_KeyOutput! @fdc_generated(from: "CartaoPlastico", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update a single `Categoria` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `Categoria`.
+  """
+  categoria_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: Categoria_Data!
+  ): Categoria_KeyOutput! @fdc_generated(from: "Categoria", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update a single `Conta` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `Conta`.
+  """
+  conta_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: Conta_Data!
+  ): Conta_KeyOutput! @fdc_generated(from: "Conta", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update a single `ConviteAcesso` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `ConviteAcesso`.
+  """
+  conviteAcesso_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: ConviteAcesso_Data!
+  ): ConviteAcesso_KeyOutput! @fdc_generated(from: "ConviteAcesso", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update a single `FaturaCartao` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `FaturaCartao`.
+  """
+  faturaCartao_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: FaturaCartao_Data!
+  ): FaturaCartao_KeyOutput! @fdc_generated(from: "FaturaCartao", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update a single `InstituicaoBancaria` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `InstituicaoBancaria`.
+  """
+  instituicaoBancaria_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: InstituicaoBancaria_Data!
+  ): InstituicaoBancaria_KeyOutput! @fdc_generated(from: "InstituicaoBancaria", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update a single `LogTransacao` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `LogTransacao`.
+  """
+  logTransacao_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: LogTransacao_Data!
+  ): LogTransacao_KeyOutput! @fdc_generated(from: "LogTransacao", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update a single `OrcamentoMeta` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `OrcamentoMeta`.
+  """
+  orcamentoMeta_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: OrcamentoMeta_Data!
+  ): OrcamentoMeta_KeyOutput! @fdc_generated(from: "OrcamentoMeta", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update a single `Parcelamento` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `Parcelamento`.
+  """
+  parcelamento_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: Parcelamento_Data!
+  ): Parcelamento_KeyOutput! @fdc_generated(from: "Parcelamento", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update a single `Recorrencia` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `Recorrencia`.
+  """
+  recorrencia_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: Recorrencia_Data!
+  ): Recorrencia_KeyOutput! @fdc_generated(from: "Recorrencia", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update a single `Transacao` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `Transacao`.
+  """
+  transacao_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: Transacao_Data!
+  ): Transacao_KeyOutput! @fdc_generated(from: "Transacao", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update a single `Transferencia` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `Transferencia`.
+  """
+  transferencia_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: Transferencia_Data!
+  ): Transferencia_KeyOutput! @fdc_generated(from: "Transferencia", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update a single `Usuario` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `Usuario`.
+  """
+  usuario_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: Usuario_Data!
+  ): Usuario_KeyOutput! @fdc_generated(from: "Usuario", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update `CartaoPlastico` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `CartaoPlastico`.
+  """
+  cartaoPlastico_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [CartaoPlastico_Data!]!
+  ): [CartaoPlastico_KeyOutput!]! @fdc_generated(from: "CartaoPlastico", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Insert or update `Categoria` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `Categoria`.
+  """
+  categoria_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [Categoria_Data!]!
+  ): [Categoria_KeyOutput!]! @fdc_generated(from: "Categoria", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Insert or update `Conta` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `Conta`.
+  """
+  conta_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [Conta_Data!]!
+  ): [Conta_KeyOutput!]! @fdc_generated(from: "Conta", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Insert or update `ConviteAcesso` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `ConviteAcesso`.
+  """
+  conviteAcesso_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [ConviteAcesso_Data!]!
+  ): [ConviteAcesso_KeyOutput!]! @fdc_generated(from: "ConviteAcesso", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Insert or update `FaturaCartao` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `FaturaCartao`.
+  """
+  faturaCartao_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [FaturaCartao_Data!]!
+  ): [FaturaCartao_KeyOutput!]! @fdc_generated(from: "FaturaCartao", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Insert or update `InstituicaoBancaria` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `InstituicaoBancaria`.
+  """
+  instituicaoBancaria_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [InstituicaoBancaria_Data!]!
+  ): [InstituicaoBancaria_KeyOutput!]! @fdc_generated(from: "InstituicaoBancaria", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Insert or update `LogTransacao` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `LogTransacao`.
+  """
+  logTransacao_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [LogTransacao_Data!]!
+  ): [LogTransacao_KeyOutput!]! @fdc_generated(from: "LogTransacao", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Insert or update `OrcamentoMeta` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `OrcamentoMeta`.
+  """
+  orcamentoMeta_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [OrcamentoMeta_Data!]!
+  ): [OrcamentoMeta_KeyOutput!]! @fdc_generated(from: "OrcamentoMeta", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Insert or update `Parcelamento` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `Parcelamento`.
+  """
+  parcelamento_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [Parcelamento_Data!]!
+  ): [Parcelamento_KeyOutput!]! @fdc_generated(from: "Parcelamento", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Insert or update `Recorrencia` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `Recorrencia`.
+  """
+  recorrencia_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [Recorrencia_Data!]!
+  ): [Recorrencia_KeyOutput!]! @fdc_generated(from: "Recorrencia", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Insert or update `Transacao` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `Transacao`.
+  """
+  transacao_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [Transacao_Data!]!
+  ): [Transacao_KeyOutput!]! @fdc_generated(from: "Transacao", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Insert or update `Transferencia` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `Transferencia`.
+  """
+  transferencia_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [Transferencia_Data!]!
+  ): [Transferencia_KeyOutput!]! @fdc_generated(from: "Transferencia", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Insert or update `Usuario` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `Usuario`.
+  """
+  usuario_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [Usuario_Data!]!
+  ): [Usuario_KeyOutput!]! @fdc_generated(from: "Usuario", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Update a single `CartaoPlastico` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `CartaoPlastico` or `null` if not found.
+  """
+  cartaoPlastico_update(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: CartaoPlastico_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: CartaoPlastico_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: CartaoPlastico_Data!
+  ): CartaoPlastico_KeyOutput @fdc_generated(from: "CartaoPlastico", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update a single `Categoria` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `Categoria` or `null` if not found.
+  """
+  categoria_update(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: Categoria_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Categoria_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: Categoria_Data!
+  ): Categoria_KeyOutput @fdc_generated(from: "Categoria", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update a single `Conta` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `Conta` or `null` if not found.
+  """
+  conta_update(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: Conta_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Conta_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: Conta_Data!
+  ): Conta_KeyOutput @fdc_generated(from: "Conta", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update a single `ConviteAcesso` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `ConviteAcesso` or `null` if not found.
+  """
+  conviteAcesso_update(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: ConviteAcesso_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: ConviteAcesso_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: ConviteAcesso_Data!
+  ): ConviteAcesso_KeyOutput @fdc_generated(from: "ConviteAcesso", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update a single `FaturaCartao` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `FaturaCartao` or `null` if not found.
+  """
+  faturaCartao_update(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: FaturaCartao_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: FaturaCartao_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: FaturaCartao_Data!
+  ): FaturaCartao_KeyOutput @fdc_generated(from: "FaturaCartao", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update a single `InstituicaoBancaria` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `InstituicaoBancaria` or `null` if not found.
+  """
+  instituicaoBancaria_update(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: InstituicaoBancaria_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: InstituicaoBancaria_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: InstituicaoBancaria_Data!
+  ): InstituicaoBancaria_KeyOutput @fdc_generated(from: "InstituicaoBancaria", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update a single `LogTransacao` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `LogTransacao` or `null` if not found.
+  """
+  logTransacao_update(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: LogTransacao_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: LogTransacao_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: LogTransacao_Data!
+  ): LogTransacao_KeyOutput @fdc_generated(from: "LogTransacao", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update a single `OrcamentoMeta` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `OrcamentoMeta` or `null` if not found.
+  """
+  orcamentoMeta_update(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: OrcamentoMeta_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: OrcamentoMeta_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: OrcamentoMeta_Data!
+  ): OrcamentoMeta_KeyOutput @fdc_generated(from: "OrcamentoMeta", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update a single `Parcelamento` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `Parcelamento` or `null` if not found.
+  """
+  parcelamento_update(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: Parcelamento_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Parcelamento_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: Parcelamento_Data!
+  ): Parcelamento_KeyOutput @fdc_generated(from: "Parcelamento", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update a single `Recorrencia` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `Recorrencia` or `null` if not found.
+  """
+  recorrencia_update(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: Recorrencia_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Recorrencia_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: Recorrencia_Data!
+  ): Recorrencia_KeyOutput @fdc_generated(from: "Recorrencia", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update a single `Transacao` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `Transacao` or `null` if not found.
+  """
+  transacao_update(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: Transacao_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Transacao_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: Transacao_Data!
+  ): Transacao_KeyOutput @fdc_generated(from: "Transacao", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update a single `Transferencia` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `Transferencia` or `null` if not found.
+  """
+  transferencia_update(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: Transferencia_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Transferencia_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: Transferencia_Data!
+  ): Transferencia_KeyOutput @fdc_generated(from: "Transferencia", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update a single `Usuario` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `Usuario` or `null` if not found.
+  """
+  usuario_update(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: Usuario_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Usuario_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: Usuario_Data!
+  ): Usuario_KeyOutput @fdc_generated(from: "Usuario", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update `CartaoPlastico` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  cartaoPlastico_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: CartaoPlastico_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: CartaoPlastico_Data!
+  ): Int! @fdc_generated(from: "CartaoPlastico", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Update `Categoria` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  categoria_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: Categoria_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: Categoria_Data!
+  ): Int! @fdc_generated(from: "Categoria", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Update `Conta` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  conta_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: Conta_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: Conta_Data!
+  ): Int! @fdc_generated(from: "Conta", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Update `ConviteAcesso` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  conviteAcesso_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: ConviteAcesso_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: ConviteAcesso_Data!
+  ): Int! @fdc_generated(from: "ConviteAcesso", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Update `FaturaCartao` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  faturaCartao_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: FaturaCartao_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: FaturaCartao_Data!
+  ): Int! @fdc_generated(from: "FaturaCartao", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Update `InstituicaoBancaria` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  instituicaoBancaria_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: InstituicaoBancaria_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: InstituicaoBancaria_Data!
+  ): Int! @fdc_generated(from: "InstituicaoBancaria", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Update `LogTransacao` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  logTransacao_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: LogTransacao_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: LogTransacao_Data!
+  ): Int! @fdc_generated(from: "LogTransacao", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Update `OrcamentoMeta` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  orcamentoMeta_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: OrcamentoMeta_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: OrcamentoMeta_Data!
+  ): Int! @fdc_generated(from: "OrcamentoMeta", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Update `Parcelamento` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  parcelamento_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: Parcelamento_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: Parcelamento_Data!
+  ): Int! @fdc_generated(from: "Parcelamento", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Update `Recorrencia` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  recorrencia_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: Recorrencia_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: Recorrencia_Data!
+  ): Int! @fdc_generated(from: "Recorrencia", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Update `Transacao` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  transacao_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: Transacao_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: Transacao_Data!
+  ): Int! @fdc_generated(from: "Transacao", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Update `Transferencia` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  transferencia_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: Transferencia_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: Transferencia_Data!
+  ): Int! @fdc_generated(from: "Transferencia", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Update `Usuario` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  usuario_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: Usuario_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: Usuario_Data!
+  ): Int! @fdc_generated(from: "Usuario", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Delete a single `CartaoPlastico` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  cartaoPlastico_delete(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: CartaoPlastico_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: CartaoPlastico_FirstRow
+  ): CartaoPlastico_KeyOutput @fdc_generated(from: "CartaoPlastico", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete a single `Categoria` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  categoria_delete(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: Categoria_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Categoria_FirstRow
+  ): Categoria_KeyOutput @fdc_generated(from: "Categoria", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete a single `Conta` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  conta_delete(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: Conta_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Conta_FirstRow
+  ): Conta_KeyOutput @fdc_generated(from: "Conta", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete a single `ConviteAcesso` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  conviteAcesso_delete(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: ConviteAcesso_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: ConviteAcesso_FirstRow
+  ): ConviteAcesso_KeyOutput @fdc_generated(from: "ConviteAcesso", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete a single `FaturaCartao` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  faturaCartao_delete(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: FaturaCartao_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: FaturaCartao_FirstRow
+  ): FaturaCartao_KeyOutput @fdc_generated(from: "FaturaCartao", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete a single `InstituicaoBancaria` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  instituicaoBancaria_delete(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: InstituicaoBancaria_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: InstituicaoBancaria_FirstRow
+  ): InstituicaoBancaria_KeyOutput @fdc_generated(from: "InstituicaoBancaria", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete a single `LogTransacao` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  logTransacao_delete(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: LogTransacao_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: LogTransacao_FirstRow
+  ): LogTransacao_KeyOutput @fdc_generated(from: "LogTransacao", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete a single `OrcamentoMeta` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  orcamentoMeta_delete(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: OrcamentoMeta_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: OrcamentoMeta_FirstRow
+  ): OrcamentoMeta_KeyOutput @fdc_generated(from: "OrcamentoMeta", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete a single `Parcelamento` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  parcelamento_delete(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: Parcelamento_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Parcelamento_FirstRow
+  ): Parcelamento_KeyOutput @fdc_generated(from: "Parcelamento", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete a single `Recorrencia` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  recorrencia_delete(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: Recorrencia_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Recorrencia_FirstRow
+  ): Recorrencia_KeyOutput @fdc_generated(from: "Recorrencia", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete a single `Transacao` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  transacao_delete(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: Transacao_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Transacao_FirstRow
+  ): Transacao_KeyOutput @fdc_generated(from: "Transacao", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete a single `Transferencia` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  transferencia_delete(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: Transferencia_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Transferencia_FirstRow
+  ): Transferencia_KeyOutput @fdc_generated(from: "Transferencia", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete a single `Usuario` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  usuario_delete(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: Usuario_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Usuario_FirstRow
+  ): Usuario_KeyOutput @fdc_generated(from: "Usuario", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete `CartaoPlastico` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  cartaoPlastico_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: CartaoPlastico_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "CartaoPlastico", purpose: DELETE_MULTIPLE)
+  """
+  ✨ Delete `Categoria` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  categoria_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: Categoria_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "Categoria", purpose: DELETE_MULTIPLE)
+  """
+  ✨ Delete `Conta` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  conta_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: Conta_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "Conta", purpose: DELETE_MULTIPLE)
+  """
+  ✨ Delete `ConviteAcesso` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  conviteAcesso_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: ConviteAcesso_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "ConviteAcesso", purpose: DELETE_MULTIPLE)
+  """
+  ✨ Delete `FaturaCartao` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  faturaCartao_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: FaturaCartao_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "FaturaCartao", purpose: DELETE_MULTIPLE)
+  """
+  ✨ Delete `InstituicaoBancaria` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  instituicaoBancaria_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: InstituicaoBancaria_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "InstituicaoBancaria", purpose: DELETE_MULTIPLE)
+  """
+  ✨ Delete `LogTransacao` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  logTransacao_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: LogTransacao_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "LogTransacao", purpose: DELETE_MULTIPLE)
+  """
+  ✨ Delete `OrcamentoMeta` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  orcamentoMeta_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: OrcamentoMeta_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "OrcamentoMeta", purpose: DELETE_MULTIPLE)
+  """
+  ✨ Delete `Parcelamento` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  parcelamento_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: Parcelamento_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "Parcelamento", purpose: DELETE_MULTIPLE)
+  """
+  ✨ Delete `Recorrencia` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  recorrencia_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: Recorrencia_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "Recorrencia", purpose: DELETE_MULTIPLE)
+  """
+  ✨ Delete `Transacao` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  transacao_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: Transacao_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "Transacao", purpose: DELETE_MULTIPLE)
+  """
+  ✨ Delete `Transferencia` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  transferencia_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: Transferencia_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "Transferencia", purpose: DELETE_MULTIPLE)
+  """
+  ✨ Delete `Usuario` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  usuario_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: Usuario_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "Usuario", purpose: DELETE_MULTIPLE)
+}
