@@ -4,17 +4,17 @@ Projeto desenvolvido para a disciplina de [NOME DA DISCIPLINA] da [NOME DA FACUL
 
 ## 📁 Estrutura do Projeto
 FinUp/
-├── dataconnect/ # Firebase Data Connect (backend)
-│ ├── schema/ # Definição do banco de dados
-│ └── example/ # Queries e Mutations GraphQL
-├── web-app/ # Aplicação Web (React + Vite)
+├── dataconnect/      # Firebase Data Connect (backend)
+│ ├── schema/         # Definição do banco de dados
+│ └── example/        # Queries e Mutations GraphQL
+├── web-app/          # Aplicação Web (React + Vite)
 │ ├── src/
 │ └── package.json
-├── mobile-app/ # Aplicação Mobile (React Native + Expo)
+├── mobile-app/       # Aplicação Mobile (React Native + Expo)
 │ ├── src/
 │ └── package.json
-├── firebase.json # Configuração dos emuladores
-├── .firebaserc # Projeto Firebase (finup-app6)
+├── firebase.json     # Configuração dos emuladores
+├── .firebaserc       # Projeto Firebase (finup-app6)
 └── README.md
 
 ## 🚀 Como Rodar o Projeto
