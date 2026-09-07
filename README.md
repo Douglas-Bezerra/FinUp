@@ -3,18 +3,31 @@
 Projeto desenvolvido para a disciplina de [NOME DA DISCIPLINA] da [NOME DA FACULDADE].
 
 ## 📁 Estrutura do Projeto
+
 FinUp/
+
 ├── dataconnect/      # Firebase Data Connect (backend)
+
 │ ├── schema/         # Definição do banco de dados
+
 │ └── example/        # Queries e Mutations GraphQL
+
 ├── web-app/          # Aplicação Web (React + Vite)
+
 │ ├── src/
+
 │ └── package.json
+
 ├── mobile-app/       # Aplicação Mobile (React Native + Expo)
+
 │ ├── src/
+
 │ └── package.json
+
 ├── firebase.json     # Configuração dos emuladores
+
 ├── .firebaserc       # Projeto Firebase (finup-app6)
+
 └── README.md
 
 ## 🚀 Como Rodar o Projeto
@@ -31,7 +44,7 @@ FinUp/
 git clone URL_DO_REPOSITORIO
 cd FinUp
 
-**### 2. Configurar o Firebase**
+### 2. Configurar o Firebase
 
 bash
 
@@ -41,7 +54,7 @@ firebase login
 # Iniciar o emulador (mantenha rodando)
 firebase emulators:start --only dataconnect
 
-**### 3. Rodar a Aplicação Web**
+### 3. Rodar a Aplicação Web
 
 bash
 
@@ -50,7 +63,7 @@ npm install
 npm run dev
 # Acesse: http://localhost:5173
 
-**### 4. Rodar a Aplicação Mobile**
+### 4. Rodar a Aplicação Mobile
 
 bash
 
