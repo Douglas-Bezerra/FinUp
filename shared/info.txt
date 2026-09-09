@@ -1,0 +1,7 @@
+Arquivo de informações do projeto FinUp-Grupo
+Definição das cores e fontes utilizadas no projeto
+Esta pasta shared/style vai agrupar as definições de cores e fontes utilizadas no projeto tanto web quanto mobile.
+
+A pasta shared/components vai agrupar os componentes do projeto.
+
+A pasta shared/utils vai agrupar as funções utilitárias utilizadas no projeto.
