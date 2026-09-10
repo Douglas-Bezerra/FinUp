@@ -2,8 +2,9 @@
 # Arquivo de Mutações no Firebase para operações de Escrita - FinUp App
 # ==============================================================================
 
-# 1. Cadastrar um novo usuário no sistema
-mutation CriarUsuario($nome: String!, $email: String!, $papel: String!) @auth(level: USER) {
+# 1. Cadastrar um novo usuário
+mutation CriarUsuario($nome: String!, $email: String!, $papel: String!) 
+@auth(level: USER) {
   usuario_insert(data: {
     nome: $nome,
     email: $email,

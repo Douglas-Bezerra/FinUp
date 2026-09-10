@@ -2,7 +2,7 @@
 # Arquivo de Consultas no Firebase para operações de Leitura - FinUp App
 # ==============================================================================
 
-# 1. Listar todas as contas cadastradas de um usuário
+# 1. Listar todas as contas de um usuário
 query ListarContasPorUsuario($usuarioId: String!) @auth(level: USER) {
   contas(where: { usuarioId: { eq: $usuarioId } }) {
     id
@@ -17,9 +17,8 @@ query ListarContasPorUsuario($usuarioId: String!) @auth(level: USER) {
   }
 }
 
-# 2. Listar o histórico de transações de uma conta
+# 2. Listar transações de uma conta
 query ListarTransacoesPorConta($contaId: String!) @auth(level: USER) {
-  # ATENÇÃO: O plural gerado é "transacaos" (com 's' no final)
   transacaos(
     where: { contaId: { eq: $contaId } },
     orderBy: [{ dataTransacao: DESC }]
