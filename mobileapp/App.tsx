@@ -1,5 +1,5 @@
-import Dashboard from "./src/views/Dashboard";
+import Login from "./src/views/Login";
 
 export default function App() {
-  return <Dashboard />;
+  return <Login />;
 }
