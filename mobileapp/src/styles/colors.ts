@@ -1,11 +1,22 @@
 export const colors = {
-  background: "#08080F",
+  background: "#000000",
   foreground: "#F0F0F8",
 
   card: "#111120",
   cardForeground: "#E8E8F4",
 
-  primary: "#4ADE80",
+  gradient: {
+    colors: [
+      "#FFB000",
+      "#FF6B00",
+      "#FF3040",
+      "#FF006A",
+      "#D500F9",
+    ],
+    start: { x: 0, y: 0 },
+    end: { x: 1, y: 0 },
+  },
+
   primaryForeground: "#031A09",
 
   secondary: "#1A1A2E",

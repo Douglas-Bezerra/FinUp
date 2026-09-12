@@ -1,6 +1,10 @@
-import InputFinUp from "../components/InputFinUp";
+import Input from "../components/Input";
+import Logo from "../components/Logo";
+import ButtonFinUp from "../components/ButtonFinUp";
+import GradientText from "../components/GradientText";
 
 import { useState } from "react";
+
 import {
   KeyboardAvoidingView,
   Platform,
@@ -12,7 +16,6 @@ import {
 } from "react-native";
 
 import { colors } from "../styles/colors";
-
 
 export default function TelaLogin() {
   const [email, setEmail] = useState("");
@@ -27,30 +30,24 @@ export default function TelaLogin() {
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
       >
+
         {/* Logo */}
         <View style={styles.logoArea}>
-          <View style={styles.logoBox}>
-            <Text style={styles.logoSymbol}>◉</Text>
-          </View>
-
-          <Text style={styles.logoText}>
-            Fin<Text style={styles.logoHighlight}>Up</Text>
-          </Text>
-
-          <Text style={styles.logoSubtitle}>
-            Controle financeiro pessoal
-          </Text>
+          <Logo />
         </View>
 
         {/* Card */}
         <View style={styles.card}>
-          <Text style={styles.title}>Entrar na conta</Text>
+
+          <Text style={styles.title}>
+            Entrar na conta
+          </Text>
 
           <Text style={styles.welcome}>
             Bem-vindo de volta
           </Text>
 
-          <InputFinUp
+          <Input
             label="E-mail"
             value={email}
             onChangeText={setEmail}
@@ -59,7 +56,7 @@ export default function TelaLogin() {
             autoCapitalize="none"
           />
 
-          <InputFinUp
+          <Input
             label="Senha"
             value={password}
             onChangeText={setPassword}
@@ -69,31 +66,36 @@ export default function TelaLogin() {
 
           {/* Esqueci senha */}
           <Pressable style={styles.forgotButton}>
-            <Text style={styles.forgotText}>
+            <GradientText style={styles.forgotText}>
               Esqueci minha senha
-            </Text>
+            </GradientText>
           </Pressable>
 
           {/* Entrar */}
-          <Pressable style={styles.loginButton}>
-            <Text style={styles.loginButtonText}>
-              Entrar
-            </Text>
-          </Pressable>
+          <ButtonFinUp
+            title="Entrar"
+            onPress={() => {
+              // Login futuramente
+            }}
+          />
+
         </View>
 
         {/* Criar conta */}
         <View style={styles.registerArea}>
+
           <Text style={styles.registerText}>
             Não tem uma conta?
           </Text>
 
           <Pressable>
-            <Text style={styles.registerLink}>
+            <GradientText style={styles.registerLink}>
               Criar conta grátis
-            </Text>
+            </GradientText>
           </Pressable>
+
         </View>
+
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -115,45 +117,11 @@ const styles = StyleSheet.create({
   logoArea: {
     alignItems: "center",
     marginBottom: 32,
-  },
-
-  logoBox: {
-    width: 64,
-    height: 64,
-    borderRadius: 24,
-    backgroundColor: colors.secondary,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 12,
-  },
-
-  logoSymbol: {
-    color: colors.primary,
-    fontSize: 28,
-  },
-
-  logoText: {
-    color: colors.foreground,
-    fontSize: 26,
-    fontWeight: "800",
-  },
-
-  logoHighlight: {
-    color: colors.primary,
-  },
-
-  logoSubtitle: {
-    color: colors.mutedForeground,
-    fontSize: 12,
-    marginTop: 2,
+    marginTop: 36,
   },
 
   card: {
     backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
     borderRadius: 24,
     padding: 24,
   },
@@ -162,6 +130,8 @@ const styles = StyleSheet.create({
     color: colors.foreground,
     fontSize: 22,
     fontWeight: "700",
+    textAlign: "center",
+    marginBottom: 14,
   },
 
   welcome: {
@@ -169,6 +139,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: 4,
     marginBottom: 24,
+    textAlign: "center",
   },
 
   forgotButton: {
@@ -178,26 +149,11 @@ const styles = StyleSheet.create({
   },
 
   forgotText: {
-    color: colors.primary,
     fontSize: 12,
-  },
-
-  loginButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 16,
-    paddingVertical: 16,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  loginButtonText: {
-    color: colors.primaryForeground,
-    fontSize: 15,
-    fontWeight: "700",
+    fontWeight: "600",
   },
 
   registerArea: {
-    flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
     marginTop: 24,
@@ -210,7 +166,6 @@ const styles = StyleSheet.create({
   },
 
   registerLink: {
-    color: colors.primary,
     fontSize: 13,
     fontWeight: "700",
   },

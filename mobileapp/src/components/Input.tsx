@@ -8,14 +8,14 @@ import {
 
 import { colors } from "../styles/colors";
 
-interface InputFinUpProps extends TextInputProps {
+interface InputProps extends TextInputProps {
   label: string;
 }
 
-export default function InputFinUp({
+export default function Input({
   label,
   ...textInputProps
-}: InputFinUpProps) {
+}: InputProps) {
   return (
     <View style={styles.field}>
       <Text style={styles.label}>
@@ -38,7 +38,7 @@ const styles = StyleSheet.create({
 
   label: {
     color: colors.mutedForeground,
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: "500",
     marginBottom: 6,
   },
@@ -51,6 +51,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 13,
     color: colors.foreground,
-    fontSize: 14,
+    fontSize: 15,
   },
 });
