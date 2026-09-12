@@ -8,6 +8,7 @@ import {
 } from "react-native";
 
 import { LinearGradient } from "expo-linear-gradient";
+
 import { colors } from "../styles/colors";
 
 interface GradientButtonProps {

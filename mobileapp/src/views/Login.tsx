@@ -1,6 +1,6 @@
 import Input from "../components/Input";
 import Logo from "../components/Logo";
-import ButtonFinUp from "../components/ButtonFinUp";
+import GradientButton from "../components/GradientButton";
 import GradientText from "../components/GradientText";
 
 import { useState } from "react";
@@ -72,7 +72,7 @@ export default function TelaLogin() {
           </Pressable>
 
           {/* Entrar */}
-          <ButtonFinUp
+          <GradientButton
             title="Entrar"
             onPress={() => {
               // Login futuramente
