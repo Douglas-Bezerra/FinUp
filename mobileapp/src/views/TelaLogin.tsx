@@ -1,8 +1,3 @@
-import Input from "../components/Input";
-import Logo from "../components/Logo";
-import GradientButton from "../components/GradientButton";
-import GradientText from "../components/GradientText";
-
 import { useState } from "react";
 
 import {
@@ -17,7 +12,17 @@ import {
 
 import { colors } from "../styles/colors";
 
-export default function TelaLogin() {
+import Input from "../components/Input";
+import Logo from "../components/Logo";
+import GradientButton from "../components/GradientButton";
+import GradientText from "../components/GradientText";
+
+
+interface LoginProps {
+  onGoToCadastro: () => void;
+}
+
+export default function TelaLogin({ onGoToCadastro }: LoginProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -71,6 +76,7 @@ export default function TelaLogin() {
             </GradientText>
           </Pressable>
 
+
           {/* Entrar */}
           <GradientButton
             title="Entrar"
@@ -88,7 +94,7 @@ export default function TelaLogin() {
             Não tem uma conta?
           </Text>
 
-          <Pressable>
+          <Pressable onPress={onGoToCadastro}>
             <GradientText style={styles.registerLink}>
               Criar conta grátis
             </GradientText>
@@ -117,13 +123,15 @@ const styles = StyleSheet.create({
   logoArea: {
     alignItems: "center",
     marginBottom: 32,
-    marginTop: 36,
+    marginTop: 65,
   },
 
   card: {
     backgroundColor: colors.card,
     borderRadius: 24,
-    padding: 24,
+    paddingTop: 15,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
   },
 
   title: {
@@ -131,21 +139,20 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: "700",
     textAlign: "center",
-    marginBottom: 14,
+    marginBottom: 5,
   },
 
   welcome: {
     color: colors.mutedForeground,
     fontSize: 13,
-    marginTop: 4,
     marginBottom: 24,
     textAlign: "center",
   },
 
   forgotButton: {
     alignSelf: "flex-end",
-    marginTop: -4,
-    marginBottom: 20,
+    marginBottom: 30,
+    marginTop: -10,
   },
 
   forgotText: {
