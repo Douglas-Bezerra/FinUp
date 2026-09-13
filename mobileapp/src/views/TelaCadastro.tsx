@@ -1,5 +1,6 @@
 import { useState } from "react";
-
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -11,16 +12,20 @@ import {
 } from "react-native";
 
 import { colors } from "../styles/colors";
+import { RootStackParamList } from "../navigation/types";
 
 import Input from "../components/Input";
 import Logo from "../components/Logo";
 import GradientButton from "../components/GradientButton";
 
-interface CadastroProps {
-  onGoToLogin: () => void;
-}
+type CadastroNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  "Cadastro"
+>;
 
-export default function TelaCadastro({ onGoToLogin }: CadastroProps) {
+export default function Cadastro() {
+  const navigation = useNavigation<CadastroNavigationProp>();
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -40,7 +45,7 @@ export default function TelaCadastro({ onGoToLogin }: CadastroProps) {
         <View style={styles.header}>
           <Pressable
             style={styles.backButton}
-            onPress={onGoToLogin}
+            onPress={() => navigation.goBack()}
           >
             <Text style={styles.backIcon}>‹</Text>
           </Pressable>

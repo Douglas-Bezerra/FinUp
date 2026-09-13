@@ -1,10 +1,13 @@
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
-import Login from "./src/views/Login";
-import Cadastro from "./src/views/Cadastro";
+import { RootStackParamList } from "./src/navigation/types";
 
-const Stack = createNativeStackNavigator();
+import TelaLogin from "./src/views/TelaLogin";
+import TelaCadastro from "./src/views/TelaCadastro";
+
+
+const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
   return (
@@ -17,12 +20,12 @@ export default function App() {
       >
         <Stack.Screen
           name="Login"
-          component={Login}
+          component={TelaLogin}
         />
 
         <Stack.Screen
           name="Cadastro"
-          component={Cadastro}
+          component={TelaCadastro}
         />
       </Stack.Navigator>
     </NavigationContainer>

@@ -1,5 +1,4 @@
 import { useState } from "react";
-
 import {
   KeyboardAvoidingView,
   Platform,
@@ -9,20 +8,26 @@ import {
   Text,
   View,
 } from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 import { colors } from "../styles/colors";
+import { RootStackParamList } from "../navigation/types";
+
 
 import Input from "../components/Input";
 import Logo from "../components/Logo";
 import GradientButton from "../components/GradientButton";
 import GradientText from "../components/GradientText";
 
+type LoginNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  "Login"
+>;
 
-interface LoginProps {
-  onGoToCadastro: () => void;
-}
+export default function Login() {
+  const navigation = useNavigation<LoginNavigationProp>();
 
-export default function TelaLogin({ onGoToCadastro }: LoginProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -94,7 +99,7 @@ export default function TelaLogin({ onGoToCadastro }: LoginProps) {
             Não tem uma conta?
           </Text>
 
-          <Pressable onPress={onGoToCadastro}>
+          <Pressable onPress={() => navigation.navigate("Cadastro")}>
             <GradientText style={styles.registerLink}>
               Criar conta grátis
             </GradientText>
