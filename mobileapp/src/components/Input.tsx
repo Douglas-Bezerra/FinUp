@@ -1,4 +1,7 @@
+import { useState } from "react";
+
 import {
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -8,25 +11,48 @@ import {
 
 import { colors } from "../styles/colors";
 
-interface InputProps extends TextInputProps {
+import { Ionicons } from "@expo/vector-icons";
+
+interface InputFinUpProps extends TextInputProps {
   label: string;
 }
 
-export default function Input({
+export default function InputFinUp({
   label,
+  secureTextEntry,
   ...textInputProps
-}: InputProps) {
+}: InputFinUpProps) {
+  const [showPassword, setShowPassword] = useState(false);
+
+  const isPassword = secureTextEntry === true;
+
   return (
     <View style={styles.field}>
       <Text style={styles.label}>
         {label}
       </Text>
 
-      <TextInput
-        {...textInputProps}
-        placeholderTextColor={colors.mutedForeground}
-        style={styles.input}
-      />
+      <View style={styles.inputContainer}>
+        <TextInput
+          {...textInputProps}
+          secureTextEntry={isPassword && !showPassword}
+          placeholderTextColor={colors.mutedForeground}
+          style={styles.input}
+        />
+
+        {isPassword && (
+          <Pressable
+            style={styles.eyeButton}
+            onPress={() => setShowPassword(!showPassword)}
+          >
+            <Ionicons
+              name={showPassword ? "eye-off-outline" : "eye-outline"}
+              size={20}
+              color={colors.mutedForeground}
+            />
+          </Pressable>
+        )}
+      </View>
     </View>
   );
 }
@@ -50,7 +76,20 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 13,
+    paddingRight: 48,
     color: colors.foreground,
-    fontSize: 15,
+    fontSize: 14,
+  },
+
+  inputContainer: {
+    position: "relative",
+  },
+
+  eyeButton: {
+    position: "absolute",
+    right: 14,
+    top: 0,
+    bottom: 0,
+    justifyContent: "center",
   },
 });
