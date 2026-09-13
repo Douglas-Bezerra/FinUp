@@ -31,9 +31,11 @@ pglite-debug.log
 firebase.json.local
 
 # ============================
-# Firebase Data Connect - SDK gerado
+# Firebase Data Connect
 # ============================
 **/dataconnect-generated/
+.dataconnect/
+**/pgliteData/
 
 # ============================
 # Ambiente
@@ -69,13 +71,13 @@ web-build/
 # ============================
 .expo/
 .expo-shared/
-mobile-app/.expo/
-mobile-app/web-build/
-mobile-app/dist/
+mobileapp/.expo/
+mobileapp/web-build/
+mobileapp/dist/
 
 # ============================
 # Web
 # ============================
-web-app/dist/
-web-app/.env
-web-app/.env.local
+webapp/dist/
+webapp/.env
+webapp/.env.local

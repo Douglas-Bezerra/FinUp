@@ -20,7 +20,7 @@ interface CadastroProps {
   onGoToLogin: () => void;
 }
 
-export default function Cadastro({ onGoToLogin }: CadastroProps) {
+export default function TelaCadastro({ onGoToLogin }: CadastroProps) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
