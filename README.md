@@ -1,6 +1,6 @@
 # 💰 FinUp - Controle Financeiro Pessoal
 
-Projeto desenvolvido para a disciplina de [NOME DA DISCIPLINA] da [NOME DA FACULDADE].
+Projeto desenvolvido para a disciplina de Laboratório de Desenvolvimento Multiplataforma da FATEC Marília.
 
 ## 📁 Estrutura do Projeto
 
