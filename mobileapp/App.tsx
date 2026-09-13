@@ -1,18 +1,30 @@
-import { useState } from "react";
+import { NavigationContainer } from "@react-navigation/native";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
-import TelaLogin from "./src/views/TelaLogin";
-import TelaCadastro from "./src/views/TelaCadastro";
+import Login from "./src/views/Login";
+import Cadastro from "./src/views/Cadastro";
+
+const Stack = createNativeStackNavigator();
 
 export default function App() {
-  const [tela, setTela] = useState<"login" | "cadastro">("login");
+  return (
+    <NavigationContainer>
+      <Stack.Navigator
+        initialRouteName="Login"
+        screenOptions={{
+          headerShown: false,
+        }}
+      >
+        <Stack.Screen
+          name="Login"
+          component={Login}
+        />
 
-  if (tela === "cadastro") {
-    return (
-      <TelaCadastro
-        onGoToLogin={() => setTela("login")}
-      />
-    );
-  }
-
-  return <TelaLogin onGoToCadastro={() => setTela("cadastro")} />;
+        <Stack.Screen
+          name="Cadastro"
+          component={Cadastro}
+        />
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
 }
