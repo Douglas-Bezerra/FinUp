@@ -48,6 +48,8 @@ export default function Cadastro() {
 
     if (!name.trim()) {
       newErrors.name = "Informe seu nome completo.";
+    } else if (/\d/.test(name)) {
+      newErrors.name = "O nome não pode conter números.";
     }
 
     if (!email.trim()) {
