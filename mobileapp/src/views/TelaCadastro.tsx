@@ -70,8 +70,6 @@ export default function Cadastro() {
       newErrors.confirmPassword = "As senhas não coincidem.";
     }
 
-    console.log(newErrors);
-
     setErrors(newErrors);
 
     return Object.values(newErrors).every((error) => !error);
@@ -87,7 +85,7 @@ export default function Cadastro() {
         keyboardShouldPersistTaps="handled"
       >
 
-        /* Cabeçalho */
+        {/* Cabeçalho */}
         <View style={styles.header}>
           <Pressable
             style={styles.backButton}
@@ -96,13 +94,13 @@ export default function Cadastro() {
             <Text style={styles.backIcon}>‹</Text>
           </Pressable>
 
-          /* Logo */
+          {/* Logo */}
           <View style={styles.logoArea}>
             <Logo />
           </View>
         </View>
 
-        /* Formulário */
+        {/* Formulário */}
         <View style={styles.card}>
           <Input
             label="Nome Completo"
