@@ -69,7 +69,7 @@ export default function Cadastro() {
     }
 
     console.log(newErrors);
-    
+
     setErrors(newErrors);
 
     return Object.values(newErrors).every((error) => !error);
@@ -85,7 +85,7 @@ export default function Cadastro() {
         keyboardShouldPersistTaps="handled"
       >
 
-        {/* Cabeçalho */}
+        /* Cabeçalho */
         <View style={styles.header}>
           <Pressable
             style={styles.backButton}
@@ -94,45 +94,69 @@ export default function Cadastro() {
             <Text style={styles.backIcon}>‹</Text>
           </Pressable>
 
-          {/* Logo */}
+          /* Logo */
           <View style={styles.logoArea}>
             <Logo />
           </View>
         </View>
 
-        {/* Formulário */}
+        /* Formulário */
         <View style={styles.card}>
           <Input
             label="Nome Completo"
             value={name}
-            onChangeText={setName}
+            onChangeText={(text) => {
+              setName(text);
+              setErrors((prev) => ({ ...prev, name: "" }));
+            }}
             placeholder="Seu nome completo"
           />
+          {errors.name ? (
+            <Text style={styles.error}>{errors.name}</Text>
+          ) : null}
 
           <Input
             label="E-mail"
             value={email}
-            onChangeText={setEmail}
+            onChangeText={(text) => {
+              setEmail(text);
+              setErrors((prev) => ({ ...prev, email: "" }));
+            }}
             placeholder="seu@email.com"
             keyboardType="email-address"
             autoCapitalize="none"
           />
+          {errors.email ? (
+            <Text style={styles.error}>{errors.email}</Text>
+          ) : null}
 
           <Input
             label="Senha"
             value={password}
-            onChangeText={setPassword}
+            onChangeText={(text) => {
+              setPassword(text);
+              setErrors((prev) => ({ ...prev, password: "" }));
+            }}
             placeholder="Mín. 6 caracteres"
             secureTextEntry
           />
+          {errors.password ? (
+            <Text style={styles.error}>{errors.password}</Text>
+          ) : null}
 
           <Input
             label="Confirmar Senha"
             value={confirmPassword}
-            onChangeText={setConfirmPassword}
+            onChangeText={(text) => {
+              setConfirmPassword(text);
+              setErrors((prev) => ({ ...prev, confirmPassword: "" }));
+            }}
             placeholder="Repita a senha"
             secureTextEntry
           />
+          {errors.confirmPassword ? (
+            <Text style={styles.error}>{errors.confirmPassword}</Text>
+          ) : null}
 
           <View style={styles.button}>
             <GradientButton
@@ -199,6 +223,13 @@ const styles = StyleSheet.create({
 
   button: {
     marginTop: 15,
+  },
+
+  error: {
+    color: "#EF4444",
+    fontSize: 12,
+    marginTop: -10,
+    marginBottom: 16,
   },
 
 });
