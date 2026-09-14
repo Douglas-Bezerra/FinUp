@@ -1,5 +1,4 @@
 import { useState } from "react";
-
 import {
   Pressable,
   StyleSheet,
@@ -8,10 +7,10 @@ import {
   TextInputProps,
   View,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
 import { colors } from "../styles/colors";
 
-import { Ionicons } from "@expo/vector-icons";
 
 interface InputFinUpProps extends TextInputProps {
   label: string;

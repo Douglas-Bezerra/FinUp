@@ -14,7 +14,6 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { colors } from "../styles/colors";
 import { RootStackParamList } from "../navigation/types";
 
-
 import Input from "../components/Input";
 import Logo from "../components/Logo";
 import GradientButton from "../components/GradientButton";

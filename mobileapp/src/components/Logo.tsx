@@ -3,11 +3,9 @@ import {
   Text,
   View,
 } from "react-native";
-
 import { LinearGradient } from "expo-linear-gradient";
 
 import GradientText from "./GradientText";
-
 import { colors } from "../styles/colors";
 
 export default function Logo() {
