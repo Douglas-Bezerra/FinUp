@@ -8,7 +8,8 @@ mutation CriarUsuario($nome: String!, $email: String!, $papel: String!)
   usuario_insert(data: {
     nome: $nome,
     email: $email,
-    papel: $papel
+    papel: $papel,
+    id_expr: "auth.uid"
   })
 }
 
@@ -22,7 +23,7 @@ mutation CriarConta(
   $limiteTotal: Float
 ) @auth(level: USER) {
   conta_insert(data: {
-    usuarioId: $usuarioId,
+    usuarioId_expr: "auth.uid",
     instituicaoId: $instituicaoId,
     nomeConta: $nomeConta,
     tipoConta: $tipoConta,
@@ -36,7 +37,6 @@ mutation CriarConta(
 mutation CriarTransacao(
   $contaId: String!,
   $categoriaId: String!,
-  $criadoPorUsuarioId: String!,
   $descricao: String!,
   $valor: Float!,
   $dataTransacao: Timestamp!,
@@ -46,7 +46,7 @@ mutation CriarTransacao(
   transacao_insert(data: {
     contaId: $contaId,
     categoriaId: $categoriaId,
-    criadoPorUsuarioId: $criadoPorUsuarioId,
+    criadoPorUsuarioId_expr: "auth.uid",
     descricao: $descricao,
     valor: $valor,
     dataTransacao: $dataTransacao,

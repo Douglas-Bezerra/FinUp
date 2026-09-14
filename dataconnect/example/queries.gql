@@ -3,8 +3,8 @@
 # ==============================================================================
 
 # 1. Listar todas as contas de um usuário
-query ListarContasPorUsuario($usuarioId: String!) @auth(level: USER) {
-  contas(where: { usuarioId: { eq: $usuarioId } }) {
+query ListarContasPorUsuario @auth(level: USER) {
+  contas(where: { usuarioId: { eq_expr: "auth.uid" } }) {
     id
     nomeConta
     tipoConta
@@ -18,9 +18,9 @@ query ListarContasPorUsuario($usuarioId: String!) @auth(level: USER) {
 }
 
 # 2. Listar transações de uma conta
-query ListarTransacoesPorConta($contaId: String!) @auth(level: USER) {
+query ListarTransacoesPorConta @auth(level: USER) {
   transacaos(
-    where: { contaId: { eq: $contaId } },
+    where: { criadoPorUsuarioId: { eq_expr: "auth.uid" } },
     orderBy: [{ dataTransacao: DESC }]
   ) {
     id
