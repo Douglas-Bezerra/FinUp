@@ -31,6 +31,50 @@ export default function Cadastro() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
+  const [errors, setErrors] = useState({
+    name: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+  });
+
+  const validateForm = () => {
+    const newErrors = {
+      name: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+    };
+
+    if (!name.trim()) {
+      newErrors.name = "Informe seu nome completo.";
+    }
+
+    if (!email.trim()) {
+      newErrors.email = "Informe seu e-mail.";
+    } else if (!/\S+@\S+\.\S+/.test(email)) {
+      newErrors.email = "Informe um e-mail válido.";
+    }
+
+    if (!password) {
+      newErrors.password = "Informe uma senha.";
+    } else if (password.length < 6) {
+      newErrors.password = "A senha deve ter pelo menos 6 caracteres.";
+    }
+
+    if (!confirmPassword) {
+      newErrors.confirmPassword = "Confirme sua senha.";
+    } else if (password !== confirmPassword) {
+      newErrors.confirmPassword = "As senhas não coincidem.";
+    }
+
+    console.log(newErrors);
+    
+    setErrors(newErrors);
+
+    return Object.values(newErrors).every((error) => !error);
+  };
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -93,9 +137,7 @@ export default function Cadastro() {
           <View style={styles.button}>
             <GradientButton
               title="Criar conta grátis"
-              onPress={() => {
-                // Cadastro futuramente
-              }}
+              onPress={validateForm}
             />
           </View>
 
