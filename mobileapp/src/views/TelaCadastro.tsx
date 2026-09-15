@@ -18,7 +18,7 @@ import { colors } from "../styles/colors";
 import { RootStackParamList } from "../navigation/types";
 import { criarUsuario } from "../dataconnect-generated";
 
-{/* Importando Componentes de Interface */ }
+{/* Importando Componentes para "montar" TelaCadastro */ }
 import Input from "../components/Input";
 import Logo from "../components/Logo";
 import GradientButton from "../components/GradientButton";
@@ -176,14 +176,20 @@ export default function Cadastro() {
                 if (!isValid) {
                   return;
                 }
-
                 try {
                   await createUserWithEmailAndPassword(
                     auth,
                     email.trim(),
                     password
                   );
-                } catch (error) {
+
+                  await criarUsuario({
+                    nome: name.trim(),
+                    email: email.trim(),
+                    papel: "PRINCIPAL",
+                  });
+                }
+                catch (error) {
                   setFirebaseError("Este e-mail já está cadastrado.");
                 }
               }}
