@@ -11,6 +11,9 @@ import {
   View,
 } from "react-native";
 
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { auth } from "../firebase";
+
 import { colors } from "../styles/colors";
 import { RootStackParamList } from "../navigation/types";
 
@@ -161,7 +164,19 @@ export default function Cadastro() {
           <View style={styles.button}>
             <GradientButton
               title="Criar conta grátis"
-              onPress={validateForm}
+              onPress={async () => {
+                const isValid = validateForm();
+
+                if (!isValid) {
+                  return;
+                }
+
+                await createUserWithEmailAndPassword(
+                  auth,
+                  email.trim(),
+                  password
+                );
+              }}
             />
           </View>
 
