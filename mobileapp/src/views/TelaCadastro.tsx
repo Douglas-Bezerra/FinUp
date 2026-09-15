@@ -34,6 +34,7 @@ export default function Cadastro() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
+  const [firebaseError, setFirebaseError] = useState("");
 
   const [errors, setErrors] = useState({
     name: "",
@@ -125,14 +126,16 @@ export default function Cadastro() {
             onChangeText={(text) => {
               setEmail(text);
               setErrors((prev) => ({ ...prev, email: "" }));
+              setFirebaseError("");
             }}
             placeholder="seu@email.com"
             keyboardType="email-address"
             autoCapitalize="none"
           />
-          {errors.email ? (
-            <Text style={styles.error}>{errors.email}</Text>
+          {firebaseError ? (
+            <Text style={styles.error}>{firebaseError}</Text>
           ) : null}
+
 
           <Input
             label="Senha"
@@ -179,7 +182,7 @@ export default function Cadastro() {
                     password
                   );
                 } catch (error) {
-                  console.log(error);
+                  setFirebaseError("Este e-mail já está cadastrado.");
                 }
               }}
             />
