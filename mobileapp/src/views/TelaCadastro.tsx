@@ -11,9 +11,14 @@ import {
   View,
 } from "react-native";
 
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { auth } from "../firebase";
+
 import { colors } from "../styles/colors";
 import { RootStackParamList } from "../navigation/types";
+import { criarUsuario } from "../dataconnect-generated";
 
+{/* Importando Componentes para "montar" TelaCadastro */ }
 import Input from "../components/Input";
 import Logo from "../components/Logo";
 import GradientButton from "../components/GradientButton";
@@ -30,6 +35,8 @@ export default function Cadastro() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+
+  const [firebaseError, setFirebaseError] = useState("");
 
   const [errors, setErrors] = useState({
     name: "",
@@ -121,14 +128,16 @@ export default function Cadastro() {
             onChangeText={(text) => {
               setEmail(text);
               setErrors((prev) => ({ ...prev, email: "" }));
+              setFirebaseError("");
             }}
             placeholder="seu@email.com"
             keyboardType="email-address"
             autoCapitalize="none"
           />
-          {errors.email ? (
-            <Text style={styles.error}>{errors.email}</Text>
+          {firebaseError ? (
+            <Text style={styles.error}>{firebaseError}</Text>
           ) : null}
+
 
           <Input
             label="Senha"
@@ -161,7 +170,29 @@ export default function Cadastro() {
           <View style={styles.button}>
             <GradientButton
               title="Criar conta grátis"
-              onPress={validateForm}
+              onPress={async () => {
+                const isValid = validateForm();
+
+                if (!isValid) {
+                  return;
+                }
+                try {
+                  await createUserWithEmailAndPassword(
+                    auth,
+                    email.trim(),
+                    password
+                  );
+
+                  await criarUsuario({
+                    nome: name.trim(),
+                    email: email.trim(),
+                    papel: "PRINCIPAL",
+                  });
+                }
+                catch (error) {
+                  setFirebaseError("Este e-mail já está cadastrado.");
+                }
+              }}
             />
           </View>
 

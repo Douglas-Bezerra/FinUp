@@ -5,9 +5,9 @@
 connectorId: example
 generate:
   javascriptSdk:
-    outputDir: "../../webapp/src/dataconnect-generated"
+    outputDir: "../../mobileapp/src/dataconnect-generated"
     package: "@dataconnect/generated"
-    packageJsonDir: "../../webapp"
+    packageJsonDir: "../../mobileapp"
     react: true
     angular: false
     clientCache: {}
