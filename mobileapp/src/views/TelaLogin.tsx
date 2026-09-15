@@ -1,3 +1,7 @@
+// TelaLogin.tsx
+// Tela para login do app que usará o Firebase Auth
+// =============================================================================
+
 import { useState } from "react";
 import {
   KeyboardAvoidingView,

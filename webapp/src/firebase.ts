@@ -3,6 +3,7 @@
 // =============================================================================
 
 import { initializeApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
 import { getDataConnect, connectDataConnectEmulator } from 'firebase/data-connect';
 import { connectorConfig } from './dataconnect-generated';
 
@@ -17,6 +18,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
+export const auth = getAuth(app);
 export const dataConnect = getDataConnect(app, connectorConfig);
 
 // Conecta sempre ao emulador local (127.0.0.1:9399) em modo de desenvolvimento
