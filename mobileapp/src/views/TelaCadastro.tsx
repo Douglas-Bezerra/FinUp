@@ -34,6 +34,7 @@ export default function Cadastro() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
+
   const [errors, setErrors] = useState({
     name: "",
     email: "",
@@ -171,11 +172,15 @@ export default function Cadastro() {
                   return;
                 }
 
-                await createUserWithEmailAndPassword(
-                  auth,
-                  email.trim(),
-                  password
-                );
+                try {
+                  await createUserWithEmailAndPassword(
+                    auth,
+                    email.trim(),
+                    password
+                  );
+                } catch (error) {
+                  console.log(error);
+                }
               }}
             />
           </View>
