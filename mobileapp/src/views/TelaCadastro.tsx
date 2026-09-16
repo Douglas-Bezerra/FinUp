@@ -53,24 +53,28 @@ export default function Cadastro() {
       confirmPassword: "",
     };
 
+    {/* Validação do nome */ }
     if (!name.trim()) {
       newErrors.name = "Informe seu nome completo.";
     } else if (/\d/.test(name)) {
       newErrors.name = "O nome não pode conter números.";
     }
 
+    {/* Validação do e-mail */ }
     if (!email.trim()) {
       newErrors.email = "Informe seu e-mail.";
     } else if (!/\S+@\S+\.\S+/.test(email)) {
       newErrors.email = "Informe um e-mail válido.";
     }
 
+    {/* Validação da senha */ }
     if (!password) {
       newErrors.password = "Informe uma senha.";
     } else if (password.length < 6) {
       newErrors.password = "A senha deve ter pelo menos 6 caracteres.";
     }
 
+    {/* Validação da confirmação de senha */ }
     if (!confirmPassword) {
       newErrors.confirmPassword = "Confirme sua senha.";
     } else if (password !== confirmPassword) {
@@ -87,6 +91,7 @@ export default function Cadastro() {
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
+      {/* ScrollView para permitir rolagem quando o teclado estiver aberto */}
       <ScrollView
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
@@ -118,6 +123,7 @@ export default function Cadastro() {
             }}
             placeholder="Seu nome completo"
           />
+          {/* Exibe mensagem de erro se houver erro no campo nome */}
           {errors.name ? (
             <Text style={styles.error}>{errors.name}</Text>
           ) : null}
@@ -134,6 +140,7 @@ export default function Cadastro() {
             keyboardType="email-address"
             autoCapitalize="none"
           />
+          {/* Exibe mensagem de erro se houver erro no campo e-mail */}
           {firebaseError ? (
             <Text style={styles.error}>{firebaseError}</Text>
           ) : null}
@@ -149,6 +156,7 @@ export default function Cadastro() {
             placeholder="Mín. 6 caracteres"
             secureTextEntry
           />
+          {/* Exibe mensagem de erro se houver erro no campo senha */}
           {errors.password ? (
             <Text style={styles.error}>{errors.password}</Text>
           ) : null}
@@ -163,6 +171,7 @@ export default function Cadastro() {
             placeholder="Repita a senha"
             secureTextEntry
           />
+          {/* Exibe mensagem de erro se houver erro no campo confirmar senha */}
           {errors.confirmPassword ? (
             <Text style={styles.error}>{errors.confirmPassword}</Text>
           ) : null}

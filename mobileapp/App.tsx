@@ -1,8 +1,3 @@
-// App.tsx
-// Arquivo principal do projeto
-// Para executar o projeto, execute "expo start" no terminal ou npx expo start
-// =============================================================================
-
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
