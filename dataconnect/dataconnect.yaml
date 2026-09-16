@@ -4,7 +4,7 @@
 
 specVersion: "v1"
 serviceId: "finup"
-location: "us-east4"
+location: "us-central1"
 schema:
   source: "./schema"
   datasource:
