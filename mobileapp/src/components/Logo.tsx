@@ -2,6 +2,7 @@ import {
   StyleSheet,
   Text,
   View,
+  Image,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 
@@ -20,9 +21,10 @@ export default function Logo() {
         style={styles.logoBox}
       >
         <View style={styles.logoBoxInner}>
-          <GradientText style={styles.logoSymbol}>
-            ◉
-          </GradientText>
+          <Image
+            source={require("../../assets/logo-tela.png")}
+            style={styles.logoSymbol}
+          />
         </View>
       </LinearGradient>
 
@@ -67,11 +69,12 @@ const styles = StyleSheet.create({
     borderRadius: 23,
     backgroundColor: colors.secondary,
     alignItems: "center",
-    justifyContent: "center",
   },
 
   logoSymbol: {
-    fontSize: 30,
+    width: "80%",
+    height: "100%",
+    resizeMode: "contain",
   },
 
   logo: {
