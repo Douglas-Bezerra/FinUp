@@ -54,10 +54,10 @@ const styles = StyleSheet.create({
   },
 
   logoBox: {
-    width: 64,
-    height: 64,
+    width: 80,
+    height: 80,
     borderRadius: 24,
-    padding: 1,
+    padding: 2,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 12,
