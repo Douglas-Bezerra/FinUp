@@ -8,11 +8,11 @@
 # ------------------------------------------------------------------------------
 
 type Usuario @table {
-  id: String! @default(expr: "uuidV4()")
+  id: String! @default(expr: "auth.uid")
   nome: String!
   email: String!
   papel: String! # 'PRINCIPAL' ou 'SECUNDARIO'
-  
+
   # Auto-relacionamento (Hierarquia Principal / Secundário)
   usuarioPai: Usuario @ref(fields: "usuarioPaiId")
   usuarioPaiId: String

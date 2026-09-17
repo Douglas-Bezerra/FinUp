@@ -10,4 +10,3 @@ generate:
     packageJsonDir: "../../mobileapp"
     react: true
     angular: false
-    clientCache: {}

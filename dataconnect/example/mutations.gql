@@ -3,13 +3,15 @@
 # ==============================================================================
 
 # 1. Cadastrar um novo usuário
-mutation CriarUsuario($nome: String!, $email: String!, $papel: String!) 
-@auth(level: USER) {
+mutation CriarUsuario(
+  $nome: String!,
+  $email: String!,
+  $papel: String!
+) @auth(level: PUBLIC) {
   usuario_insert(data: {
     nome: $nome,
     email: $email,
-    papel: $papel,
-    id_expr: "auth.uid"
+    papel: $papel
   })
 }
 
