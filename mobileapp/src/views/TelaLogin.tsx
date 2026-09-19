@@ -85,7 +85,7 @@ export default function Login() {
           <GradientButton
             title="Entrar"
             onPress={() => {
-              // Login futuramente
+              navigation.navigate("TelaInicial");
             }}
           />
 
