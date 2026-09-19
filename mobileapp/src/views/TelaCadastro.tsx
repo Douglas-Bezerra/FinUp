@@ -28,7 +28,7 @@ type CadastroNavigationProp = NativeStackNavigationProp<
   "Cadastro"
 >;
 
-export default function Cadastro() {
+export default function TelaCadastro() {
   const navigation = useNavigation<CadastroNavigationProp>();
 
   const [name, setName] = useState("");

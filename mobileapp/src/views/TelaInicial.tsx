@@ -1,8 +1,15 @@
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View, Pressable } from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+
+import { RootStackParamList } from "../navigation/types";
 
 import { colors } from "../styles/colors";
 
 export default function TelaInicial() {
+    const navigation =
+        useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+
     return (
         <View style={styles.container}>
 
@@ -20,13 +27,23 @@ export default function TelaInicial() {
 
             {/* Ações rápidas */}
             <View style={styles.quickActions}>
-                <View style={styles.quickAction}>
-                    <View style={[styles.actionIcon, { backgroundColor: "rgba(74, 222, 128, 0.12)" }]}>
-                        <Text style={[styles.actionIconText, { color: colors.primary }]}>↑</Text>
+                <Pressable
+                    style={styles.quickAction}
+                    onPress={() => navigation.navigate("CadastroReceitas")}
+                >
+                    <View
+                        style={[
+                            styles.actionIcon,
+                            { backgroundColor: "rgba(74, 222, 128, 0.12)" },
+                        ]}
+                    >
+                        <Text style={[styles.actionIconText, { color: colors.primary }]}>
+                            ↑
+                        </Text>
                     </View>
 
                     <Text style={styles.actionLabel}>Receita</Text>
-                </View>
+                </Pressable>
 
                 <View style={styles.quickAction}>
                     <View style={[styles.actionIcon, { backgroundColor: "rgba(255, 107, 107, 0.12)" }]}>

@@ -6,13 +6,14 @@ import { RootStackParamList } from "./src/navigation/types";
 import TelaLogin from "./src/views/TelaLogin";
 import TelaCadastro from "./src/views/TelaCadastro";
 import TelaInicial from "./src/views/TelaInicial";
+import TelaCadastroReceitas from "./src/views/TelaCadastroReceitas"
 
 {/* Criando a pilha de navegação */ }
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
   return (
-    <NavigationContainer> {/*NavigationContainer é o componente que gerencia a navegação do aplicativo. Ele deve envolver toda a estrutura de navegação. */}
+    <NavigationContainer> 
       <Stack.Navigator
         initialRouteName="Login"
         screenOptions={{
@@ -32,6 +33,11 @@ export default function App() {
         <Stack.Screen
           name="Inicio"
           component={TelaInicial}
+        />
+
+        <Stack.Screen
+          name="CadastroReceitas"
+          component={TelaCadastroReceitas}
         />
 
       </Stack.Navigator>

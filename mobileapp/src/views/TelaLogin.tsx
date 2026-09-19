@@ -24,7 +24,7 @@ type LoginNavigationProp = NativeStackNavigationProp<
   "Login"
 >;
 
-export default function Login() {
+export default function TelaLogin() {
   const navigation = useNavigation<LoginNavigationProp>();
 
   const [email, setEmail] = useState("");
