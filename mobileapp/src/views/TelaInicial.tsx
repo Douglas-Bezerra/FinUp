@@ -5,6 +5,7 @@ import { colors } from "../styles/colors";
 export default function TelaInicial() {
     return (
         <View style={styles.container}>
+
             {/* Cabeçalho */}
             <View style={styles.header}>
                 <View>
@@ -14,6 +15,41 @@ export default function TelaInicial() {
 
                 <View style={styles.profile}>
                     <Text style={styles.profileIcon}>👤</Text>
+                </View>
+            </View>
+
+            {/* Ações rápidas */}
+            <View style={styles.quickActions}>
+                <View style={styles.quickAction}>
+                    <View style={[styles.actionIcon, { backgroundColor: "rgba(74, 222, 128, 0.12)" }]}>
+                        <Text style={[styles.actionIconText, { color: colors.primary }]}>↑</Text>
+                    </View>
+
+                    <Text style={styles.actionLabel}>Receita</Text>
+                </View>
+
+                <View style={styles.quickAction}>
+                    <View style={[styles.actionIcon, { backgroundColor: "rgba(255, 107, 107, 0.12)" }]}>
+                        <Text style={[styles.actionIconText, { color: colors.danger }]}>↓</Text>
+                    </View>
+
+                    <Text style={styles.actionLabel}>Despesa</Text>
+                </View>
+
+                <View style={styles.quickAction}>
+                    <View style={[styles.actionIcon, { backgroundColor: "rgba(96, 165, 250, 0.12)" }]}>
+                        <Text style={[styles.actionIconText, { color: colors.info }]}>$</Text>
+                    </View>
+
+                    <Text style={styles.actionLabel}>Caixinha</Text>
+                </View>
+
+                <View style={styles.quickAction}>
+                    <View style={[styles.actionIcon, { backgroundColor: "rgba(192, 132, 252, 0.12)" }]}>
+                        <Text style={[styles.actionIconText, { color: "#C084FC" }]}>✦</Text>
+                    </View>
+
+                    <Text style={styles.actionLabel}>Assistente</Text>
                 </View>
             </View>
 
@@ -46,6 +82,7 @@ export default function TelaInicial() {
                     </View>
                 </View>
             </View>
+
         </View>
     );
 }
@@ -126,7 +163,7 @@ const styles = StyleSheet.create({
         fontWeight: "600",
     },
     savings: {
-        color: "#60A5FA",
+        color: colors.info,
         fontSize: 20,
         fontWeight: "600",
     },
@@ -135,5 +172,40 @@ const styles = StyleSheet.create({
         height: 30,
         backgroundColor: colors.border,
         marginHorizontal: 14,
+    },
+    quickActions: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        marginBottom: 30
+    },
+
+    quickAction: {
+        width: "23%",
+        alignItems: "center",
+        paddingVertical: 12,
+        backgroundColor: colors.card,
+        borderWidth: 1,
+        borderColor: colors.border,
+        borderRadius: 12,
+    },
+
+    actionIcon: {
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        alignItems: "center",
+        justifyContent: "center",
+        marginBottom: 6,
+    },
+
+    actionIconText: {
+        fontSize: 17,
+        fontWeight: "700",
+    },
+
+    actionLabel: {
+        color: colors.mutedForeground,
+        fontSize: 10,
+        fontWeight: "500",
     },
 });
