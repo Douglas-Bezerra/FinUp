@@ -83,6 +83,40 @@ export default function TelaInicial() {
                 </View>
             </View>
 
+            {/* Fluxo de Caixa */}
+            <View style={styles.cashFlowCard}>
+                <View style={styles.cashFlowHeader}>
+                    <Text style={styles.cashFlowTitle}>Fluxo de Caixa</Text>
+
+                    <View style={styles.percentageBadge}>
+                        <Text style={styles.percentageText}>+18,2% ↑</Text>
+                    </View>
+                </View>
+
+                {/* Meses */}
+                <View style={styles.months}>
+                    {["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul"].map((month, index) => (
+                        <View
+                            key={month}
+                            style={[
+                                styles.month,
+                                index === 6 && styles.monthActive,
+                            ]}
+                        >
+                            <Text
+                                style={[
+                                    styles.monthText,
+                                    index === 6 && styles.monthTextActive,
+                                ]}
+                            >
+                                {month}
+                            </Text>
+                        </View>
+                    ))}
+                </View>
+            </View>
+
+
         </View>
     );
 }
@@ -178,7 +212,6 @@ const styles = StyleSheet.create({
         justifyContent: "space-between",
         marginBottom: 30
     },
-
     quickAction: {
         width: "23%",
         alignItems: "center",
@@ -188,24 +221,70 @@ const styles = StyleSheet.create({
         borderColor: colors.border,
         borderRadius: 12,
     },
-
     actionIcon: {
-        width: 34,
-        height: 34,
-        borderRadius: 17,
+        width: 44,
+        height: 44,
+        borderRadius: 27,
         alignItems: "center",
         justifyContent: "center",
         marginBottom: 6,
     },
-
     actionIconText: {
-        fontSize: 17,
+        fontSize: 27,
         fontWeight: "700",
     },
-
     actionLabel: {
         color: colors.mutedForeground,
-        fontSize: 10,
+        fontSize: 15,
         fontWeight: "500",
+    },
+    cashFlowCard: {
+        backgroundColor: colors.card,
+        borderWidth: 1,
+        borderColor: colors.border,
+        borderRadius: 16,
+        padding: 16,
+        marginTop: 16,
+    },
+    cashFlowHeader: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+    },
+    cashFlowTitle: {
+        color: colors.foreground,
+        fontSize: 14,
+        fontWeight: "600",
+    },
+    percentageBadge: {
+        backgroundColor: "rgba(74, 222, 128, 0.1)",
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 8,
+    },
+    percentageText: {
+        color: colors.primary,
+        fontSize: 11,
+    },
+    months: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        marginTop: 16,
+    },
+    month: {
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 8,
+    },
+    monthActive: {
+        backgroundColor: colors.primary,
+    },
+    monthText: {
+        color: colors.mutedForeground,
+        fontSize: 11,
+    },
+    monthTextActive: {
+        color: colors.primaryForeground,
+        fontWeight: "600",
     },
 });
