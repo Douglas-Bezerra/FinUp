@@ -18,6 +18,8 @@ export const colors = {
     end: { x: 1, y: 0 },
   },
 
+  primary: "#4ADE80",
+
   primaryForeground: "#031A09",
 
   secondary: "#1A1A2E",

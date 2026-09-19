@@ -85,7 +85,7 @@ export default function Login() {
           <GradientButton
             title="Entrar"
             onPress={() => {
-              navigation.navigate("TelaInicial");
+              navigation.navigate("Inicio");
             }}
           />
 
@@ -116,20 +116,17 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-
   content: {
     flexGrow: 1,
     paddingHorizontal: 24,
     paddingTop: 50,
     paddingBottom: 32,
   },
-
   logoArea: {
     alignItems: "center",
     marginBottom: 32,
     marginTop: 65,
   },
-
   card: {
     backgroundColor: colors.card,
     borderRadius: 24,
@@ -137,7 +134,6 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
     paddingHorizontal: 20,
   },
-
   title: {
     color: colors.foreground,
     fontSize: 22,
@@ -145,37 +141,31 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 5,
   },
-
   welcome: {
     color: colors.mutedForeground,
     fontSize: 13,
     marginBottom: 24,
     textAlign: "center",
   },
-
   forgotButton: {
     alignSelf: "flex-end",
     marginBottom: 30,
     marginTop: -10,
   },
-
   forgotText: {
     fontSize: 12,
     fontWeight: "600",
   },
-
   registerArea: {
     justifyContent: "center",
     alignItems: "center",
     marginTop: 24,
     gap: 6,
   },
-
   registerText: {
     color: colors.mutedForeground,
     fontSize: 13,
   },
-
   registerLink: {
     fontSize: 13,
     fontWeight: "700",

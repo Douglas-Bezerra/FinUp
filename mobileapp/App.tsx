@@ -30,7 +30,7 @@ export default function App() {
         />
 
         <Stack.Screen
-          name="TelaInicial"
+          name="Inicio"
           component={TelaInicial}
         />
 

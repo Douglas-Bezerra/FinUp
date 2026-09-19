@@ -216,26 +216,22 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-
   content: {
     flexGrow: 1,
     paddingHorizontal: 24,
     paddingTop: 48,
     paddingBottom: 32,
   },
-
   logoArea: {
     alignItems: "center",
     marginBottom: 10,
     marginTop: 60,
   },
-
   header: {
     flexDirection: "row",
     gap: 12,
     marginBottom: 24,
   },
-
   backButton: {
     width: 40,
     height: 40,
@@ -247,24 +243,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
 
   },
-
   backIcon: {
     color: colors.foreground,
     fontSize: 28,
     lineHeight: 30,
     fontWeight: "300",
   },
-
   card: {
     backgroundColor: colors.card,
     borderRadius: 24,
     padding: 24,
   },
-
   button: {
     marginTop: 15,
   },
-
   error: {
     color: "#EF4444",
     fontSize: 12,
