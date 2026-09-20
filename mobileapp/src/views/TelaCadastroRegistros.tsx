@@ -1,8 +1,11 @@
 import { StyleSheet, Text, View, Pressable } from "react-native";
+import { useState } from "react";
 
 import { colors } from "../styles/colors";
 
 export default function TelaCadastroRegistros() {
+
+  const [novoAberto, setNovoAberto] = useState(false);
 
   const transacoes = [
     {
@@ -24,7 +27,10 @@ export default function TelaCadastroRegistros() {
           <Text style={styles.title}>Registros</Text>
         </View>
 
-        <Pressable style={styles.newButton}>
+        <Pressable
+          style={styles.newButton}
+          onPress={() => setNovoAberto(true)}
+        >
           <Text style={styles.newButtonText}>+ Novo</Text>
         </Pressable>
       </View>
