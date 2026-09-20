@@ -3,6 +3,18 @@ import { StyleSheet, Text, View, Pressable } from "react-native";
 import { colors } from "../styles/colors";
 
 export default function TelaCadastroRegistros() {
+
+  const transacoes = [
+    {
+      id: "1",
+      tipo: "income",
+      descricao: "Salário",
+      categoria: "Salário",
+      valor: 5000,
+      data: "05/08/2026",
+    }
+  ];
+
   return (
     <View style={styles.container}>
 
@@ -34,11 +46,34 @@ export default function TelaCadastroRegistros() {
         </View>
       </View>
 
-      {/* Lista de registros */}
-      <View style={styles.emptyState}>
-        <Text style={styles.emptyText}>
-          Nenhum registro encontrado.
-        </Text>
+      <View style={styles.transactions}>
+        {transacoes.map((transacao) => (
+          <View key={transacao.id} style={styles.transactionItem}>
+            <View style={styles.transactionIcon}>
+              <Text>💰</Text>
+            </View>
+
+            <View style={styles.transactionInfo}>
+              <Text style={styles.transactionDescription}>
+                {transacao.descricao}
+              </Text>
+
+              <Text style={styles.transactionCategory}>
+                {transacao.categoria}
+              </Text>
+
+              <Text style={styles.transactionMeta}>
+                👤 Usuário · {transacao.data}
+              </Text>
+            </View>
+
+            <Text style={styles.transactionValue}>
+              +R$ {transacao.valor.toLocaleString("pt-BR", {
+                minimumFractionDigits: 2,
+              })}
+            </Text>
+          </View>
+        ))}
       </View>
 
     </View>
@@ -121,12 +156,46 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "700",
   },
-  emptyState: {
-    alignItems: "center",
-    paddingVertical: 32,
+  transactions: {
+    gap: 8,
   },
-  emptyText: {
+  transactionItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.card,
+    borderRadius: 14,
+    padding: 14,
+  },
+  transactionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "rgba(74, 222, 128, 0.1)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  transactionInfo: {
+    flex: 1,
+  },
+  transactionDescription: {
+    color: colors.foreground,
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  transactionCategory: {
+    color: colors.mutedForeground,
+    fontSize: 15,
+    marginTop: 2,
+  },
+  transactionMeta: {
     color: colors.mutedForeground,
     fontSize: 13,
+    marginTop: 4,
+  },
+  transactionValue: {
+    color: colors.primary,
+    fontSize: 15,
+    fontWeight: "700",
   },
 });
