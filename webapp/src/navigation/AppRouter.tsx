@@ -4,7 +4,7 @@
 // =============================================================================
 
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
-import TelaCadastro from '../views/TelaCadastro'
+import TelaCadastroUsuario from '../views/TelaCadastroUsuario'
 import TelaLogin from '../views/TelaLogin'
 
 export default function AppRouter() {
@@ -12,7 +12,7 @@ export default function AppRouter() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<TelaLogin />} />
-        <Route path="/cadastro" element={<TelaCadastro />} />
+        <Route path="/cadastro" element={<TelaCadastroUsuario />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

@@ -32,7 +32,7 @@
   display: grid;
   place-items: start;
   min-width: 0;
-  height: 100%;
+  height: 25%;
   padding: 20px 20px;
   box-sizing: border-box;
   border-right: 1px solid #1e1e34;
@@ -78,8 +78,8 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  padding: clamp(40px, 6vw, 76px);
+  justify-content: space-evenly;
+  padding: 10px 20px 10px 20px;
   overflow: hidden;
   border-right: 1px solid #1e1e34;
   background: linear-gradient(145deg, rgba(26, 26, 46, 0.82), rgba(8, 8, 14, 0.92));
@@ -192,8 +192,8 @@
 .login-panel {
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  padding: clamp(32px, 6vw, 76px);
+  justify-content: space-evenly;
+  padding: clamp(10px, 6vw, 26px);
 }
 
 .brand {
@@ -278,7 +278,7 @@
 .login-panel .login-card {
   max-width: 430px;
   margin: 0 auto;
-  padding: 34px;
+  padding: 10px;
 }
 
 .form-heading {
@@ -304,7 +304,7 @@
 }
 
 .back-link {
-  display: inline-block;
+  /*display: inline-block;*/
   margin-bottom: 8px;
   color: #b0b0c8;
   font-size: 12px;
@@ -385,6 +385,15 @@
   font-size: 11px;
 }
 
+.visibility-button svg {
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+}
+
 .forgot-button,
 .register-area button {
   padding: 0;
@@ -444,14 +453,6 @@
   margin-left: auto;
 }
 
-.cadastro-page .login-shell {
-  width: min(100%, 500px);
-}
-
-.cadastro-page .login-card {
-  padding: 24px 20px 20px;
-}
-
 .cadastro-page .welcome {
   text-align: center;
 }
@@ -474,7 +475,7 @@
 
   .login-showcase {
     min-height: 420px;
-    padding: 32px 28px;
+    padding: 20px 20px;
     border-right: 0;
     border-bottom: 1px solid #1e1e34;
   }

@@ -1,6 +1,6 @@
 // src/main.tsx
 // Arquivo principal do aplicativo web que chama o App.tsx
-// para rodar em localhost, execute npm run dev.
+// Para rodar em localhost, execute npm run dev.
 // Para executar o projeto web, execute "npm start" no terminal
 // =============================================================================
 
