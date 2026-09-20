@@ -6,7 +6,7 @@ import { RootStackParamList } from "./src/navigation/types";
 import TelaLogin from "./src/views/TelaLogin";
 import TelaCadastro from "./src/views/TelaCadastro";
 import TelaInicial from "./src/views/TelaInicial";
-import TelaCadastroReceitas from "./src/views/TelaCadastroReceitas"
+import TelaCadastroReceitas from "./src/views/TelaCadastroRegistros"
 
 {/* Criando a pilha de navegação */ }
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -36,7 +36,7 @@ export default function App() {
         />
 
         <Stack.Screen
-          name="CadastroReceitas"
+          name="CadastroRegistros"
           component={TelaCadastroReceitas}
         />
 

@@ -29,7 +29,7 @@ export default function TelaInicial() {
             <View style={styles.quickActions}>
                 <Pressable
                     style={styles.quickAction}
-                    onPress={() => navigation.navigate("CadastroReceitas")}
+                    onPress={() => navigation.navigate("CadastroRegistros")}
                 >
                     <View
                         style={[
