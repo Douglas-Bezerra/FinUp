@@ -220,7 +220,47 @@ export default function TelaCadastroRegistros() {
                 keyboardType="numeric"
               />
 
-              
+              {tipoRegistro === "expense" && (
+                <View style={styles.paymentSection}>
+                  <Text style={styles.categoryLabel}>Forma de pagamento</Text>
+
+                  <View style={styles.paymentList}>
+                    <Pressable
+                      style={[
+                        styles.paymentButton,
+                        formaPagamento === "normal" && styles.paymentButtonSelected,
+                      ]}
+                      onPress={() => setFormaPagamento("normal")}
+                    >
+                      <Text
+                        style={[
+                          styles.paymentText,
+                          formaPagamento === "normal" && styles.paymentTextSelected,
+                        ]}
+                      >
+                        À vista
+                      </Text>
+                    </Pressable>
+
+                    <Pressable
+                      style={[
+                        styles.paymentButton,
+                        formaPagamento === "credit" && styles.paymentButtonSelected,
+                      ]}
+                      onPress={() => setFormaPagamento("credit")}
+                    >
+                      <Text
+                        style={[
+                          styles.paymentText,
+                          formaPagamento === "credit" && styles.paymentTextSelected,
+                        ]}
+                      >
+                        Cartão de crédito
+                      </Text>
+                    </Pressable>
+                  </View>
+                </View>
+              )}
 
               <Text style={styles.categoryLabel}>Categoria</Text>
 
@@ -474,6 +514,39 @@ const styles = StyleSheet.create({
   },
 
   categoryTextSelected: {
+    color: colors.primary,
+    fontWeight: "600",
+  },
+  paymentSection: {
+    marginTop: 4,
+  },
+
+  paymentList: {
+    flexDirection: "row",
+    gap: 8,
+  },
+
+  paymentButton: {
+    flex: 1,
+    backgroundColor: colors.secondary,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: "center",
+  },
+
+  paymentButtonSelected: {
+    backgroundColor: "rgba(74, 222, 128, 0.12)",
+    borderColor: colors.primary,
+  },
+
+  paymentText: {
+    color: colors.secondaryForeground,
+    fontSize: 12,
+  },
+
+  paymentTextSelected: {
     color: colors.primary,
     fontWeight: "600",
   },
