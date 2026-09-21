@@ -25,6 +25,15 @@ function getFirstName(name: string) {
   return name.trim().split(/\s+/)[0] || 'usuário'
 }
 
+function InviteIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8a2.5 2.5 0 0 1-2.5 2.5H11l-4.5 4v-4H6.5A2.5 2.5 0 0 1 4 13.5v-8Z" />
+      <path d="M8 9h8M8 12h5" />
+    </svg>
+  )
+}
+
 export default function TelaInicial() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [feedback, setFeedback] = useState('')
@@ -120,7 +129,10 @@ export default function TelaInicial() {
             <p>Organize sua primeira conta e acompanhe suas decisões financeiras.</p>
           </div>
           {isPrincipal && (
-            <Link className="home-action-button" to="/convites">Convidar usuário</Link>
+            <Link className="home-action-button" to="/convites" title="Convidar usuário">
+              <InviteIcon />
+              <span>Convite</span>
+            </Link>
           )}
         </section>
       </div>

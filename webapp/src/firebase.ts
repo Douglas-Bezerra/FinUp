@@ -8,12 +8,12 @@ import { getDataConnect, connectDataConnectEmulator } from 'firebase/data-connec
 import { connectorConfig } from './dataconnect-generated';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyC2SzXbmgSWJuNQUAELzz4YxisJpK951Os",
-  authDomain: "finup-app6.firebaseapp.com",
-  projectId: "finup-app6",
-  storageBucket: "finup-app6.firebasestorage.app",
-  messagingSenderId: "79049016759",
-  appId: "1:79049016759:web:5bfd45aba925152ef91432"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
 const app = initializeApp(firebaseConfig);
@@ -21,9 +21,10 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const dataConnect = getDataConnect(app, connectorConfig);
 
-// Conecta sempre ao emulador local (127.0.0.1:9399) em modo de desenvolvimento
-connectDataConnectEmulator(dataConnect, '127.0.0.1', 9399);
-
-//if (import.meta.env.DEV || process.env.NODE_ENV === 'development') {
-//  connectDataConnectEmulator(dataConnect, '127.0.0.1', 9399);
-//}
+if (import.meta.env.VITE_USE_DATA_CONNECT_EMULATOR === 'true') {
+  connectDataConnectEmulator(
+    dataConnect,
+    import.meta.env.VITE_DATA_CONNECT_EMULATOR_HOST || '127.0.0.1',
+    Number(import.meta.env.VITE_DATA_CONNECT_EMULATOR_PORT || 9399),
+  );
+}

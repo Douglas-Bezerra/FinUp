@@ -4,8 +4,8 @@
 
 import { useState, type FormEvent } from 'react'
 import { createUserWithEmailAndPassword, deleteUser, updateProfile, type User } from 'firebase/auth'
-import { Link, useNavigate } from 'react-router-dom'
-import { criarUsuario } from '../dataconnect-generated'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { aceitarConviteAcesso, criarUsuario } from '../dataconnect-generated'
 import { auth, dataConnect } from '../firebase'
 import Logo from '../components/Logo'
 import '../App.css'
@@ -53,6 +53,9 @@ const emptyErrors: FormErrors = {
 
 export default function TelaCadastroUsuario() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const invitationToken = searchParams.get('token') || ''
+  const isInvitation = Boolean(invitationToken)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -109,12 +112,20 @@ export default function TelaCadastroUsuario() {
       const credential = await createUserWithEmailAndPassword(auth, email, password)
       createdUser = credential.user
       await updateProfile(credential.user, { displayName: name.trim() })
-      await criarUsuario(dataConnect, {
-        nome: name.trim(),
-        email: email.trim(),
-        papel: 'PRINCIPAL',
-      })
-      navigate('/')
+      if (isInvitation) {
+        await aceitarConviteAcesso(dataConnect, {
+          token: invitationToken,
+          nome: name.trim(),
+        })
+        navigate('/inicio', { replace: true })
+      } else {
+        await criarUsuario(dataConnect, {
+          nome: name.trim(),
+          email: email.trim(),
+          papel: 'PRINCIPAL',
+        })
+        navigate('/')
+      }
     } catch (error: unknown) {
       if (createdUser) {
         await deleteUser(createdUser).catch(() => undefined)
@@ -136,7 +147,7 @@ export default function TelaCadastroUsuario() {
       const authErrorCode = getAuthErrorCode(error)
       const message = messages[authErrorCode] || (createdUser
         ? 'A conta não foi concluída porque não foi possível salvar seus dados. Verifique se o emulador do Data Connect está ativo.'
-        : `Não foi possível criar a conta${authErrorCode ? ` (${authErrorCode})` : ''}. Verifique a configuração do Firebase e tente novamente.`)
+        : `Não foi possível ${isInvitation ? 'aceitar o convite' : 'criar a conta'}${authErrorCode ? ` (${authErrorCode})` : ''}. Verifique a configuração do Firebase e tente novamente.`)
 
       setFeedback(message)
     } finally {
@@ -187,10 +198,12 @@ export default function TelaCadastroUsuario() {
           <form className="login-card cadastro-card" onSubmit={handleSubmit}>
             <div className="form-heading">
               
-              <p className="eyebrow">Comece sua jornada</p>
-              <h2 id="cadastro-title">Criar conta principal</h2>
+              <p className="eyebrow">{isInvitation ? 'Convite FinUp' : 'Comece sua jornada'}</p>
+              <h2 id="cadastro-title">{isInvitation ? 'Criar acesso secundário' : 'Criar conta principal'}</h2>
               <p className="welcome cadastro-intro">
-                Cadastre sua conta para começar a organizar sua vida financeira.
+                {isInvitation
+                  ? 'Use o e-mail que recebeu o convite para concluir seu acesso.'
+                  : 'Cadastre sua conta para começar a organizar sua vida financeira.'}
               </p>
             </div>
 
@@ -269,7 +282,9 @@ export default function TelaCadastroUsuario() {
           {feedback && <p className="feedback error" role="alert">{feedback}</p>}
 
           <button className="submit-button" type="submit" disabled={isLoading}>
-            {isLoading ? 'Criando conta...' : 'Criar conta grátis'}
+            {isLoading
+              ? (isInvitation ? 'Aceitando convite...' : 'Criando conta...')
+              : (isInvitation ? 'Aceitar convite' : 'Criar conta grátis')}
           </button>
           </form>
         </section>

@@ -708,11 +708,24 @@
 
 .home-action-button {
   flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
   padding: 13px 16px;
   border: 0;
   background: linear-gradient(90deg, #ffb000, #ff6b00 40%, #ff3040 72%, #ff0000);
   color: #ffffff;
   font-weight: 700;
+}
+
+.home-action-button svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
 }
 
 .home-empty-state {
