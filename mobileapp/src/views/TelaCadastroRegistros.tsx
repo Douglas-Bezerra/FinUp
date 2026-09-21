@@ -1,11 +1,20 @@
-import { StyleSheet, Text, View, Pressable } from "react-native";
+import { StyleSheet, Text, View, Pressable, Modal } from "react-native";
 import { useState } from "react";
 
 import { colors } from "../styles/colors";
 
+import Input from "../components/Input"
+
 export default function TelaCadastroRegistros() {
 
   const [novoAberto, setNovoAberto] = useState(false);
+  const [tipoRegistro, setTipoRegistro] = useState<
+    "income" | "expense" | null
+  >(null);
+  const [formAberto, setFormAberto] = useState(false);
+  const [descricao, setDescricao] = useState("");
+  const [valor, setValor] = useState("");
+  const [categoria, setCategoria] = useState("");
 
   const transacoes = [
     {
@@ -81,6 +90,115 @@ export default function TelaCadastroRegistros() {
           </View>
         ))}
       </View>
+
+      <Modal
+        visible={novoAberto}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setNovoAberto(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Novo registro</Text>
+
+            <Pressable
+              style={styles.modalOption}
+              onPress={() => {
+                setTipoRegistro("income");
+                setNovoAberto(false);
+                setFormAberto(true);
+              }}
+            >
+              <View
+                style={[
+                  styles.actionIcon,
+                  { backgroundColor: "rgba(74, 222, 128, 0.12)" },
+                ]}
+              >
+                <Text style={[styles.actionIconText, { color: colors.primary }]}>
+                  ↑
+                </Text>
+              </View>
+
+              <View>
+                <Text style={styles.modalOptionTitle}>Receita</Text>
+                <Text style={styles.modalOptionDescription}>
+                  Adicionar uma entrada
+                </Text>
+              </View>
+            </Pressable>
+
+            <Pressable
+              style={styles.modalOption}
+              onPress={() => {
+                setTipoRegistro("expense");
+                setNovoAberto(false);
+                setFormAberto(true);
+              }}
+            >
+              <View
+                style={[
+                  styles.actionIcon,
+                  { backgroundColor: "rgba(255, 107, 107, 0.12)" },
+                ]}
+              >
+                <Text style={[styles.actionIconText, { color: colors.danger }]}>
+                  ↓
+                </Text>
+              </View>
+
+              <View>
+                <Text style={styles.modalOptionTitle}>Despesa</Text>
+                <Text style={styles.modalOptionDescription}>
+                  Adicionar uma saída
+                </Text>
+              </View>
+            </Pressable>
+
+            <Pressable
+              style={styles.modalCancel}
+              onPress={() => setNovoAberto(false)}
+            >
+              <Text style={styles.modalCancelText}>Cancelar</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={formAberto}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setFormAberto(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>
+              {tipoRegistro === "income"
+                ? "Nova Receita"
+                : "Nova Despesa"}
+            </Text>
+
+            {/* formulário entra aqui */}
+            <View style={styles.formFields}>
+              <Input
+                label="Descrição"
+                placeholder="Ex: Salário"
+                value={descricao}
+                onChangeText={setDescricao}
+              />
+
+              <Input
+                label="Valor"
+                placeholder="R$ 0,00"
+                value={valor}
+                onChangeText={setValor}
+                keyboardType="numeric"
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
 
     </View>
   );
@@ -203,5 +321,71 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontSize: 15,
     fontWeight: "700",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.65)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  modalContent: {
+    width: "100%",
+    backgroundColor: colors.card,
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  modalTitle: {
+    color: colors.foreground,
+    fontSize: 18,
+    fontWeight: "700",
+    marginBottom: 16,
+  },
+  modalOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.secondary,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 10,
+  },
+  modalOptionTitle: {
+    color: colors.foreground,
+    fontSize: 20,
+    fontWeight: "600",
+  },
+  modalOptionDescription: {
+    color: colors.mutedForeground,
+    fontSize: 15,
+    marginTop: 3,
+  },
+  modalCancel: {
+    alignItems: "center",
+    paddingVertical: 12,
+    marginTop: 4,
+  },
+  modalCancelText: {
+    color: colors.mutedForeground,
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  actionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+
+  actionIconText: {
+    fontSize: 20,
+    fontWeight: "700",
+  },
+  formFields: {
+    gap: 14,
+    marginTop: 8,
   },
 });
