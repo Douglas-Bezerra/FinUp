@@ -15,6 +15,9 @@ export default function TelaCadastroRegistros() {
   const [descricao, setDescricao] = useState("");
   const [valor, setValor] = useState("");
   const [categoria, setCategoria] = useState("");
+  const [formaPagamento, setFormaPagamento] = useState<
+    "normal" | "credit"
+  >("normal");
 
   const transacoes = [
     {
@@ -25,6 +28,27 @@ export default function TelaCadastroRegistros() {
       valor: 5000,
       data: "05/08/2026",
     }
+  ];
+
+  const categoriasReceita = [
+    "Salário",
+    "Freelance",
+    "Aluguel",
+    "Dividendos",
+    "Presente",
+    "Outros",
+  ];
+
+  const categoriasDespesa = [
+    "Alimentação",
+    "Transporte",
+    "Moradia",
+    "Saúde",
+    "Lazer",
+    "Educação",
+    "Assinatura",
+    "Tecnologia",
+    "Outros",
   ];
 
   return (
@@ -195,6 +219,35 @@ export default function TelaCadastroRegistros() {
                 onChangeText={setValor}
                 keyboardType="numeric"
               />
+
+              
+
+              <Text style={styles.categoryLabel}>Categoria</Text>
+
+              <View style={styles.categoryList}>
+                {(tipoRegistro === "income"
+                  ? categoriasReceita
+                  : categoriasDespesa
+                ).map((item) => (
+                  <Pressable
+                    key={item}
+                    style={[
+                      styles.categoryButton,
+                      categoria === item && styles.categoryButtonSelected,
+                    ]}
+                    onPress={() => setCategoria(item)}
+                  >
+                    <Text
+                      style={[
+                        styles.categoryText,
+                        categoria === item && styles.categoryTextSelected,
+                      ]}
+                    >
+                      {item}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
             </View>
           </View>
         </View>
@@ -385,7 +438,43 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   formFields: {
-    gap: 14,
+    gap: 5,
     marginTop: 8,
+  },
+  categoryLabel: {
+    color: colors.secondaryForeground,
+    fontSize: 12,
+    fontWeight: "600",
+    marginBottom: 8,
+  },
+
+  categoryList: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+
+  categoryButton: {
+    backgroundColor: colors.secondary,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+
+  categoryButtonSelected: {
+    backgroundColor: "rgba(74, 222, 128, 0.12)",
+    borderColor: colors.primary,
+  },
+
+  categoryText: {
+    color: colors.secondaryForeground,
+    fontSize: 12,
+  },
+
+  categoryTextSelected: {
+    color: colors.primary,
+    fontWeight: "600",
   },
 });
