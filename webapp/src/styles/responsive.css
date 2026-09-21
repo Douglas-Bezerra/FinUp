@@ -1,0 +1,50 @@
+/* src/styles/responsive.css */
+/* Arquivo de estilos para o aplicativo webapp, para dispositivos móveis. */
+/* ============================================================================= */
+
+/* Responsive layout rules. */
+
+@keyframes appear {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 820px) {
+  .login-page { padding: 20px 16px; }
+  .login-layout { display: block; min-height: 0; border-radius: 22px; }
+  .login-showcase { min-height: 420px; padding: 20px 20px; border-right: 0; border-bottom: 1px solid #1e1e34; }
+  .showcase-copy { padding: 48px 0 28px; }
+  .showcase-copy h1 { font-size: clamp(36px, 9vw, 54px); }
+  .login-panel { padding: 32px 20px 36px; }
+  .login-panel .login-card { padding: 28px 24px; }
+  .home-page { padding: 20px 16px; }
+  .home-grid { grid-template-columns: 1fr; }
+  .home-overview-row { display: block; }
+  .home-welcome { padding-right: 0; padding-left: 0; }
+  .home-quick-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 480px) {
+  .login-page { padding: 0; }
+  .login-layout { border: 0; border-radius: 0; }
+  .login-showcase { min-height: 390px; padding: 28px 20px; }
+  .login-panel { padding: 28px 16px 32px; }
+  .login-panel .login-card { padding: 24px 18px; }
+  .showcase-description { font-size: 15px; }
+  .login-panel .login-card h2 { font-size: 26px; }
+  .home-header { align-items: flex-start; }
+  .home-brand .logo-subtitle { display: none; }
+  .home-account { flex-wrap: wrap; justify-content: flex-end; }
+  .home-account > div:not(.home-avatar) { display: none; }
+  .home-signout { margin-left: 0; }
+  .home-welcome { padding: 28px 0 18px; }
+  .home-welcome h1 { font-size: 40px; }
+  .home-welcome > p:last-child { font-size: 15px; }
+  .home-actions { display: block; }
+  .home-quick-actions { gap: 10px; }
+  .home-quick-action { min-height: 116px; }
+  .home-action-button { display: inline-block; margin-top: 12px; }
+}
+
+/* Keep the form centered on narrow screens while preserving the mobile spacing. */
+.login-shell { display: flex; flex-direction: column; }
