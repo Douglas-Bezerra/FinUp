@@ -18,6 +18,8 @@ export default function TelaCadastroRegistros() {
   const [formaPagamento, setFormaPagamento] = useState<
     "normal" | "credit"
   >("normal");
+  const [parcelas, setParcelas] = useState("1");
+  const [diaVencimento, setDiaVencimento] = useState("");
 
   const transacoes = [
     {
@@ -50,6 +52,31 @@ export default function TelaCadastroRegistros() {
     "Tecnologia",
     "Outros",
   ];
+
+  const salvarTransacao = () => {
+    const novaTransacao = {
+      id: Date.now().toString(),
+      tipo: tipoRegistro,
+      descricao,
+      valor: Number(valor.replace(",", ".")),
+      categoria,
+      formaPagamento:
+        tipoRegistro === "expense" ? formaPagamento : null,
+      parcelas:
+        tipoRegistro === "expense" && formaPagamento === "credit"
+          ? Number(parcelas)
+          : null,
+      diaVencimento:
+        tipoRegistro === "expense" && formaPagamento === "credit"
+          ? Number(diaVencimento)
+          : null,
+      data: new Date().toISOString(),
+    };
+
+    console.log("Nova transação:", novaTransacao);
+
+    setFormAberto(false);
+  };
 
   return (
     <View style={styles.container}>
@@ -259,6 +286,42 @@ export default function TelaCadastroRegistros() {
                       </Text>
                     </Pressable>
                   </View>
+
+                  {tipoRegistro === "expense" && formaPagamento === "credit" && (
+                    <View style={styles.creditSection}>
+                      <Text style={styles.categoryLabel}>Parcelamento</Text>
+
+                      <View style={styles.installmentList}>
+                        {["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"].map((item) => (
+                          <Pressable
+                            key={item}
+                            style={[
+                              styles.installmentButton,
+                              parcelas === item && styles.installmentButtonSelected,
+                            ]}
+                            onPress={() => setParcelas(item)}
+                          >
+                            <Text
+                              style={[
+                                styles.installmentText,
+                                parcelas === item && styles.installmentTextSelected,
+                              ]}
+                            >
+                              {item}x
+                            </Text>
+                          </Pressable>
+                        ))}
+                      </View>
+
+                      <Input
+                        label="Dia de vencimento"
+                        placeholder="Ex: 10"
+                        value={diaVencimento}
+                        onChangeText={setDiaVencimento}
+                        keyboardType="numeric"
+                      />
+                    </View>
+                  )}
                 </View>
               )}
 
@@ -288,10 +351,17 @@ export default function TelaCadastroRegistros() {
                   </Pressable>
                 ))}
               </View>
+              <Pressable
+                style={styles.saveButton}
+                onPress={salvarTransacao}
+              >
+                <Text style={styles.saveButtonText}>Salvar</Text>
+              </Pressable>
             </View>
           </View>
         </View>
       </Modal>
+
 
     </View>
   );
@@ -472,7 +542,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginRight: 12,
   },
-
   actionIconText: {
     fontSize: 20,
     fontWeight: "700",
@@ -487,13 +556,11 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginBottom: 8,
   },
-
   categoryList: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
   },
-
   categoryButton: {
     backgroundColor: colors.secondary,
     borderWidth: 1,
@@ -502,17 +569,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
-
   categoryButtonSelected: {
     backgroundColor: "rgba(74, 222, 128, 0.12)",
     borderColor: colors.primary,
   },
-
   categoryText: {
     color: colors.secondaryForeground,
     fontSize: 12,
   },
-
   categoryTextSelected: {
     color: colors.primary,
     fontWeight: "600",
@@ -520,12 +584,10 @@ const styles = StyleSheet.create({
   paymentSection: {
     marginTop: 4,
   },
-
   paymentList: {
     flexDirection: "row",
     gap: 8,
   },
-
   paymentButton: {
     flex: 1,
     backgroundColor: colors.secondary,
@@ -535,19 +597,57 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     alignItems: "center",
   },
-
   paymentButtonSelected: {
     backgroundColor: "rgba(74, 222, 128, 0.12)",
     borderColor: colors.primary,
   },
-
   paymentText: {
     color: colors.secondaryForeground,
     fontSize: 12,
   },
-
   paymentTextSelected: {
     color: colors.primary,
     fontWeight: "600",
+  },
+  creditSection: {
+    marginTop: 14,
+  },
+  installmentList: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 14,
+  },
+  installmentButton: {
+    backgroundColor: colors.secondary,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  installmentButtonSelected: {
+    backgroundColor: "rgba(74, 222, 128, 0.12)",
+    borderColor: colors.primary,
+  },
+  installmentText: {
+    color: colors.secondaryForeground,
+    fontSize: 12,
+  },
+  installmentTextSelected: {
+    color: colors.primary,
+    fontWeight: "600",
+  },
+  saveButton: {
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    paddingVertical: 13,
+    alignItems: "center",
+    marginTop: 20,
+  },
+  saveButtonText: {
+    color: colors.primaryForeground,
+    fontSize: 14,
+    fontWeight: "700",
   },
 });
