@@ -15,7 +15,62 @@ mutation CriarUsuario(
   })
 }
 
-# 2. Cadastrar uma nova conta financeira
+# 2. Criar convite para usuário secundário.
+mutation CriarConviteAcesso(
+  $token: String!,
+  $emailConvidado: String!,
+  $dataExpiracao: Timestamp!
+) @auth(level: USER) @transaction {
+  query @redact {
+    usuarios(where: { id: { eq_expr: "auth.uid" } }) {
+      papel @check(
+        expr: "this == 'PRINCIPAL'",
+        message: "Apenas usuários principais podem enviar convites."
+      )
+    }
+  }
+  conviteAcesso_insert(data: {
+    token: $token,
+    usuarioPrincipalId_expr: "auth.uid",
+    emailConvidado: $emailConvidado,
+    statusConvite: "PENDENTE",
+    dataExpiracao: $dataExpiracao
+  })
+}
+
+# 3. Confirmar o aceite de um convite já validado pelo cliente.
+mutation AceitarConviteAcesso(
+  $token: String!,
+  $nome: String!
+) @auth(level: USER) @transaction {
+  query @redact {
+    conviteAcesso(first: { where: {
+      token: { eq: $token },
+      emailConvidado: { eq_expr: "auth.token.email" },
+      statusConvite: { eq: "PENDENTE" },
+      dataExpiracao: { gt_expr: "request.time" }
+    } }) {
+      id
+      usuarioPrincipalId
+    }
+  }
+  conviteAcesso_update(
+    id_expr: "response.query.conviteAcesso.id",
+    data: {
+      statusConvite: "ACEITO",
+      dataAceite_expr: "request.time"
+    }
+  )
+  usuario_upsert(data: {
+    id_expr: "auth.uid",
+    nome: $nome,
+    email_expr: "auth.token.email",
+    papel: "SECUNDARIO",
+    usuarioPaiId_expr: "response.query.conviteAcesso.usuarioPrincipalId"
+  })
+}
+
+# 4. Cadastrar uma nova conta financeira
 mutation CriarConta(
   $usuarioId: String!,
   $instituicaoId: String!,
@@ -35,7 +90,7 @@ mutation CriarConta(
   })
 }
 
-# 3. Registrar uma nova transação financeira
+# 5. Registrar uma nova transação financeira
 mutation CriarTransacao(
   $contaId: String!,
   $categoriaId: String!,

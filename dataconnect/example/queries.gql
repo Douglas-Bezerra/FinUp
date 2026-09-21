@@ -38,3 +38,33 @@ query ListarTransacoesPorConta @auth(level: USER) {
     }
   }
 }
+
+# 3. Consultar convite pelo token para exibir os dados antes do aceite.
+query ConsultarConviteAcesso($token: String!) @auth(
+  level: USER,
+  insecureReason: "The token lookup is constrained by the invitation token and the returned email is checked against the authenticated email."
+) {
+  conviteAcessos(where: { token: { eq: $token } }) {
+    id
+    token
+    usuarioPrincipalId
+    emailConvidado @check(
+      expr: "this == auth.token.email",
+      message: "Este convite não pertence ao e-mail autenticado."
+    )
+    statusConvite
+    dataExpiracao
+    dataAceite
+  }
+}
+
+# 4. Consultar o perfil autenticado para aplicar regras de interface.
+query MeuUsuario @auth(level: USER) {
+  usuarios(where: { id: { eq_expr: "auth.uid" } }) {
+    id
+    nome
+    email
+    papel
+    usuarioPaiId
+  }
+}

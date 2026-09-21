@@ -8,12 +8,12 @@ import { getDataConnect, connectDataConnectEmulator } from 'firebase/data-connec
 import { connectorConfig } from './dataconnect-generated';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyFakeKeyForLocalDevelopment",
+  apiKey: "AIzaSyC2SzXbmgSWJuNQUAELzz4YxisJpK951Os",
   authDomain: "finup-app6.firebaseapp.com",
   projectId: "finup-app6",
-  storageBucket: "finup-app6.appspot.com",
-  messagingSenderId: "1234567890",
-  appId: "1:1234567890:web:1234567890"
+  storageBucket: "finup-app6.firebasestorage.app",
+  messagingSenderId: "79049016759",
+  appId: "1:79049016759:web:5bfd45aba925152ef91432"
 };
 
 const app = initializeApp(firebaseConfig);
