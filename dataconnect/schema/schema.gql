@@ -22,6 +22,7 @@ type Usuario @table {
 
 type ConviteAcesso @table {
   id: String! @default(expr: "uuidV4()")
+  token: String! @default(expr: "uuidV4()")
   
   usuarioPrincipal: Usuario! @ref(fields: "usuarioPrincipalId")
   usuarioPrincipalId: String!
@@ -29,6 +30,8 @@ type ConviteAcesso @table {
   emailConvidado: String!
   statusConvite: String! # 'PENDENTE', 'ACEITO', 'EXPIRADO'
   dataCriacao: Timestamp! @default(expr: "request.time")
+  dataExpiracao: Timestamp!
+  dataAceite: Timestamp
 }
 
 # ------------------------------------------------------------------------------

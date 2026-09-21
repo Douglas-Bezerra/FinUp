@@ -136,7 +136,7 @@ export default function TelaCadastroUsuario() {
       const authErrorCode = getAuthErrorCode(error)
       const message = messages[authErrorCode] || (createdUser
         ? 'A conta não foi concluída porque não foi possível salvar seus dados. Verifique se o emulador do Data Connect está ativo.'
-        : 'Não foi possível criar a conta. Tente novamente.')
+        : `Não foi possível criar a conta${authErrorCode ? ` (${authErrorCode})` : ''}. Verifique a configuração do Firebase e tente novamente.`)
 
       setFeedback(message)
     } finally {
