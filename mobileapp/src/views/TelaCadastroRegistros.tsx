@@ -4,6 +4,7 @@ import { useState } from "react";
 import { colors } from "../styles/colors";
 
 import Input from "../components/Input"
+import GradientButton from "../components/GradientButton";
 
 export default function TelaCadastroRegistros() {
 
@@ -20,6 +21,8 @@ export default function TelaCadastroRegistros() {
   >("normal");
   const [parcelas, setParcelas] = useState("1");
   const [diaVencimento, setDiaVencimento] = useState("");
+  const [erroDescricao, setErroDescricao] = useState("");
+  const [erroValor, setErroValor] = useState("");
 
   const transacoes = [
     {
@@ -54,10 +57,30 @@ export default function TelaCadastroRegistros() {
   ];
 
   const salvarTransacao = () => {
+    let valido = true;
+
+    if (!descricao.trim()) {
+      setErroDescricao("Informe uma descrição.");
+      valido = false;
+    } else {
+      setErroDescricao("");
+    }
+
+    if (!valor.trim()) {
+      setErroValor("Informe um valor.");
+      valido = false;
+    } else {
+      setErroValor("");
+    }
+
+    if (!valido) {
+      return;
+    }
+
     const novaTransacao = {
       id: Date.now().toString(),
       tipo: tipoRegistro,
-      descricao,
+      descricao: descricao.trim(),
       valor: Number(valor.replace(",", ".")),
       categoria,
       formaPagamento:
@@ -76,6 +99,17 @@ export default function TelaCadastroRegistros() {
     console.log("Nova transação:", novaTransacao);
 
     setFormAberto(false);
+  };
+
+  const limparFormulario = () => {
+    setDescricao("");
+    setValor("");
+    setCategoria("");
+    setFormaPagamento("normal");
+    setParcelas("1");
+    setDiaVencimento("");
+    setErroDescricao("");
+    setErroValor("");
   };
 
   return (
@@ -155,6 +189,7 @@ export default function TelaCadastroRegistros() {
             <Pressable
               style={styles.modalOption}
               onPress={() => {
+                limparFormulario();
                 setTipoRegistro("income");
                 setNovoAberto(false);
                 setFormAberto(true);
@@ -182,6 +217,7 @@ export default function TelaCadastroRegistros() {
             <Pressable
               style={styles.modalOption}
               onPress={() => {
+                limparFormulario();
                 setTipoRegistro("expense");
                 setNovoAberto(false);
                 setFormAberto(true);
@@ -220,7 +256,10 @@ export default function TelaCadastroRegistros() {
         visible={formAberto}
         transparent
         animationType="slide"
-        onRequestClose={() => setFormAberto(false)}
+        onRequestClose={() => {
+          limparFormulario();
+          setFormAberto(false);
+        }}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -236,16 +275,35 @@ export default function TelaCadastroRegistros() {
                 label="Descrição"
                 placeholder="Ex: Salário"
                 value={descricao}
-                onChangeText={setDescricao}
+                onChangeText={(texto) => {
+                  setDescricao(texto);
+
+                  if (texto.trim()) {
+                    setErroDescricao("");
+                  }
+                }}
               />
+              {erroDescricao ? (
+                <Text style={styles.errorText}>{erroDescricao}</Text>
+              ) : null}
 
               <Input
                 label="Valor"
                 placeholder="R$ 0,00"
                 value={valor}
-                onChangeText={setValor}
+                onChangeText={(texto) => {
+                  setValor(texto);
+
+                  if (texto.trim()) {
+                    setErroValor("");
+                  }
+                }}
                 keyboardType="numeric"
               />
+
+              {erroValor ? (
+                <Text style={styles.errorText}>{erroValor}</Text>
+              ) : null}
 
               {tipoRegistro === "expense" && (
                 <View style={styles.paymentSection}>
@@ -351,12 +409,11 @@ export default function TelaCadastroRegistros() {
                   </Pressable>
                 ))}
               </View>
-              <Pressable
-                style={styles.saveButton}
+              <GradientButton
+                title="Salvar"
                 onPress={salvarTransacao}
-              >
-                <Text style={styles.saveButtonText}>Salvar</Text>
-              </Pressable>
+                style={{ marginTop: 20 }}
+              />
             </View>
           </View>
         </View>
@@ -649,5 +706,10 @@ const styles = StyleSheet.create({
     color: colors.primaryForeground,
     fontSize: 14,
     fontWeight: "700",
+  },
+  errorText: {
+    color: colors.danger,
+    fontSize: 11,
+    marginTop: -15,
   },
 });
