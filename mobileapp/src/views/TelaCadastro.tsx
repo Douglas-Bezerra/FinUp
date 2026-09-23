@@ -198,8 +198,12 @@ export default function TelaCadastro() {
                     papel: "PRINCIPAL",
                   });
                 }
-                catch (error) {
-                  setFirebaseError("Este e-mail já está cadastrado.");
+                catch (error: any) {
+                  if (error.code === "auth/email-already-in-use") {
+                    setFirebaseError("Este e-mail já está cadastrado.");
+                  } else {
+                    setFirebaseError("Não foi possível criar sua conta.");
+                  }
                 }
               }}
             />

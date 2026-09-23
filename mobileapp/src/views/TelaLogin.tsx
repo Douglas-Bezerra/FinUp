@@ -11,6 +11,9 @@ import {
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "../firebase";
+
 import { colors } from "../styles/colors";
 import { RootStackParamList } from "../navigation/types";
 
@@ -29,6 +32,37 @@ export default function TelaLogin() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  async function handleLogin() {
+    setErrorMessage("");
+
+    if (!email.trim() || !password.trim()) {
+      setErrorMessage("Por favor, preencha o e-mail e a senha.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await signInWithEmailAndPassword(auth, email.trim(), password);
+      navigation.navigate("Inicio");
+    } catch (error: any) {
+      if (
+        error.code === "auth/invalid-credential" ||
+        error.code === "auth/user-not-found" ||
+        error.code === "auth/wrong-password" ||
+        error.code === "auth/invalid-email"
+      ) {
+        setErrorMessage("E-mail ou senha inválidos.");
+      } else {
+        setErrorMessage("Não foi possível entrar. Verifique seus dados.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <KeyboardAvoidingView
@@ -72,6 +106,11 @@ export default function TelaLogin() {
             placeholder="••••••••"
             secureTextEntry
           />
+          {errorMessage ? (
+            <Text style={styles.errorText}>
+              {errorMessage}
+            </Text>
+          ) : null}
 
           {/* Esqueci senha */}
           <Pressable style={styles.forgotButton}>
@@ -83,10 +122,8 @@ export default function TelaLogin() {
 
           {/* Entrar */}
           <GradientButton
-            title="Entrar"
-            onPress={() => {
-              navigation.navigate("Inicio");
-            }}
+            title={loading ? "Entrando..." : "Entrar"}
+            onPress={handleLogin}
           />
 
         </View>
@@ -169,5 +206,12 @@ const styles = StyleSheet.create({
   registerLink: {
     fontSize: 13,
     fontWeight: "700",
+  },
+  errorText: {
+    color: "#EF4444",
+    fontSize: 12,
+    marginTop: -10,
+    marginBottom: 15,
+    textAlign: "center",
   },
 });

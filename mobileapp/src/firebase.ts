@@ -1,6 +1,8 @@
 import { initializeApp } from "firebase/app";
 // @ts-ignore: getReactNativePersistence existe no bundle do RN mas pode falhar na tipagem padrão
 import { initializeAuth, getReactNativePersistence } from "firebase/auth";
+import { getDataConnect } from "firebase/data-connect";
+
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const firebaseConfig = {
