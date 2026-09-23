@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
   logoArea: {
     alignItems: "center",
     marginBottom: 10,
-    marginTop: 60,
+    marginTop: 20,
   },
   header: {
     flexDirection: "row",

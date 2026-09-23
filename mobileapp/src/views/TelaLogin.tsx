@@ -34,13 +34,26 @@ export default function TelaLogin() {
   const [password, setPassword] = useState("");
 
   const [loading, setLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
+  const [emailError, setEmailError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
 
   async function handleLogin() {
-    setErrorMessage("");
+    setEmailError("");
+    setPasswordError("");
 
-    if (!email.trim() || !password.trim()) {
-      setErrorMessage("Por favor, preencha o e-mail e a senha.");
+    let valido = true;
+
+    if (!email.trim()) {
+      setEmailError("Por favor, preencha o e-mail.");
+      valido = false;
+    }
+
+    if (!password.trim()) {
+      setPasswordError("Por favor, preencha a senha.");
+      valido = false;
+    }
+
+    if (!valido) {
       return;
     }
 
@@ -55,14 +68,17 @@ export default function TelaLogin() {
         error.code === "auth/wrong-password" ||
         error.code === "auth/invalid-email"
       ) {
-        setErrorMessage("E-mail ou senha inválidos.");
+        setPasswordError("E-mail ou senha inválidos.");
       } else {
-        setErrorMessage("Não foi possível entrar. Verifique seus dados.");
+        setPasswordError("Não foi possível entrar. Verifique seus dados.");
       }
-    } finally {
+    }
+    finally {
       setLoading(false);
     }
   }
+
+
 
   return (
     <KeyboardAvoidingView
@@ -93,22 +109,37 @@ export default function TelaLogin() {
           <Input
             label="E-mail"
             value={email}
-            onChangeText={setEmail}
+            onChangeText={(text) => {
+              setEmail(text);
+              if (text.trim()) {
+                setEmailError("");
+              }
+            }}
             placeholder="seu@email.com"
             keyboardType="email-address"
             autoCapitalize="none"
           />
+          {emailError ? (
+            <Text style={styles.errorText}>
+              {emailError}
+            </Text>
+          ) : null}
 
           <Input
             label="Senha"
             value={password}
-            onChangeText={setPassword}
+            onChangeText={(text) => {
+              setPassword(text);
+              if (text.trim()) {
+                setPasswordError("");
+              }
+            }}
             placeholder="••••••••"
             secureTextEntry
           />
-          {errorMessage ? (
+          {passwordError ? (
             <Text style={styles.errorText}>
-              {errorMessage}
+              {passwordError}
             </Text>
           ) : null}
 
@@ -211,7 +242,6 @@ const styles = StyleSheet.create({
     color: "#EF4444",
     fontSize: 12,
     marginTop: -10,
-    marginBottom: 15,
-    textAlign: "center",
+    marginBottom: 20,
   },
 });
