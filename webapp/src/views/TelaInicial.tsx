@@ -25,9 +25,24 @@ function getFirstName(name: string) {
   return name.trim().split(/\s+/)[0] || 'usuário'
 }
 
+function ActionIcon({ type }: { type: 'income' | 'expense' | 'savings' | 'assistant' | 'invite' }) {
+  if (type === 'income') return <span aria-hidden="true">↑</span>
+  if (type === 'expense') return <span aria-hidden="true">↓</span>
+  if (type === 'savings') return <span aria-hidden="true">$</span>
+  if (type === 'assistant') return <span aria-hidden="true">✦</span>
+
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8a2.5 2.5 0 0 1-2.5 2.5H11l-4.5 4v-4H6.5A2.5 2.5 0 0 1 4 13.5v-8Z" />
+      <path d="M8 9h8M8 12h5" />
+    </svg>
+  )
+}
+
 export default function TelaInicial() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [feedback, setFeedback] = useState('')
+  const [actionFeedback, setActionFeedback] = useState('')
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -74,6 +89,10 @@ export default function TelaInicial() {
   const greeting = getGreeting(new Date().getHours())
   const isPrincipal = profile.papel === 'PRINCIPAL'
 
+  function showComingSoon(action: string) {
+    setActionFeedback(`${action}: recurso em breve.`)
+  }
+
   return (
     <main className="home-page">
       <div className="home-shell">
@@ -91,11 +110,39 @@ export default function TelaInicial() {
           </div>
         </header>
 
-        <section className="home-welcome" aria-labelledby="home-title">
-          <p className="eyebrow">Sua vida financeira, com clareza</p>
-          <h1 id="home-title">{greeting}, {getFirstName(profile.nome)}.</h1>
-          <p>Tenha uma visão simples do que está acontecendo com o seu dinheiro.</p>
-        </section>
+        <div className="home-overview-row">
+          <section className="home-welcome" aria-labelledby="home-title">
+            <p className="eyebrow">Sua vida financeira, com clareza</p>
+            <h1 id="home-title">{greeting}, {getFirstName(profile.nome)}.</h1>
+            <p>Tenha uma visão simples do que está acontecendo com o seu dinheiro.</p>
+          </section>
+
+          <section className="home-quick-actions" aria-label="Ações rápidas">
+            <button className="home-quick-action" type="button" onClick={() => showComingSoon('Receita')}>
+              <span className="home-quick-icon home-quick-icon-income"><ActionIcon type="income" /></span>
+              <span>Receita</span>
+            </button>
+            <button className="home-quick-action" type="button" onClick={() => showComingSoon('Despesa')}>
+              <span className="home-quick-icon home-quick-icon-expense"><ActionIcon type="expense" /></span>
+              <span>Despesa</span>
+            </button>
+            <button className="home-quick-action" type="button" onClick={() => showComingSoon('Investimentos')}>
+              <span className="home-quick-icon home-quick-icon-savings"><ActionIcon type="savings" /></span>
+              <span>Investimentos</span>
+            </button>
+            <button className="home-quick-action" type="button" onClick={() => showComingSoon('Assistente')}>
+              <span className="home-quick-icon home-quick-icon-assistant"><ActionIcon type="assistant" /></span>
+              <span>Assistente</span>
+            </button>
+            {isPrincipal && (
+              <Link className="home-quick-action" to="/convites" title="Convidar usuário">
+                <span className="home-quick-icon home-quick-icon-invite"><ActionIcon type="invite" /></span>
+                <span>Convite</span>
+              </Link>
+            )}
+          </section>
+        </div>
+        {actionFeedback && <p className="home-action-feedback" role="status">{actionFeedback}</p>}
 
         <section className="home-grid" aria-label="Resumo financeiro">
           <article className="home-balance-card">
@@ -119,9 +166,6 @@ export default function TelaInicial() {
             <h2>Comece pelo que importa</h2>
             <p>Organize sua primeira conta e acompanhe suas decisões financeiras.</p>
           </div>
-          {isPrincipal && (
-            <Link className="home-action-button" to="/convites">Convidar usuário</Link>
-          )}
         </section>
       </div>
     </main>

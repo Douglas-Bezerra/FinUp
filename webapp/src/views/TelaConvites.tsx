@@ -55,7 +55,7 @@ export default function TelaConvites() {
         emailConvidado: email.trim().toLowerCase(),
         dataExpiracao,
       })
-      const link = `${window.location.origin}/aceitar-convite?token=${encodeURIComponent(token)}`
+      const link = `${window.location.origin}/cadastro?token=${encodeURIComponent(token)}`
       setInviteLink(link)
       setFeedback('Convite criado. Copie o link e envie para o e-mail convidado.')
     } catch (error) {
