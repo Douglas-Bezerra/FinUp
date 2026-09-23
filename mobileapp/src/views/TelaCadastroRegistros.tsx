@@ -121,12 +121,11 @@ export default function TelaCadastroRegistros() {
           <Text style={styles.title}>Registros</Text>
         </View>
 
-        <Pressable
-          style={styles.newButton}
+        <GradientButton
+          title="+ Novo"
           onPress={() => setNovoAberto(true)}
-        >
-          <Text style={styles.newButtonText}>+ Novo</Text>
-        </Pressable>
+          style={{ minWidth: 70 }}
+        />
       </View>
 
       <View style={styles.summary}>
@@ -445,17 +444,6 @@ const styles = StyleSheet.create({
   month: {
     color: colors.mutedForeground,
     fontSize: 20,
-  },
-  newButton: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
-  },
-  newButtonText: {
-    color: colors.primaryForeground,
-    fontSize: 15,
-    fontWeight: "600",
   },
   summary: {
     flexDirection: "row",
