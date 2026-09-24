@@ -9,6 +9,7 @@ import {
   StyleSheet,
   Text,
   View,
+  Alert,
 } from "react-native";
 
 import { createUserWithEmailAndPassword } from "firebase/auth";
@@ -141,6 +142,10 @@ export default function TelaCadastro() {
             autoCapitalize="none"
           />
           {/* Exibe mensagem de erro se houver erro no campo e-mail */}
+          {errors.email ? (
+            <Text style={styles.error}>{errors.email}</Text>
+          ) : null}
+
           {firebaseError ? (
             <Text style={styles.error}>{firebaseError}</Text>
           ) : null}
@@ -197,6 +202,10 @@ export default function TelaCadastro() {
                     email: email.trim(),
                     papel: "PRINCIPAL",
                   });
+                  Alert.alert(
+                    "Conta criada com sucesso!",
+                    "Sua conta foi criada. Você já pode fazer login."
+                  );
                 }
                 catch (error: any) {
                   if (error.code === "auth/email-already-in-use") {
