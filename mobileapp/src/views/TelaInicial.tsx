@@ -16,7 +16,7 @@ export default function TelaInicial() {
             {/* Cabeçalho */}
             <View style={styles.header}>
                 <View>
-                    <Text style={styles.greeting}>Bom dia! 👋</Text>
+                    <Text style={styles.greeting}>Bom dia!</Text>
                     <Text style={styles.title}>Visão Geral</Text>
                 </View>
 
@@ -45,13 +45,23 @@ export default function TelaInicial() {
                     <Text style={styles.actionLabel}>Receita</Text>
                 </Pressable>
 
-                <View style={styles.quickAction}>
-                    <View style={[styles.actionIcon, { backgroundColor: "rgba(255, 107, 107, 0.12)" }]}>
-                        <Text style={[styles.actionIconText, { color: colors.danger }]}>↓</Text>
+                <Pressable
+                    style={styles.quickAction}
+                    onPress={() => navigation.navigate("CadastroRegistros")}
+                >
+                    <View
+                        style={[
+                            styles.actionIcon,
+                            { backgroundColor: "rgba(255, 107, 107, 0.12)" },
+                        ]}
+                    >
+                        <Text style={[styles.actionIconText, { color: colors.danger }]}>
+                            ↓
+                        </Text>
                     </View>
 
                     <Text style={styles.actionLabel}>Despesa</Text>
-                </View>
+                </Pressable>
 
                 <View style={styles.quickAction}>
                     <View style={[styles.actionIcon, { backgroundColor: "rgba(96, 165, 250, 0.12)" }]}>
