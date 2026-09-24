@@ -137,18 +137,20 @@ export default function TelaLogin() {
             placeholder="••••••••"
             secureTextEntry
           />
-          {passwordError ? (
-            <Text style={styles.errorText}>
-              {passwordError}
-            </Text>
-          ) : null}
+          <View style={styles.passwordFooter}>
+            {passwordError ? (
+              <Text style={styles.errorText}>
+                {passwordError}
+              </Text>
+            ) : null}
 
-          {/* Esqueci senha */}
-          <Pressable style={styles.forgotButton}>
-            <GradientText style={styles.forgotText}>
-              Esqueci minha senha
-            </GradientText>
-          </Pressable>
+            {/* Esqueci senha */}
+            <Pressable style={styles.forgotButton}>
+              <GradientText style={styles.forgotText}>
+                Esqueci minha senha
+              </GradientText>
+            </Pressable>
+          </View>
 
 
           {/* Entrar */}
@@ -216,8 +218,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   forgotButton: {
-    alignSelf: "flex-end",
-    marginBottom: 30,
+    marginBottom: 40,
     marginTop: -10,
   },
   forgotText: {
@@ -243,5 +244,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: -10,
     marginBottom: 20,
+  },
+  passwordFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
 });
