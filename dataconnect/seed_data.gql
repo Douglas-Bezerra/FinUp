@@ -1,0 +1,94 @@
+mutation SeedCategorias {
+  categoria_upsertMany(data: [
+    {
+      id: "10000000-0000-4000-8000-000000000001"
+      nome: "Salário"
+      icone: "cash-outline"
+      tipo: "income"
+    }
+    {
+      id: "10000000-0000-4000-8000-000000000002"
+      nome: "Freelance"
+      icone: "briefcase-outline"
+      tipo: "income"
+    }
+    {
+      id: "10000000-0000-4000-8000-000000000003"
+      nome: "Aluguel"
+      icone: "home-outline"
+      tipo: "income"
+    }
+    {
+      id: "10000000-0000-4000-8000-000000000004"
+      nome: "Dividendos"
+      icone: "trending-up-outline"
+      tipo: "income"
+    }
+    {
+      id: "10000000-0000-4000-8000-000000000005"
+      nome: "Presente"
+      icone: "gift-outline"
+      tipo: "income"
+    }
+    {
+      id: "10000000-0000-4000-8000-000000000006"
+      nome: "Outros"
+      icone: "ellipsis-horizontal-outline"
+      tipo: "income"
+    }
+    {
+      id: "20000000-0000-4000-8000-000000000001"
+      nome: "Alimentação"
+      icone: "restaurant-outline"
+      tipo: "expense"
+    }
+    {
+      id: "20000000-0000-4000-8000-000000000002"
+      nome: "Transporte"
+      icone: "car-outline"
+      tipo: "expense"
+    }
+    {
+      id: "20000000-0000-4000-8000-000000000003"
+      nome: "Moradia"
+      icone: "home-outline"
+      tipo: "expense"
+    }
+    {
+      id: "20000000-0000-4000-8000-000000000004"
+      nome: "Saúde"
+      icone: "medkit-outline"
+      tipo: "expense"
+    }
+    {
+      id: "20000000-0000-4000-8000-000000000005"
+      nome: "Lazer"
+      icone: "game-controller-outline"
+      tipo: "expense"
+    }
+    {
+      id: "20000000-0000-4000-8000-000000000006"
+      nome: "Educação"
+      icone: "school-outline"
+      tipo: "expense"
+    }
+    {
+      id: "20000000-0000-4000-8000-000000000007"
+      nome: "Assinatura"
+      icone: "repeat-outline"
+      tipo: "expense"
+    }
+    {
+      id: "20000000-0000-4000-8000-000000000008"
+      nome: "Tecnologia"
+      icone: "phone-portrait-outline"
+      tipo: "expense"
+    }
+    {
+      id: "20000000-0000-4000-8000-000000000009"
+      nome: "Outros"
+      icone: "ellipsis-horizontal-outline"
+      tipo: "expense"
+    }
+  ])
+}

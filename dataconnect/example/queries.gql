@@ -68,3 +68,15 @@ query MeuUsuario @auth(level: USER) {
     usuarioPaiId
   }
 }
+
+query ListarCategorias @auth(
+  level: USER,
+  insecureReason: "As categorias são dados globais compartilhados entre usuários."
+) {
+  categorias {
+    id
+    nome
+    icone
+    tipo
+  }
+}

@@ -1,13 +1,14 @@
 import { StyleSheet, Text, View, Pressable, Modal } from "react-native";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import { colors } from "../styles/colors";
 
 import Input from "../components/Input"
 import GradientButton from "../components/GradientButton";
 
-export default function TelaCadastroRegistros() {
+import { listarCategorias } from "../dataconnect-generated";
 
+export default function TelaCadastroRegistros() {
   const [novoAberto, setNovoAberto] = useState(false);
   const [tipoRegistro, setTipoRegistro] = useState<
     "income" | "expense" | null
