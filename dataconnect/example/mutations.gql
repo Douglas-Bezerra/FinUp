@@ -92,7 +92,7 @@ mutation CriarConta(
 
 # 5. Registrar uma nova transação financeira
 mutation CriarTransacao(
-  $contaId: String!,
+  $contaId: String,
   $categoriaId: String!,
   $descricao: String!,
   $valor: Float!,

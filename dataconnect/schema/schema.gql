@@ -143,8 +143,8 @@ type FaturaCartao @table {
 type Transacao @table {
   id: String! @default(expr: "uuidV4()")
 
-  conta: Conta! @ref(fields: "contaId")
-  contaId: String!
+  conta: Conta @ref(fields: "contaId")
+  contaId: String
 
   cartaoPlastico: CartaoPlastico @ref(fields: "cartaoPlasticoId")
   cartaoPlasticoId: String
