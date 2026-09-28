@@ -33,7 +33,47 @@ export default function TelaCadastroRegistros() {
       categoria: "Salário",
       valor: 5000,
       data: "05/08/2026",
-    }
+    },
+    {
+      id: "2",
+      tipo: "expense",
+      descricao: "Supermercado",
+      categoria: "Alimentação",
+      valor: 850.50,
+      data: "10/08/2026",
+    },
+    {
+      id: "3",
+      tipo: "expense",
+      descricao: "Aluguel do apartamento",
+      categoria: "Moradia",
+      valor: 1500.00,
+      data: "12/08/2026",
+    },
+    {
+      id: "4",
+      tipo: "expense",
+      descricao: "Uber para o trabalho",
+      categoria: "Transporte",
+      valor: 45.90,
+      data: "15/08/2026",
+    },
+    {
+      id: "5",
+      tipo: "income",
+      descricao: "Desenvolvimento de Landing Page",
+      categoria: "Freelance",
+      valor: 1200.00,
+      data: "18/08/2026",
+    },
+    {
+      id: "6",
+      tipo: "expense",
+      descricao: "Ingressos Cinema",
+      categoria: "Lazer",
+      valor: 70.00,
+      data: "20/08/2026",
+    },
   ];
 
   const categoriasReceita = [
@@ -132,17 +172,17 @@ export default function TelaCadastroRegistros() {
       <View style={styles.summary}>
         <View style={[styles.summaryCard, styles.incomeCard]}>
           <Text style={styles.summaryLabel}>Receitas</Text>
-          <Text style={styles.incomeValue}>+R$ 0</Text>
+          <Text style={styles.incomeValue}>+R$ 1589,21</Text>
         </View>
 
         <View style={[styles.summaryCard, styles.expenseCard]}>
           <Text style={styles.summaryLabel}>Despesas</Text>
-          <Text style={styles.expenseValue}>-R$ 0</Text>
+          <Text style={styles.expenseValue}>-R$ 500,00</Text>
         </View>
 
         <View style={[styles.summaryCard, styles.creditCard]}>
           <Text style={styles.summaryLabel}>Crédito</Text>
-          <Text style={styles.creditValue}>R$ 0</Text>
+          <Text style={styles.creditValue}>R$ 350,33</Text>
         </View>
       </View>
 
@@ -166,9 +206,15 @@ export default function TelaCadastroRegistros() {
                 👤 Usuário · {transacao.data}
               </Text>
             </View>
-
-            <Text style={styles.transactionValue}>
-              +R$ {transacao.valor.toLocaleString("pt-BR", {
+            <Text
+              style={[
+                styles.transactionValue,
+                transacao.tipo === "income"
+                  ? styles.incomeTransaction
+                  : styles.expenseTransaction,
+              ]}
+            >
+              {transacao.tipo === "income" ? "+" : "-"}R$ {transacao.valor.toLocaleString("pt-BR", {
                 minimumFractionDigits: 2,
               })}
             </Text>
@@ -476,17 +522,17 @@ const styles = StyleSheet.create({
   },
   incomeValue: {
     color: colors.primary,
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: "700",
   },
   expenseValue: {
     color: colors.danger,
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: "700",
   },
   creditValue: {
     color: colors.warning,
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: "700",
   },
   transactions: {
@@ -700,5 +746,11 @@ const styles = StyleSheet.create({
     color: colors.danger,
     fontSize: 11,
     marginTop: -15,
+  },
+  incomeTransaction: {
+    color: colors.primary,
+  },
+  expenseTransaction: {
+    color: colors.danger,
   },
 });
