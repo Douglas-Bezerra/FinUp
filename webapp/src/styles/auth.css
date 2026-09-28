@@ -4,14 +4,28 @@
 
 /* Authentication, forms, shared components, and showcase styles. */
 
+:root {
+  --finup-background: #050509;
+  --finup-surface: #111120;
+  --finup-surface-raised: #1a1a2e;
+  --finup-border: #1e1e34;
+  --finup-foreground: #ffffff;
+  --finup-muted: #b0b0c8;
+  --finup-subtle: #6e6e8e;
+  --finup-primary: #4ade80;
+  --finup-danger: #ff6b6b;
+  --finup-info: #60a5fa;
+  --finup-brand-gradient: linear-gradient(90deg, #ffb000, #ff6b00 40%, #ff3040 72%, #ff0000);
+}
+
 .login-page {
   min-height: 100vh;
   box-sizing: border-box;
   display: grid;
   place-items: center;
   padding: 32px clamp(20px, 5vw, 80px);
-  background: #050509;
-  background-image: radial-gradient(circle at 18% 15%, rgba(255, 107, 0, 0.12), transparent 30%), radial-gradient(circle at 88% 85%, rgba(255, 0, 0, 0.1), transparent 34%);
+  background: var(--finup-background);
+  background-image: linear-gradient(135deg, #050509 0%, #090b10 52%, #050509 100%);
 }
 
 .login-shell {
@@ -96,10 +110,10 @@
 
 .eyebrow {
   margin: 0 0 16px;
-  color: #ff8b28;
+  color: var(--finup-primary);
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.16em;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
@@ -182,7 +196,7 @@
 .login-card label { display: block; margin: 0 0 6px; color: #b0b0c8; font-size: 14px; font-weight: 600; }
 .login-card input { width: 100%; box-sizing: border-box; margin-bottom: 16px; padding: 13px 16px; border: 1px solid #1e1e34; border-radius: 12px; outline: none; background: #161625; color: #ffffff; font: inherit; font-size: 14px; }
 .login-card input::placeholder { color: #6e6e8e; }
-.login-card input:focus { border-color: #ff6b00; box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.12); }
+.login-card input:focus { border-color: var(--finup-primary); box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.12); }
 .password-field { position: relative; }
 .password-field input { padding-right: 78px; }
 .visibility-button { position: absolute; top: 0; right: 10px; height: 45px; border: 0; background: transparent; color: #6e6e8e; cursor: pointer; font: inherit; font-size: 11px; }

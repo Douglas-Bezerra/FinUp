@@ -30,3 +30,12 @@ test('redireciona rota desconhecida para a tela de login', async ({ page }) => {
     page.getByRole('heading', { name: 'Bem-vindo de volta' }),
   ).toBeVisible()
 })
+
+test('protege a tela de registros contra acesso sem login', async ({ page }) => {
+  await page.goto('/registros')
+
+  await expect(page).toHaveURL('/')
+  await expect(
+    page.getByRole('heading', { name: 'Bem-vindo de volta' }),
+  ).toBeVisible()
+})
