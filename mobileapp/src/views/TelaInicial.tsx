@@ -185,9 +185,8 @@ const styles = StyleSheet.create({
         fontSize: 16,
     },
     balanceCard: {
-        backgroundColor: "#0F2318",
+        backgroundColor: colors.card,
         borderWidth: 1,
-        borderColor: "rgba(74, 222, 128, 0.15)",
         borderRadius: 16,
         padding: 20,
     },
