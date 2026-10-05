@@ -12,6 +12,7 @@ import { useEffect, useRef, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 
 import { colors } from "../styles/colors";
+import GradientText from "../components/GradientText"
 
 type Msg = {
     id: number;
@@ -111,17 +112,20 @@ export default function TelaAssistente() {
             {/* Cabeçalho */}
             <View style={styles.header}>
                 <View style={styles.finnIcon}>
-                    <Text style={styles.finnSymbol}>✦</Text>
-
+                    <GradientText style={styles.finnSymbol}>
+                        ✦
+                    </GradientText>
                     <View style={styles.onlineDot} />
                 </View>
 
                 <View>
-                    <Text style={styles.finnName}>Finn</Text>
+                    <GradientText style={styles.finnName}>
+                        Finn
+                    </GradientText>
 
-                    <Text style={styles.onlineText}>
+                    <GradientText style={styles.onlineText}>
                         ● Online · Assistente Financeiro
-                    </Text>
+                    </GradientText>
                 </View>
             </View>
 
@@ -145,7 +149,9 @@ export default function TelaAssistente() {
                     >
                         {message.role === "bot" && (
                             <View style={styles.botIcon}>
-                                <Text style={styles.botIconText}>✦</Text>
+                                <GradientText style={styles.botIconText}>
+                                    ✦
+                                </GradientText>
                             </View>
                         )}
 
@@ -187,7 +193,9 @@ export default function TelaAssistente() {
                 {typing && (
                     <View style={styles.messageRow}>
                         <View style={styles.botIcon}>
-                            <Text style={styles.botIconText}>✦</Text>
+                            <GradientText style={styles.botIconText}>
+                                ✦
+                            </GradientText>
                         </View>
 
                         <View style={styles.typingBubble}>
@@ -271,16 +279,16 @@ const styles = StyleSheet.create({
     },
     /* Header */
     header: {
-     flexDirection: "row",
+        flexDirection: "row",
         alignItems: "center",
         paddingHorizontal: 20,
-        paddingTop: 20,
+        paddingTop: 30,
         paddingBottom: 14,
         gap: 12,
     },
     finnIcon: {
-        width: 42,
-        height: 42,
+        width: 50,
+        height: 50,
         borderRadius: 16,
         backgroundColor: "rgba(74, 222, 128, 0.15)",
         borderWidth: 1,
@@ -305,12 +313,12 @@ const styles = StyleSheet.create({
     },
     finnName: {
         color: colors.foreground,
-        fontSize: 15,
+        fontSize: 20,
         fontWeight: "700",
     },
     onlineText: {
         color: colors.primary,
-        fontSize: 11,
+        fontSize: 15,
         marginTop: 2,
     },
     /* Mensagens */
@@ -364,7 +372,7 @@ const styles = StyleSheet.create({
         borderBottomRightRadius: 4,
     },
     messageText: {
-        fontSize: 13,
+        fontSize: 17,
         lineHeight: 20,
     },
     botText: {
@@ -419,39 +427,36 @@ const styles = StyleSheet.create({
         borderColor: colors.border,
         borderRadius: 12,
         paddingHorizontal: 12,
-        paddingVertical: 9,
+        paddingVertical: 5,
         maxWidth: 180,
     },
     quickText: {
         color: colors.mutedForeground,
-        fontSize: 12,
+        fontSize: 15,
     },
     /* Input */
     inputContainer: {
         flexDirection: "row",
         alignItems: "flex-end",
         gap: 8,
-        paddingHorizontal: 16,
-        paddingVertical: 12,
+        paddingHorizontal: 10,
+        paddingVertical: 30,
         borderTopWidth: 1,
         borderTopColor: colors.border,
     },
     input: {
         flex: 1,
-        minHeight: 40,
-        maxHeight: 100,
         backgroundColor: colors.card,
         borderWidth: 1,
         borderColor: colors.border,
         borderRadius: 12,
-        paddingHorizontal: 15,
-        paddingVertical: 10,
+        paddingHorizontal: 10,
         color: colors.foreground,
-        fontSize: 13,
+        fontSize: 18,
     },
     sendButton: {
-        width: 40,
-        height: 40,
+        width: 48,
+        height: 48,
         borderRadius: 12,
         alignItems: "center",
         justifyContent: "center",
