@@ -13,6 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { colors } from "../styles/colors";
 import GradientText from "../components/GradientText"
+import { LinearGradient } from "expo-linear-gradient";
 
 type Msg = {
     id: number;
@@ -111,16 +112,24 @@ export default function TelaAssistente() {
         >
             {/* Cabeçalho */}
             <View style={styles.header}>
-                <View style={styles.finnIcon}>
-                    <GradientText style={styles.finnSymbol}>
-                        ✦
-                    </GradientText>
-                    <View style={styles.onlineDot} />
-                </View>
+                <LinearGradient
+                    colors={colors.gradient.colors}
+                    start={colors.gradient.start}
+                    end={colors.gradient.end}
+                    style={styles.finnIconBorder}
+                >
+                    <View style={styles.finnIcon}>
+                        <GradientText style={styles.finnSymbol}>
+                            ✦
+                        </GradientText>
+
+
+                    </View>
+                </LinearGradient>
 
                 <View>
                     <GradientText style={styles.finnName}>
-                        Finn
+                        Bufunfa
                     </GradientText>
 
                     <GradientText style={styles.onlineText}>
@@ -148,11 +157,9 @@ export default function TelaAssistente() {
                         ]}
                     >
                         {message.role === "bot" && (
-                            <View style={styles.botIcon}>
-                                <GradientText style={styles.botIconText}>
-                                    ✦
-                                </GradientText>
-                            </View>
+                            <GradientText style={styles.botIconText}>
+                                ✦
+                            </GradientText>
                         )}
 
                         <View style={styles.messageContainer}>
@@ -192,11 +199,10 @@ export default function TelaAssistente() {
                 {/* Digitando */}
                 {typing && (
                     <View style={styles.messageRow}>
-                        <View style={styles.botIcon}>
-                            <GradientText style={styles.botIconText}>
-                                ✦
-                            </GradientText>
-                        </View>
+
+                        <GradientText style={styles.botIconText}>
+                            ✦
+                        </GradientText>
 
                         <View style={styles.typingBubble}>
                             <View style={styles.typingDots}>
@@ -287,29 +293,21 @@ const styles = StyleSheet.create({
         gap: 12,
     },
     finnIcon: {
-        width: 50,
-        height: 50,
-        borderRadius: 16,
-        backgroundColor: "rgba(74, 222, 128, 0.15)",
-        borderWidth: 1,
-        borderColor: "rgba(74, 222, 128, 0.3)",
+        flex: 1,
+        borderRadius: 15,
+        backgroundColor: colors.background,
         alignItems: "center",
         justifyContent: "center",
     },
+    finnIconBorder: {
+        width: 50,
+        height: 50,
+        borderRadius: 16,
+        padding: 1,
+    },
     finnSymbol: {
         color: colors.primary,
-        fontSize: 21,
-    },
-    onlineDot: {
-        position: "absolute",
-        right: -1,
-        bottom: -1,
-        width: 10,
-        height: 10,
-        borderRadius: 5,
-        backgroundColor: colors.primary,
-        borderWidth: 2,
-        borderColor: colors.background,
+        fontSize: 25,
     },
     finnName: {
         color: colors.foreground,
@@ -340,14 +338,6 @@ const styles = StyleSheet.create({
     },
     userRow: {
         justifyContent: "flex-end",
-    },
-    botIcon: {
-        width: 28,
-        height: 28,
-        borderRadius: 11,
-        backgroundColor: "rgba(74, 222, 128, 0.15)",
-        alignItems: "center",
-        justifyContent: "center",
     },
     botIconText: {
         color: colors.primary,
