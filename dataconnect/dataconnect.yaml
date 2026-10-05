@@ -7,11 +7,11 @@ serviceId: "finup"
 location: "us-central1"
 schema:
   source: "./schema"
-  schemaValidation: "COMPATIBLE" # <--- Garanta que esta linha está presente
   datasource:
     postgresql:
       database: "fdcdb"
       cloudSql:
         instanceId: "finup-fdc"
+        : "COMPATIBLE"
 connectorDirs:
   - "./example"

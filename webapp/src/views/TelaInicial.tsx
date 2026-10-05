@@ -118,14 +118,14 @@ export default function TelaInicial() {
           </section>
 
           <section className="home-quick-actions" aria-label="Ações rápidas">
-            <button className="home-quick-action" type="button" onClick={() => showComingSoon('Receita')}>
+            <Link className="home-quick-action" to="/registros?tipo=RECEITA">
               <span className="home-quick-icon home-quick-icon-income"><ActionIcon type="income" /></span>
               <span>Receita</span>
-            </button>
-            <button className="home-quick-action" type="button" onClick={() => showComingSoon('Despesa')}>
+            </Link>
+            <Link className="home-quick-action" to="/registros?tipo=DESPESA">
               <span className="home-quick-icon home-quick-icon-expense"><ActionIcon type="expense" /></span>
               <span>Despesa</span>
-            </button>
+            </Link>
             <button className="home-quick-action" type="button" onClick={() => showComingSoon('Investimentos')}>
               <span className="home-quick-icon home-quick-icon-savings"><ActionIcon type="savings" /></span>
               <span>Investimentos</span>
@@ -166,6 +166,9 @@ export default function TelaInicial() {
             <h2>Comece pelo que importa</h2>
             <p>Organize sua primeira conta e acompanhe suas decisões financeiras.</p>
           </div>
+          <Link className="home-action-button" to="/registros">
+            Registrar movimentação
+          </Link>
         </section>
       </div>
     </main>

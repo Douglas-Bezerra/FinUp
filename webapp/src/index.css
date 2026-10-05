@@ -1,7 +1,8 @@
 :root {
   font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
-  color: #ffffff;
-  background: #000000;
+  color: var(--finup-foreground);
+  background: var(--finup-background);
+  color-scheme: var(--finup-color-scheme);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
