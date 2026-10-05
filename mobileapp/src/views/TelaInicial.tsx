@@ -71,13 +71,29 @@ export default function TelaInicial() {
                     <Text style={styles.actionLabel}>Caixinha</Text>
                 </View>
 
-                <View style={styles.quickAction}>
-                    <View style={[styles.actionIcon, { backgroundColor: "rgba(192, 132, 252, 0.12)" }]}>
-                        <Text style={[styles.actionIconText, { color: "#C084FC" }]}>✦</Text>
+                <Pressable
+                    style={styles.quickAction}
+                    onPress={() => navigation.navigate("Assistente")}
+                >
+                    <View
+                        style={[
+                            styles.actionIcon,
+                            { backgroundColor: "rgba(192, 132, 252, 0.12)" },
+                        ]}
+                    >
+                        <Text
+                            style={[
+                                styles.actionIconText,
+                                { color: "#C084FC" },
+                            ]}
+                        >
+                            ✦
+                        </Text>
                     </View>
 
                     <Text style={styles.actionLabel}>Assistente</Text>
-                </View>
+                </Pressable>
+
             </View>
 
             {/* Card de saldo */}
