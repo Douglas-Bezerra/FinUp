@@ -4,8 +4,8 @@
 
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { criarConviteAcesso, meuUsuario } from '../dataconnect-generated'
-import { dataConnect } from '../firebase'
+import { criarConvite, obterUsuario } from '../../../shared/services/finupService'
+import { auth, db } from '../firebase'
 import LogoutButton from '../components/LogoutButton'
 import '../App.css'
 
@@ -24,8 +24,12 @@ export default function TelaConvites() {
   useEffect(() => {
     async function loadProfile() {
       try {
-        const response = await meuUsuario(dataConnect)
-        const user = response.data.usuarios[0]
+        const currentUser = auth.currentUser
+        if (!currentUser) {
+          navigate('/', { replace: true })
+          return
+        }
+        const user = await obterUsuario(db, currentUser.uid)
         if (!user || user.papel !== 'PRINCIPAL') {
           navigate('/', { replace: true })
           return
@@ -47,14 +51,14 @@ export default function TelaConvites() {
     setIsSending(true)
 
     const token = createInviteToken()
-    const dataExpiracao = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+    const dataExpiracao = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
 
     try {
-      await criarConviteAcesso(dataConnect, {
-        token,
-        emailConvidado: email.trim().toLowerCase(),
-        dataExpiracao,
-      })
+      const currentUser = auth.currentUser
+      if (!currentUser) throw new Error('Sua sessão expirou.')
+      const user = await obterUsuario(db, currentUser.uid)
+      if (!user) throw new Error('Não encontramos seu perfil financeiro.')
+      await criarConvite(db, user, email, token, dataExpiracao)
       const link = `${window.location.origin}/cadastro?token=${encodeURIComponent(token)}`
       setInviteLink(link)
       setFeedback('Convite criado. Copie o link e envie para o e-mail convidado.')

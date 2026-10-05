@@ -76,9 +76,12 @@
 .home-empty-state .logo-component { margin-bottom: 24px; }
 
 .records-header-actions { display: flex; align-items: center; gap: 16px; }
+.records-secondary-button { min-height: 42px; padding: 0 14px; border: 1px solid var(--finup-border); border-radius: 8px; background: transparent; color: var(--finup-muted); cursor: pointer; font: inherit; font-size: 13px; }
+.records-secondary-button:hover { border-color: var(--finup-primary); color: var(--finup-primary); }
 .records-back-link { color: var(--finup-muted); font-size: 13px; text-decoration: none; }
 .records-back-link:hover { color: var(--finup-primary); }
 .records-heading { display: flex; align-items: end; justify-content: space-between; gap: 24px; padding: 34px 0 22px; }
+.records-heading-actions { display: flex; align-items: center; gap: 10px; }
 .records-heading .eyebrow { margin-bottom: 10px; }
 .records-heading h1 { margin: 0; font-size: 32px; line-height: 1.15; }
 .records-heading p:last-child { margin: 9px 0 0; color: var(--finup-muted); font-size: 14px; }
@@ -120,8 +123,10 @@
 .records-type-icon { display: grid; flex: 0 0 36px; place-items: center; width: 36px; height: 36px; border-radius: 50%; font-size: 20px; }
 .records-type-icon.is-income { background: rgba(74, 222, 128, 0.12); color: var(--finup-primary); }
 .records-type-icon.is-expense { background: rgba(255, 107, 107, 0.12); color: var(--finup-danger); }
+.records-type-icon.is-transfer { background: rgba(96, 165, 250, 0.12); color: var(--finup-info); }
 .records-status { justify-self: start; padding: 5px 8px; border-radius: 6px; background: rgba(74, 222, 128, 0.1); color: var(--finup-primary); font-size: 11px; }
 .records-status.is-pending { background: rgba(251, 191, 36, 0.1); color: var(--finup-warning); }
+.records-row-status { display: grid; justify-items: start; gap: 5px; }
 .records-value { text-align: right; font-size: 14px; white-space: nowrap; }
 .records-state { padding: 48px 20px; border-top: 1px solid var(--finup-border); color: var(--finup-muted); text-align: center; }
 .records-state p { margin: 0 0 8px; font-size: 14px; }
@@ -148,12 +153,13 @@
 .records-money-input { display: flex; align-items: center; min-height: 42px; padding-left: 12px; border: 1px solid var(--finup-border); border-radius: 8px; background: var(--finup-surface); color: var(--finup-subtle); }
 .records-money-input:focus-within { outline: 2px solid rgba(74, 222, 128, 0.55); outline-offset: 1px; }
 .records-money-input input { width: 100%; min-width: 0; padding: 0 10px; border: 0; outline: 0; background: transparent; color: var(--finup-foreground); font: inherit; font-size: 14px; }
-.records-type-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+.records-type-switch { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 8px; }
 .records-type-switch button { min-height: 42px; border: 1px solid var(--finup-border); border-radius: 8px; background: transparent; cursor: pointer; font: inherit; font-size: 13px; font-weight: 600; }
 .records-type-switch .is-income { color: var(--finup-primary); }
 .records-type-switch .is-expense { color: var(--finup-danger); }
 .records-type-switch .is-income.is-selected { border-color: var(--finup-primary); background: rgba(74, 222, 128, 0.1); }
 .records-type-switch .is-expense.is-selected { border-color: var(--finup-danger); background: rgba(255, 107, 107, 0.1); }
+.records-type-switch button:not(.is-income):not(.is-expense).is-selected { border-color: var(--finup-info); background: rgba(96, 165, 250, 0.1); color: var(--finup-info); }
 .records-form-error { margin: 4px 0; color: var(--finup-danger); font-size: 13px; }
 .records-form-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px; }
 .records-cancel { min-height: 42px; padding: 0 16px; border: 1px solid var(--finup-border); border-radius: 8px; background: transparent; color: var(--finup-muted); cursor: pointer; font: inherit; font-size: 13px; }

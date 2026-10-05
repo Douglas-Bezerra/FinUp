@@ -4,8 +4,8 @@
 
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { meuUsuario } from '../dataconnect-generated'
-import { dataConnect } from '../firebase'
+import { obterUsuario } from '../../../shared/services/finupService'
+import { auth, db } from '../firebase'
 import Logo from '../components/Logo'
 import LogoutButton from '../components/LogoutButton'
 import '../App.css'
@@ -48,8 +48,12 @@ export default function TelaInicial() {
   useEffect(() => {
     async function loadProfile() {
       try {
-        const response = await meuUsuario(dataConnect)
-        const user = response.data.usuarios[0]
+        const currentUser = auth.currentUser
+        if (!currentUser) {
+          setFeedback('Sua sessão expirou. Entre novamente.')
+          return
+        }
+        const user = await obterUsuario(db, currentUser.uid)
         if (!user) {
           setFeedback('Não encontramos o seu perfil financeiro.')
           return

@@ -5,8 +5,8 @@
 import { useState, type FormEvent } from 'react'
 import { createUserWithEmailAndPassword, deleteUser, updateProfile, type User } from 'firebase/auth'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { aceitarConviteAcesso, criarUsuario } from '../dataconnect-generated'
-import { auth, dataConnect } from '../firebase'
+import { criarUsuarioPrincipal, criarUsuarioSecundario } from '../../../shared/services/finupService'
+import { auth, db } from '../firebase'
 import Logo from '../components/Logo'
 import '../App.css'
 
@@ -107,28 +107,30 @@ export default function TelaCadastroUsuario() {
 
     setIsLoading(true)
     let createdUser: User | null = null
+    let profileCreated = false
 
     try {
-      const credential = await createUserWithEmailAndPassword(auth, email, password)
+      const credential = await createUserWithEmailAndPassword(auth, email.trim().toLowerCase(), password)
       createdUser = credential.user
       await updateProfile(credential.user, { displayName: name.trim() })
       if (isInvitation) {
-        await aceitarConviteAcesso(dataConnect, {
-          token: invitationToken,
-          nome: name.trim(),
-        })
+        await criarUsuarioSecundario(db, credential.user.uid, credential.user.email ?? email, name.trim(), invitationToken)
+        profileCreated = true
         navigate('/inicio', { replace: true })
       } else {
-        await criarUsuario(dataConnect, {
-          nome: name.trim(),
-          email: email.trim(),
-          papel: 'PRINCIPAL',
-        })
+        await criarUsuarioPrincipal(db, credential.user.uid, credential.user.email ?? email, name.trim())
+        profileCreated = true
         navigate('/')
       }
     } catch (error: unknown) {
-      if (createdUser) {
-        await deleteUser(createdUser).catch(() => undefined)
+      let rollbackFailed = false
+      if (createdUser && !profileCreated) {
+        try {
+          await deleteUser(createdUser)
+        } catch (rollbackError) {
+          rollbackFailed = true
+          console.error('Não foi possível remover a conta de autenticação após falha no perfil:', rollbackError)
+        }
       }
 
       if (import.meta.env.DEV) {
@@ -146,7 +148,9 @@ export default function TelaCadastroUsuario() {
 
       const authErrorCode = getAuthErrorCode(error)
       const message = messages[authErrorCode] || (createdUser
-        ? 'A conta não foi concluída porque não foi possível salvar seus dados. Verifique se o emulador do Data Connect está ativo.'
+        ? rollbackFailed
+          ? 'Não foi possível salvar seus dados nem remover a conta criada. Entre em contato com o suporte antes de tentar novamente.'
+          : 'A conta não foi concluída porque não foi possível salvar seus dados no Firestore.'
         : `Não foi possível ${isInvitation ? 'aceitar o convite' : 'criar a conta'}${authErrorCode ? ` (${authErrorCode})` : ''}. Verifique a configuração do Firebase e tente novamente.`)
 
       setFeedback(message)

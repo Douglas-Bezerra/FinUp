@@ -1,0 +1,392 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userPath(userId) {
+      return /databases/$(database)/documents/usuarios/$(userId);
+    }
+
+    function invitePath(token) {
+      return /databases/$(database)/documents/convites/$(token);
+    }
+
+    function familyPath(familyId) {
+      return /databases/$(database)/documents/familias/$(familyId);
+    }
+
+    function accountPath(familyId, accountId) {
+      return /databases/$(database)/documents/familias/$(familyId)/contas/$(accountId);
+    }
+
+    function transactionPath(familyId, transactionId) {
+      return /databases/$(database)/documents/familias/$(familyId)/transacoes/$(transactionId);
+    }
+
+    function transferPath(familyId, transferId) {
+      return /databases/$(database)/documents/familias/$(familyId)/transferencias/$(transferId);
+    }
+
+    function familyMember(familyId) {
+      return signedIn()
+        && existsAfter(userPath(request.auth.uid))
+        && getAfter(userPath(request.auth.uid)).data.familiaId == familyId;
+    }
+
+    function familyPrincipal(familyId) {
+      return familyMember(familyId)
+        && getAfter(userPath(request.auth.uid)).data.papel == 'PRINCIPAL';
+    }
+
+    function validAccountBalance(familyId, accountId, transactionId, movement) {
+      let path = accountPath(familyId, accountId);
+      let movementPath = transactionPath(familyId, transactionId);
+      let before = get(path).data.saldoAtual;
+      let after = getAfter(path).data;
+      return exists(path)
+        && movement.contaId == accountId
+        && existsAfter(movementPath)
+        && (
+          !exists(movementPath)
+          || (get(movementPath).data.status == 'PENDENTE'
+            && getAfter(movementPath).data.status == 'EFETIVADO')
+        )
+        && getAfter(movementPath).data.status == 'EFETIVADO'
+        && after.ultimaMovimentacaoId == transactionId
+        && (
+          (movement.tipoMovimentacao == 'RECEITA'
+            && after.saldoAtual == before + movement.valor)
+          || (movement.tipoMovimentacao == 'DESPESA'
+            && after.saldoAtual == before - movement.valor)
+        );
+    }
+
+    function validTransferBalances(familyId, transferId, transfer) {
+      let movementPath = transferPath(familyId, transferId);
+      let originPath = accountPath(familyId, transfer.contaOrigemId);
+      let destinationPath = accountPath(familyId, transfer.contaDestinoId);
+      let originBefore = get(originPath).data.saldoAtual;
+      let destinationBefore = get(destinationPath).data.saldoAtual;
+      let originAfter = getAfter(originPath).data;
+      let destinationAfter = getAfter(destinationPath).data;
+      return exists(originPath)
+        && exists(destinationPath)
+        && existsAfter(movementPath)
+        && (
+          !exists(movementPath)
+          || (get(movementPath).data.status == 'PENDENTE'
+            && getAfter(movementPath).data.status == 'EFETIVADO')
+        )
+        && originAfter.ultimaMovimentacaoId == transfer.transacaoOrigemId
+        && destinationAfter.ultimaMovimentacaoId == transfer.transacaoDestinoId
+        && originAfter.saldoAtual == originBefore - transfer.valor
+        && destinationAfter.saldoAtual == destinationBefore + transfer.valor
+        && transfer.status == 'EFETIVADO';
+    }
+
+    function validTransferLeg(familyId, transactionId, movement) {
+      let path = transferPath(familyId, movement.transferenciaId);
+      let transfer = getAfter(path).data;
+      let isOrigin = transfer.transacaoOrigemId == transactionId
+        && transfer.contaOrigemId == movement.contaId
+        && movement.direcaoTransferencia == 'SAIDA'
+        && transfer.contaDestinoId == movement.contaDestinoId;
+      let isDestination = transfer.transacaoDestinoId == transactionId
+        && transfer.contaDestinoId == movement.contaId
+        && movement.direcaoTransferencia == 'ENTRADA'
+        && transfer.contaOrigemId == movement.contaDestinoId;
+      return existsAfter(path)
+        && transfer.valor == movement.valor
+        && transfer.status == movement.status
+        && movement.tipoMovimentacao == 'TRANSFERENCIA'
+        && movement.categoriaNome == 'Transferência'
+        && (isOrigin || isDestination)
+        && (movement.status == 'PENDENTE' || validTransferBalances(familyId, movement.transferenciaId, transfer));
+    }
+
+    function validMovementShape(movement) {
+      return movement.keys().hasAll([
+          'descricao', 'valor', 'tipoMovimentacao', 'status', 'dataTransacao',
+          'contaId', 'categoriaId', 'categoriaNome', 'criadoPorUsuarioId',
+          'criadoPorNome', 'dataCriacao', 'dataAtualizacao', 'estornado'
+        ])
+        && movement.keys().hasOnly([
+          'descricao', 'valor', 'tipoMovimentacao', 'status', 'dataTransacao',
+          'contaId', 'contaDestinoId', 'categoriaId', 'categoriaNome',
+          'criadoPorUsuarioId', 'criadoPorNome', 'dataCriacao', 'dataAtualizacao',
+          'estornado', 'transferenciaId', 'direcaoTransferencia',
+          'atualizadoPorUsuarioId', 'formaPagamento', 'parcelas', 'diaVencimento'
+        ])
+        && movement.descricao is string
+        && movement.descricao.size() > 0
+        && movement.valor is number
+        && movement.valor > 0
+        && movement.status in ['EFETIVADO', 'PENDENTE']
+        && movement.tipoMovimentacao in ['RECEITA', 'DESPESA', 'TRANSFERENCIA']
+        && movement.dataTransacao is timestamp
+        && movement.categoriaId is string
+        && movement.criadoPorUsuarioId == request.auth.uid
+        && movement.criadoPorNome is string
+        && movement.dataCriacao is timestamp
+        && movement.dataAtualizacao is timestamp
+        && movement.estornado == false
+        && (
+          (movement.tipoMovimentacao == 'TRANSFERENCIA'
+            && movement.contaDestinoId is string
+            && movement.transferenciaId is string
+            && movement.direcaoTransferencia in ['SAIDA', 'ENTRADA']
+            && movement.categoriaNome == 'Transferência')
+          || (
+            movement.tipoMovimentacao in ['RECEITA', 'DESPESA']
+            && movement.contaId is string
+            && movement.categoriaNome is string
+            && movement.transferenciaId == null
+          )
+        );
+    }
+
+    function validNewTransaction(familyId, transactionId, movement) {
+      let path = accountPath(familyId, movement.contaId);
+      return validMovementShape(movement)
+        && (movement.tipoMovimentacao == 'TRANSFERENCIA'
+          ? validTransferLeg(familyId, transactionId, movement)
+          : exists(path)
+            && (movement.status == 'PENDENTE'
+              || validAccountBalance(familyId, movement.contaId, transactionId, movement)));
+    }
+
+    function validAccountEffect(familyId, accountId, transactionId) {
+      let movementPath = transactionPath(familyId, transactionId);
+      let movement = getAfter(movementPath).data;
+      return existsAfter(movementPath)
+        && (movement.tipoMovimentacao == 'TRANSFERENCIA'
+          ? (
+            (accountId == getAfter(transferPath(familyId, movement.transferenciaId)).data.contaOrigemId
+              || accountId == getAfter(transferPath(familyId, movement.transferenciaId)).data.contaDestinoId)
+            && validTransferBalances(
+              familyId,
+              movement.transferenciaId,
+              getAfter(transferPath(familyId, movement.transferenciaId)).data
+            )
+          )
+          : validAccountBalance(familyId, accountId, transactionId, movement));
+    }
+
+    function validEffectiveTransactionUpdate(familyId, transactionId) {
+      let movement = request.resource.data;
+      return resource.data.status == 'PENDENTE'
+        && movement.status == 'EFETIVADO'
+        && movement.estornado == false
+        && movement.criadoPorUsuarioId == resource.data.criadoPorUsuarioId
+        && movement.contaId == resource.data.contaId
+        && movement.valor == resource.data.valor
+        && movement.tipoMovimentacao == resource.data.tipoMovimentacao
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['status', 'dataAtualizacao', 'atualizadoPorUsuarioId'])
+        && (movement.tipoMovimentacao == 'TRANSFERENCIA'
+          ? validTransferLeg(familyId, transactionId, movement)
+          : validAccountBalance(familyId, movement.contaId, transactionId, movement));
+    }
+
+    function validTransferDocument(familyId, transferId, transfer) {
+      let originTransaction = getAfter(transactionPath(familyId, transfer.transacaoOrigemId)).data;
+      let destinationTransaction = getAfter(transactionPath(familyId, transfer.transacaoDestinoId)).data;
+      return transfer.keys().hasAll([
+          'contaOrigemId', 'contaDestinoId', 'transacaoOrigemId',
+          'transacaoDestinoId', 'status', 'valor', 'dataTransacao',
+          'criadoPorUsuarioId', 'dataCriacao'
+        ])
+        && transfer.keys().hasOnly([
+          'contaOrigemId', 'contaDestinoId', 'transacaoOrigemId',
+          'transacaoDestinoId', 'status', 'valor', 'dataTransacao',
+          'criadoPorUsuarioId', 'dataCriacao', 'dataAtualizacao'
+        ])
+        && transfer.contaOrigemId is string
+        && transfer.contaDestinoId is string
+        && transfer.contaOrigemId != transfer.contaDestinoId
+        && transfer.transacaoOrigemId is string
+        && transfer.transacaoDestinoId is string
+        && transfer.transacaoOrigemId != transfer.transacaoDestinoId
+        && transfer.valor is number
+        && transfer.valor > 0
+        && transfer.status in ['EFETIVADO', 'PENDENTE']
+        && transfer.dataTransacao is timestamp
+        && transfer.dataCriacao is timestamp
+        && transfer.criadoPorUsuarioId == request.auth.uid
+        && existsAfter(transactionPath(familyId, transfer.transacaoOrigemId))
+        && existsAfter(transactionPath(familyId, transfer.transacaoDestinoId))
+        && originTransaction.tipoMovimentacao == 'TRANSFERENCIA'
+        && destinationTransaction.tipoMovimentacao == 'TRANSFERENCIA'
+        && originTransaction.transferenciaId == transferId
+        && destinationTransaction.transferenciaId == transferId
+        && originTransaction.direcaoTransferencia == 'SAIDA'
+        && destinationTransaction.direcaoTransferencia == 'ENTRADA'
+        && originTransaction.status == transfer.status
+        && destinationTransaction.status == transfer.status
+        && originTransaction.valor == transfer.valor
+        && destinationTransaction.valor == transfer.valor
+        && originTransaction.contaId == transfer.contaOrigemId
+        && destinationTransaction.contaId == transfer.contaDestinoId
+        && originTransaction.contaDestinoId == transfer.contaDestinoId
+        && destinationTransaction.contaDestinoId == transfer.contaOrigemId
+        && originTransaction.criadoPorUsuarioId == transfer.criadoPorUsuarioId
+        && destinationTransaction.criadoPorUsuarioId == transfer.criadoPorUsuarioId
+        && originTransaction.dataTransacao == transfer.dataTransacao
+        && destinationTransaction.dataTransacao == transfer.dataTransacao
+        && originTransaction.estornado == false
+        && destinationTransaction.estornado == false;
+    }
+
+    match /usuarios/{userId} {
+      allow read: if signedIn() && request.auth.uid == userId;
+      allow create: if signedIn()
+        && request.auth.uid == userId
+        && request.resource.data.keys().hasOnly([
+          'nome', 'email', 'papel', 'usuarioPaiId', 'familiaId', 'dataCriacao', 'conviteToken'
+        ])
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.nome is string
+        && request.resource.data.dataCriacao is timestamp
+        && (
+          (
+            request.resource.data.papel == 'PRINCIPAL'
+            && request.resource.data.familiaId == userId
+            && request.resource.data.usuarioPaiId == null
+            && existsAfter(familyPath(userId))
+            && getAfter(familyPath(userId)).data.principalUsuarioId == userId
+          )
+          || (
+            request.resource.data.papel == 'SECUNDARIO'
+            && request.resource.data.usuarioPaiId is string
+            && request.resource.data.familiaId is string
+            && request.resource.data.conviteToken is string
+            && existsAfter(invitePath(request.resource.data.conviteToken))
+            && getAfter(invitePath(request.resource.data.conviteToken)).data.statusConvite == 'ACEITO'
+            && getAfter(invitePath(request.resource.data.conviteToken)).data.usuarioAceitoId == userId
+            && getAfter(invitePath(request.resource.data.conviteToken)).data.emailConvidado == request.auth.token.email
+            && getAfter(invitePath(request.resource.data.conviteToken)).data.familiaId == request.resource.data.familiaId
+            && getAfter(invitePath(request.resource.data.conviteToken)).data.usuarioPrincipalId == request.resource.data.usuarioPaiId
+          )
+        );
+      allow update: if signedIn()
+        && request.auth.uid == userId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nome'])
+        && request.resource.data.nome is string;
+      allow delete: if false;
+    }
+
+    match /familias/{familyId} {
+      allow read: if familyMember(familyId);
+      allow create: if signedIn()
+        && request.auth.uid == familyId
+        && request.resource.data.principalUsuarioId == request.auth.uid;
+      allow update, delete: if false;
+
+      match /contas/{accountId} {
+        allow read: if familyMember(familyId);
+        allow create: if familyMember(familyId)
+          && request.resource.data.keys().hasOnly([
+            'nome', 'tipoConta', 'saldoAtual', 'limiteTotal', 'diaFechamento',
+            'diaVencimento', 'ativo', 'criadaPorUsuarioId', 'dataCriacao'
+          ])
+          && request.resource.data.nome is string
+          && request.resource.data.tipoConta in ['CORRENTE', 'POUPANCA', 'CARTAO_CREDITO', 'CAIXINHA']
+          && request.resource.data.saldoAtual is number
+          && request.resource.data.ativo == true
+          && request.resource.data.criadaPorUsuarioId == request.auth.uid
+          && request.resource.data.dataCriacao is timestamp;
+        allow update: if familyMember(familyId)
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['saldoAtual', 'ultimaMovimentacaoId'])
+          && request.resource.data.saldoAtual is number
+          && request.resource.data.ultimaMovimentacaoId is string
+          && validAccountEffect(familyId, accountId, request.resource.data.ultimaMovimentacaoId);
+        allow delete: if false;
+      }
+
+      match /categorias/{categoryId} {
+        allow read: if familyMember(familyId);
+        allow create: if familyMember(familyId)
+          && request.resource.data.keys().hasOnly(['nome', 'icone', 'tipo'])
+          && request.resource.data.nome is string
+          && request.resource.data.icone is string
+          && request.resource.data.tipo in ['RECEITA', 'DESPESA', 'TRANSFERENCIA', 'AMBAS'];
+        allow update, delete: if false;
+      }
+
+      match /transacoes/{transactionId} {
+        allow read: if familyMember(familyId);
+        allow create: if familyMember(familyId)
+          && validNewTransaction(familyId, transactionId, request.resource.data);
+        allow update: if familyMember(familyId)
+          && validEffectiveTransactionUpdate(familyId, transactionId);
+        allow delete: if false;
+      }
+
+      match /transferencias/{transferId} {
+        allow read: if familyMember(familyId);
+        allow create: if familyMember(familyId)
+          && request.resource.data.criadoPorUsuarioId == request.auth.uid
+          && validTransferDocument(familyId, transferId, request.resource.data)
+          && (
+            request.resource.data.status == 'PENDENTE'
+            || validTransferBalances(familyId, transferId, request.resource.data)
+          );
+        allow update: if familyMember(familyId)
+          && resource.data.status == 'PENDENTE'
+          && request.resource.data.status == 'EFETIVADO'
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['status', 'dataAtualizacao'])
+          && request.resource.data.dataAtualizacao is timestamp
+          && validTransferDocument(familyId, transferId, request.resource.data)
+          && validTransferBalances(familyId, transferId, request.resource.data);
+        allow delete: if false;
+      }
+
+      match /logs_atividades/{logId} {
+        allow read: if familyMember(familyId);
+        allow create: if familyMember(familyId)
+          && request.resource.data.usuarioId == request.auth.uid;
+        allow update, delete: if false;
+      }
+
+      match /{collectionName}/{documentId} {
+        allow read: if familyMember(familyId);
+        allow write: if false;
+      }
+    }
+
+    match /convites/{token} {
+      allow get: if signedIn()
+        && (
+          request.auth.token.email == resource.data.emailConvidado
+          || familyPrincipal(resource.data.familiaId)
+        );
+      allow list: if signedIn() && familyPrincipal(resource.data.familiaId);
+      allow create: if signedIn()
+        && familyPrincipal(request.resource.data.familiaId)
+        && request.resource.data.keys().hasOnly([
+          'token', 'usuarioPrincipalId', 'familiaId', 'emailConvidado',
+          'statusConvite', 'dataCriacao', 'dataExpiracao'
+        ])
+        && request.resource.data.token == token
+        && request.resource.data.usuarioPrincipalId == request.auth.uid
+        && request.resource.data.statusConvite == 'PENDENTE'
+        && request.resource.data.dataExpiracao is timestamp
+        && request.resource.data.dataExpiracao > request.time;
+      allow update: if signedIn()
+        && resource.data.statusConvite == 'PENDENTE'
+        && resource.data.emailConvidado == request.auth.token.email
+        && resource.data.dataExpiracao > request.time
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['statusConvite', 'dataAceite', 'usuarioAceitoId'])
+        && request.resource.data.statusConvite == 'ACEITO'
+        && request.resource.data.dataAceite is timestamp
+        && request.resource.data.dataAceite <= request.time
+        && request.resource.data.usuarioAceitoId == request.auth.uid;
+      allow delete: if false;
+    }
+  }
+}

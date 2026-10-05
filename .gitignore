@@ -83,3 +83,10 @@ mobileapp/dist/
 webapp/dist/
 webapp/.env
 webapp/.env.local
+
+# ============================
+# Pasta de testes
+# ============================
+/tests/
+/scripts/
+*.seed.ts

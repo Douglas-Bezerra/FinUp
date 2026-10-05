@@ -13,6 +13,7 @@ import { colors } from "../styles/colors";
 interface GradientButtonProps {
   title: string;
   onPress?: () => void;
+  disabled?: boolean;
   style?: StyleProp<ViewStyle>;
   textStyle?: StyleProp<TextStyle>;
 }
@@ -20,12 +21,14 @@ interface GradientButtonProps {
 export default function GradientButton({
   title,
   onPress,
+  disabled = false,
   style,
   textStyle,
 }: GradientButtonProps) {
   return (
     <Pressable
       onPress={onPress}
+      disabled={disabled}
       style={style}
     >
       <LinearGradient

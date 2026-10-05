@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, Pressable, Modal } from "react-native";
+import { Alert, StyleSheet, Text, View, Pressable, Modal } from "react-native";
 import { useState, useEffect } from "react";
 
 import { colors } from "../styles/colors";
@@ -6,12 +6,32 @@ import { colors } from "../styles/colors";
 import Input from "../components/Input"
 import GradientButton from "../components/GradientButton";
 
-import { listarCategorias } from "../dataconnect-generated";
+import { auth, db } from "../firebase";
+import {
+  cadastrarTransacao,
+  cadastrarTransferencia,
+  criarConta,
+  efetivarTransacaoPendente,
+  listarCategorias,
+  listarContas,
+  obterExtrato,
+  obterUsuario,
+} from "../../../shared/services/finupService";
+import type { Categoria, Conta, Transacao, Usuario } from "../../../shared/types/finup";
 
 export default function TelaCadastroRegistros() {
+  const [usuario, setUsuario] = useState<Usuario | null>(null);
+  const [contas, setContas] = useState<Conta[]>([]);
+  const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [transacoes, setTransacoes] = useState<Transacao[]>([]);
+  const [contaId, setContaId] = useState("");
+  const [contaDestinoId, setContaDestinoId] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [erroCarregamento, setErroCarregamento] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
   const [novoAberto, setNovoAberto] = useState(false);
   const [tipoRegistro, setTipoRegistro] = useState<
-    "income" | "expense" | null
+    "income" | "expense" | "transfer" | null
   >(null);
   const [formAberto, setFormAberto] = useState(false);
   const [descricao, setDescricao] = useState("");
@@ -24,122 +44,196 @@ export default function TelaCadastroRegistros() {
   const [diaVencimento, setDiaVencimento] = useState("");
   const [erroDescricao, setErroDescricao] = useState("");
   const [erroValor, setErroValor] = useState("");
+  const [contaAberta, setContaAberta] = useState(false);
+  const [nomeConta, setNomeConta] = useState("");
+  const [tipoConta, setTipoConta] = useState<Conta["tipoConta"]>("CORRENTE");
+  const [saldoInicial, setSaldoInicial] = useState("0");
+  const [isSavingAccount, setIsSavingAccount] = useState(false);
 
-  const transacoes = [
-    {
-      id: "1",
-      tipo: "income",
-      descricao: "Salário",
-      categoria: "Salário",
-      valor: 5000,
-      data: "05/08/2026",
-    },
-    {
-      id: "2",
-      tipo: "expense",
-      descricao: "Supermercado",
-      categoria: "Alimentação",
-      valor: 850.50,
-      data: "10/08/2026",
-    },
-    {
-      id: "3",
-      tipo: "expense",
-      descricao: "Aluguel do apartamento",
-      categoria: "Moradia",
-      valor: 1500.00,
-      data: "12/08/2026",
-    },
-    {
-      id: "4",
-      tipo: "expense",
-      descricao: "Uber para o trabalho",
-      categoria: "Transporte",
-      valor: 45.90,
-      data: "15/08/2026",
-    },
-    {
-      id: "5",
-      tipo: "income",
-      descricao: "Desenvolvimento de Landing Page",
-      categoria: "Freelance",
-      valor: 1200.00,
-      data: "18/08/2026",
-    },
-    {
-      id: "6",
-      tipo: "expense",
-      descricao: "Ingressos Cinema",
-      categoria: "Lazer",
-      valor: 70.00,
-      data: "20/08/2026",
-    },
-  ];
+  useEffect(() => {
+    let cancelled = false;
+    async function carregarDados() {
+      setIsLoading(true);
+      setErroCarregamento("");
+      try {
+        const authUser = auth.currentUser;
+        if (!authUser) throw new Error("Sua sessão expirou. Entre novamente.");
+        const profile = await obterUsuario(db, authUser.uid);
+        if (!profile) throw new Error("Não encontramos seu perfil financeiro.");
+        const [accounts, categories, records] = await Promise.all([
+          listarContas(db, profile.familiaId),
+          listarCategorias(db, profile.familiaId),
+          obterExtrato(db, profile.familiaId),
+        ]);
+        if (cancelled) return;
+        setUsuario(profile);
+        setContas(accounts);
+        setCategorias(categories);
+        setTransacoes(records);
+        setContaId((current) => current || accounts[0]?.id || "");
+        setContaDestinoId((current) => current || accounts.find((item) => item.id !== accounts[0]?.id)?.id || "");
+      } catch (error) {
+        console.error("Erro ao carregar registros do Firestore:", error);
+        if (!cancelled) setErroCarregamento("Não foi possível carregar seus dados financeiros.");
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    }
+    void carregarDados();
+    return () => {
+      cancelled = true;
+    };
+  }, [reloadKey]);
 
-  const categoriasReceita = [
-    "Salário",
-    "Freelance",
-    "Aluguel",
-    "Dividendos",
-    "Presente",
-    "Outros",
-  ];
+  const categoriaTipo = tipoRegistro === "income"
+    ? "RECEITA"
+    : tipoRegistro === "expense"
+      ? "DESPESA"
+      : "TRANSFERENCIA";
+  const categoriasVisiveis = categorias.filter((item) =>
+    item.tipo === categoriaTipo || item.tipo === "AMBAS",
+  );
+  const currentDate = new Date();
+  const receitaMes = transacoes
+    .filter((item) => item.tipoMovimentacao === "RECEITA" && item.status === "EFETIVADO" && !item.estornado
+      && item.dataTransacao.getFullYear() === currentDate.getFullYear()
+      && item.dataTransacao.getMonth() === currentDate.getMonth())
+    .reduce((total, item) => total + item.valor, 0);
+  const despesaMes = transacoes
+    .filter((item) => item.tipoMovimentacao === "DESPESA" && item.status === "EFETIVADO" && !item.estornado
+      && item.dataTransacao.getFullYear() === currentDate.getFullYear()
+      && item.dataTransacao.getMonth() === currentDate.getMonth())
+    .reduce((total, item) => total + item.valor, 0);
+  const creditPending = transacoes
+    .filter((item) => item.formaPagamento === "credit" && item.status === "PENDENTE" && !item.estornado
+      && item.dataTransacao.getFullYear() === currentDate.getFullYear()
+      && item.dataTransacao.getMonth() === currentDate.getMonth())
+    .reduce((total, item) => total + item.valor, 0);
 
-  const categoriasDespesa = [
-    "Alimentação",
-    "Transporte",
-    "Moradia",
-    "Saúde",
-    "Lazer",
-    "Educação",
-    "Assinatura",
-    "Tecnologia",
-    "Outros",
-  ];
-
-  const salvarTransacao = () => {
+  const salvarTransacao = async () => {
     let valido = true;
-
     if (!descricao.trim()) {
       setErroDescricao("Informe uma descrição.");
       valido = false;
     } else {
       setErroDescricao("");
     }
-
     if (!valor.trim()) {
       setErroValor("Informe um valor.");
       valido = false;
     } else {
       setErroValor("");
     }
+    const valorNumerico = Number(valor.replace(/\./g, "").replace(",", "."));
+    if (!Number.isFinite(valorNumerico) || valorNumerico <= 0) {
+      setErroValor("Informe um valor maior que zero.");
+      valido = false;
+    }
+    if (!valido) return;
 
-    if (!valido) {
+    const selectedCategory = categoriasVisiveis.find((item) => item.nome === categoria);
+    if (!usuario || !contaId || !selectedCategory) {
+      Alert.alert("Dados incompletos", "Selecione uma conta e uma categoria cadastradas.");
       return;
     }
 
-    const novaTransacao = {
-      id: Date.now().toString(),
-      tipo: tipoRegistro,
-      descricao: descricao.trim(),
-      valor: Number(valor.replace(",", ".")),
-      categoria,
-      formaPagamento:
-        tipoRegistro === "expense" ? formaPagamento : null,
-      parcelas:
-        tipoRegistro === "expense" && formaPagamento === "credit"
-          ? Number(parcelas)
-          : null,
-      diaVencimento:
-        tipoRegistro === "expense" && formaPagamento === "credit"
-          ? Number(diaVencimento)
-          : null,
-      data: new Date().toISOString(),
-    };
+    try {
+      const common = {
+        descricao: descricao.trim(),
+        valor: valorNumerico,
+        dataTransacao: new Date(),
+        status: tipoRegistro === "expense" && formaPagamento === "credit" ? "PENDENTE" as const : "EFETIVADO" as const,
+        criadoPorUsuarioId: usuario.id,
+        criadoPorNome: usuario.nome,
+      };
+      if (tipoRegistro === "transfer") {
+        if (!contaDestinoId || contaDestinoId === contaId) {
+          Alert.alert("Contas inválidas", "Selecione contas de origem e destino diferentes.");
+          return;
+        }
+        await cadastrarTransferencia(db, usuario.familiaId, {
+          ...common,
+          contaOrigemId: contaId,
+          contaDestinoId,
+          categoriaId: selectedCategory.id,
+        });
+      } else {
+        if (tipoRegistro !== "income" && tipoRegistro !== "expense") {
+          Alert.alert("Tipo inválido", "Selecione receita, despesa ou transferência.");
+          return;
+        }
+        await cadastrarTransacao(db, usuario.familiaId, {
+          ...common,
+          contaId,
+          categoriaId: selectedCategory.id,
+          categoriaNome: selectedCategory.nome,
+          tipoMovimentacao: tipoRegistro === "income" ? "RECEITA" : "DESPESA",
+          estornado: false,
+          formaPagamento: tipoRegistro === "expense" ? formaPagamento : "normal",
+          parcelas: tipoRegistro === "expense" && formaPagamento === "credit" ? Number(parcelas) : undefined,
+          diaVencimento: tipoRegistro === "expense" && formaPagamento === "credit" && diaVencimento
+            ? Number(diaVencimento)
+            : undefined,
+        });
+      }
+      setFormAberto(false);
+      limparFormulario();
+      setReloadKey((key) => key + 1);
+    } catch (error) {
+      console.error("Erro ao salvar movimentação:", error);
+      Alert.alert("Erro", error instanceof Error ? error.message : "Não foi possível salvar a movimentação.");
+    }
+  };
 
-    console.log("Nova transação:", novaTransacao);
+  const salvarConta = async () => {
+    if (!usuario || !nomeConta.trim()) {
+      Alert.alert("Dados incompletos", "Informe o nome da conta.");
+      return;
+    }
+    const normalized = saldoInicial.includes(",")
+      ? saldoInicial.replace(/\./g, "").replace(",", ".")
+      : saldoInicial;
+    const balance = Number(normalized);
+    if (!Number.isFinite(balance)) {
+      Alert.alert("Saldo inválido", "Informe um saldo inicial válido.");
+      return;
+    }
+    setIsSavingAccount(true);
+    try {
+      const id = await criarConta(db, usuario.familiaId, usuario.id, {
+        nome: nomeConta.trim(),
+        tipoConta,
+        saldoAtual: balance,
+        ativo: true,
+      });
+      setContas((current) => [...current, {
+        id,
+        nome: nomeConta.trim(),
+        tipoConta,
+        saldoAtual: balance,
+        ativo: true,
+      }]);
+      setContaId(id);
+      setContaAberta(false);
+      setNomeConta("");
+      setSaldoInicial("0");
+    } catch (error) {
+      console.error("Erro ao criar conta:", error);
+      Alert.alert("Erro", error instanceof Error ? error.message : "Não foi possível criar a conta.");
+    } finally {
+      setIsSavingAccount(false);
+    }
+  };
 
-    setFormAberto(false);
+  const efetivarTransacao = async (transacaoId: string) => {
+    if (!usuario) return;
+    try {
+      await efetivarTransacaoPendente(db, usuario.familiaId, transacaoId, usuario.id);
+      setReloadKey((key) => key + 1);
+    } catch (error) {
+      console.error("Erro ao efetivar movimentação:", error);
+      Alert.alert("Erro", error instanceof Error ? error.message : "Não foi possível efetivar a movimentação.");
+    }
   };
 
   const limparFormulario = () => {
@@ -158,36 +252,49 @@ export default function TelaCadastroRegistros() {
 
       <View style={styles.header}>
         <View>
-          <Text style={styles.month}>Agosto 2026</Text>
+          <Text style={styles.month}>{new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(new Date())}</Text>
           <Text style={styles.title}>Registros</Text>
         </View>
 
-        <GradientButton
-          title="+ Novo"
-          onPress={() => setNovoAberto(true)}
-          style={{ minWidth: 70 }}
-        />
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          <GradientButton
+            title="+ Conta"
+            onPress={() => setContaAberta(true)}
+            style={{ minWidth: 76 }}
+          />
+          <GradientButton
+            title="+ Novo"
+            onPress={() => setNovoAberto(true)}
+            style={{ minWidth: 70 }}
+          />
+        </View>
       </View>
 
       <View style={styles.summary}>
         <View style={[styles.summaryCard, styles.incomeCard]}>
           <Text style={styles.summaryLabel}>Receitas</Text>
-          <Text style={styles.incomeValue}>+R$ 1589,21</Text>
+          <Text style={styles.incomeValue}>+{receitaMes.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</Text>
         </View>
 
         <View style={[styles.summaryCard, styles.expenseCard]}>
           <Text style={styles.summaryLabel}>Despesas</Text>
-          <Text style={styles.expenseValue}>-R$ 500,00</Text>
+          <Text style={styles.expenseValue}>-{despesaMes.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</Text>
         </View>
 
         <View style={[styles.summaryCard, styles.creditCard]}>
-          <Text style={styles.summaryLabel}>Crédito</Text>
-          <Text style={styles.creditValue}>R$ 350,33</Text>
+          <Text style={styles.summaryLabel}>Crédito pendente</Text>
+          <Text style={styles.creditValue}>{creditPending.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</Text>
         </View>
       </View>
 
       <View style={styles.transactions}>
-        {transacoes.map((transacao) => (
+        {isLoading ? (
+          <Text style={styles.transactionMeta}>Carregando registros...</Text>
+        ) : erroCarregamento ? (
+          <Text style={styles.errorText}>{erroCarregamento}</Text>
+        ) : transacoes.length === 0 ? (
+          <Text style={styles.transactionMeta}>Nenhuma movimentação registrada.</Text>
+        ) : transacoes.map((transacao) => (
           <View key={transacao.id} style={styles.transactionItem}>
             <View style={styles.transactionIcon}>
               <Text>💰</Text>
@@ -199,22 +306,27 @@ export default function TelaCadastroRegistros() {
               </Text>
 
               <Text style={styles.transactionCategory}>
-                {transacao.categoria}
+                {transacao.categoriaNome}
               </Text>
 
               <Text style={styles.transactionMeta}>
-                👤 Usuário · {transacao.data}
+                {transacao.criadoPorNome} · {transacao.dataTransacao.toLocaleDateString("pt-BR")}
               </Text>
+              {transacao.status === "PENDENTE" ? (
+                <Pressable onPress={() => void efetivarTransacao(transacao.id)}>
+                  <Text style={styles.transactionCategory}>Pendente · tocar para efetivar</Text>
+                </Pressable>
+              ) : null}
             </View>
             <Text
               style={[
                 styles.transactionValue,
-                transacao.tipo === "income"
+                transacao.tipoMovimentacao === "RECEITA" || (transacao.tipoMovimentacao === "TRANSFERENCIA" && transacao.direcaoTransferencia === "ENTRADA")
                   ? styles.incomeTransaction
                   : styles.expenseTransaction,
               ]}
             >
-              {transacao.tipo === "income" ? "+" : "-"}R$ {transacao.valor.toLocaleString("pt-BR", {
+              {transacao.tipoMovimentacao === "RECEITA" || (transacao.tipoMovimentacao === "TRANSFERENCIA" && transacao.direcaoTransferencia === "ENTRADA") ? "+" : "-"}R$ {transacao.valor.toLocaleString("pt-BR", {
                 minimumFractionDigits: 2,
               })}
             </Text>
@@ -257,6 +369,24 @@ export default function TelaCadastroRegistros() {
                 <Text style={styles.modalOptionDescription}>
                   Adicionar uma entrada
                 </Text>
+              </View>
+            </Pressable>
+
+            <Pressable
+              style={styles.modalOption}
+              onPress={() => {
+                limparFormulario();
+                setTipoRegistro("transfer");
+                setNovoAberto(false);
+                setFormAberto(true);
+              }}
+            >
+              <View style={[styles.actionIcon, { backgroundColor: "rgba(96, 165, 250, 0.12)" }]}>
+                <Text style={[styles.actionIconText, { color: colors.info }]}>↔</Text>
+              </View>
+              <View>
+                <Text style={styles.modalOptionTitle}>Transferência</Text>
+                <Text style={styles.modalOptionDescription}>Mover entre duas contas</Text>
               </View>
             </Pressable>
 
@@ -312,11 +442,47 @@ export default function TelaCadastroRegistros() {
             <Text style={styles.modalTitle}>
               {tipoRegistro === "income"
                 ? "Nova Receita"
-                : "Nova Despesa"}
+                : tipoRegistro === "expense"
+                  ? "Nova Despesa"
+                  : "Nova Transferência"}
             </Text>
 
             {/* formulário entra aqui */}
             <View style={styles.formFields}>
+              <Text style={styles.categoryLabel}>
+                {tipoRegistro === "transfer" ? "Conta de origem" : "Conta"}
+              </Text>
+              <View style={styles.categoryList}>
+                {contas.map((item) => (
+                  <Pressable
+                    key={item.id}
+                    style={[styles.categoryButton, contaId === item.id && styles.categoryButtonSelected]}
+                    onPress={() => setContaId(item.id)}
+                  >
+                    <Text style={[styles.categoryText, contaId === item.id && styles.categoryTextSelected]}>
+                      {item.nome}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+              {tipoRegistro === "transfer" && (
+                <>
+                  <Text style={styles.categoryLabel}>Conta de destino</Text>
+                  <View style={styles.categoryList}>
+                    {contas.filter((item) => item.id !== contaId).map((item) => (
+                      <Pressable
+                        key={item.id}
+                        style={[styles.categoryButton, contaDestinoId === item.id && styles.categoryButtonSelected]}
+                        onPress={() => setContaDestinoId(item.id)}
+                      >
+                        <Text style={[styles.categoryText, contaDestinoId === item.id && styles.categoryTextSelected]}>
+                          {item.nome}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </>
+              )}
               <Input
                 label="Descrição"
                 placeholder="Ex: Salário"
@@ -432,25 +598,22 @@ export default function TelaCadastroRegistros() {
               <Text style={styles.categoryLabel}>Categoria</Text>
 
               <View style={styles.categoryList}>
-                {(tipoRegistro === "income"
-                  ? categoriasReceita
-                  : categoriasDespesa
-                ).map((item) => (
+                {categoriasVisiveis.map((item) => (
                   <Pressable
-                    key={item}
+                    key={item.id}
                     style={[
                       styles.categoryButton,
-                      categoria === item && styles.categoryButtonSelected,
+                      categoria === item.nome && styles.categoryButtonSelected,
                     ]}
-                    onPress={() => setCategoria(item)}
+                    onPress={() => setCategoria(item.nome)}
                   >
                     <Text
                       style={[
                         styles.categoryText,
-                        categoria === item && styles.categoryTextSelected,
+                        categoria === item.nome && styles.categoryTextSelected,
                       ]}
                     >
-                      {item}
+                      {item.nome}
                     </Text>
                   </Pressable>
                 ))}
@@ -465,6 +628,51 @@ export default function TelaCadastroRegistros() {
         </View>
       </Modal>
 
+      <Modal
+        visible={contaAberta}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setContaAberta(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Nova conta</Text>
+            <View style={styles.formFields}>
+              <Input label="Nome da conta" value={nomeConta} onChangeText={setNomeConta} placeholder="Ex.: Poupança" />
+              <Text style={styles.categoryLabel}>Tipo da conta</Text>
+              <View style={styles.categoryList}>
+                {([
+                  ["CORRENTE", "Corrente"],
+                  ["POUPANCA", "Poupança"],
+                  ["CARTAO_CREDITO", "Cartão"],
+                  ["CAIXINHA", "Caixinha"],
+                ] as const).map(([value, label]) => (
+                  <Pressable
+                    key={value}
+                    style={[styles.categoryButton, tipoConta === value && styles.categoryButtonSelected]}
+                    onPress={() => setTipoConta(value)}
+                  >
+                    <Text style={[styles.categoryText, tipoConta === value && styles.categoryTextSelected]}>{label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+              <Input
+                label="Saldo inicial"
+                value={saldoInicial}
+                onChangeText={setSaldoInicial}
+                placeholder="0,00"
+                keyboardType="numeric"
+              />
+              <GradientButton
+                title={isSavingAccount ? "Salvando..." : "Criar conta"}
+                onPress={() => void salvarConta()}
+                disabled={isSavingAccount}
+                style={{ marginTop: 12 }}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
 
     </View>
   );

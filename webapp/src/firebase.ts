@@ -3,9 +3,8 @@
 // =============================================================================
 
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getDataConnect, connectDataConnectEmulator } from 'firebase/data-connect';
-import { connectorConfig } from './dataconnect-generated';
+import { connectAuthEmulator, getAuth } from 'firebase/auth';
+import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -16,15 +15,18 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
+if (firebaseConfig.projectId !== 'finup-app6') {
+  throw new Error('O aplicativo web precisa apontar para o projeto Firebase FinUp (finup-app6).')
+}
+
 const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
-export const dataConnect = getDataConnect(app, connectorConfig);
+export const db = getFirestore(app);
 
-if (import.meta.env.VITE_USE_DATA_CONNECT_EMULATOR === 'true') {
-  connectDataConnectEmulator(
-    dataConnect,
-    import.meta.env.VITE_DATA_CONNECT_EMULATOR_HOST || '127.0.0.1',
-    Number(import.meta.env.VITE_DATA_CONNECT_EMULATOR_PORT || 9399),
-  );
+if (import.meta.env.VITE_USE_FIREBASE_EMULATORS === 'true') {
+  const authHost = import.meta.env.VITE_FIREBASE_AUTH_EMULATOR_HOST || '127.0.0.1';
+  const firestoreHost = import.meta.env.VITE_FIREBASE_FIRESTORE_EMULATOR_HOST || '127.0.0.1';
+  connectAuthEmulator(auth, `http://${authHost}:9099`, { disableWarnings: true });
+  connectFirestoreEmulator(db, firestoreHost, 8080);
 }

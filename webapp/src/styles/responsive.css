@@ -57,6 +57,8 @@
   .home-summary-row strong { font-size: 17px; }
   .records-heading { align-items: stretch; flex-direction: column; gap: 16px; }
   .records-create-button { width: 100%; }
+  .records-heading-actions { width: 100%; }
+  .records-heading-actions .records-create-button { width: auto; flex: 1; }
   .records-toolbar { align-items: stretch; flex-direction: column; }
   .records-month-field input { width: 100%; }
   .records-filters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }

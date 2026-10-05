@@ -1,41 +1,23 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
-  criarTransacao,
-  listarTransacoesPorConta,
-  type CriarTransacaoVariables,
-  type ListarTransacoesPorContaData,
-} from '../dataconnect-generated'
-import { dataConnect } from '../firebase'
+  cadastrarTransacao,
+  cadastrarTransferencia,
+  criarConta,
+  efetivarTransacaoPendente,
+  listarCategorias,
+  listarContas,
+  obterExtrato,
+  obterUsuario,
+} from '../../../shared/services/finupService'
+import type { Categoria, Conta, Transacao, Usuario } from '../../../shared/types/finup'
+import { auth, db } from '../firebase'
 import LogoutButton from '../components/LogoutButton'
 import Logo from '../components/Logo'
 import '../App.css'
 
-type TransactionType = 'RECEITA' | 'DESPESA'
+type TransactionType = 'RECEITA' | 'DESPESA' | 'TRANSFERENCIA'
 type TransactionFilter = 'TODOS' | TransactionType
-type Transaction = ListarTransacoesPorContaData['transacaos'][number]
-
-const categories: Record<TransactionType, { id: string; name: string }[]> = {
-  RECEITA: [
-    { id: '10000000-0000-4000-8000-000000000001', name: 'Salário' },
-    { id: '10000000-0000-4000-8000-000000000002', name: 'Freelance' },
-    { id: '10000000-0000-4000-8000-000000000003', name: 'Aluguel' },
-    { id: '10000000-0000-4000-8000-000000000004', name: 'Dividendos' },
-    { id: '10000000-0000-4000-8000-000000000005', name: 'Presente' },
-    { id: '10000000-0000-4000-8000-000000000006', name: 'Outros' },
-  ],
-  DESPESA: [
-    { id: '20000000-0000-4000-8000-000000000001', name: 'Alimentação' },
-    { id: '20000000-0000-4000-8000-000000000002', name: 'Transporte' },
-    { id: '20000000-0000-4000-8000-000000000003', name: 'Moradia' },
-    { id: '20000000-0000-4000-8000-000000000004', name: 'Saúde' },
-    { id: '20000000-0000-4000-8000-000000000005', name: 'Lazer' },
-    { id: '20000000-0000-4000-8000-000000000006', name: 'Educação' },
-    { id: '20000000-0000-4000-8000-000000000007', name: 'Assinatura' },
-    { id: '20000000-0000-4000-8000-000000000008', name: 'Tecnologia' },
-    { id: '20000000-0000-4000-8000-000000000009', name: 'Outros' },
-  ],
-}
 
 const currencyFormatter = new Intl.NumberFormat('pt-BR', {
   style: 'currency',
@@ -57,16 +39,15 @@ function parseAmount(value: string) {
   return Number.isFinite(amount) && amount > 0 ? amount : null
 }
 
-function formatDate(value: string) {
+function formatDate(value: Date) {
   return new Intl.DateTimeFormat('pt-BR', {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
-  }).format(new Date(value))
+  }).format(value)
 }
 
-function getMonth(value: string) {
-  const date = new Date(value)
+function getMonth(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
 }
 
@@ -74,7 +55,10 @@ export default function TelaCadastroRegistros() {
   const [searchParams] = useSearchParams()
   const requestedType = searchParams.get('tipo')
   const initialType: TransactionType = requestedType === 'RECEITA' ? 'RECEITA' : 'DESPESA'
-  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [profile, setProfile] = useState<Usuario | null>(null)
+  const [transactions, setTransactions] = useState<Transacao[]>([])
+  const [accounts, setAccounts] = useState<Conta[]>([])
+  const [categories, setCategories] = useState<Categoria[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
   const [feedback, setFeedback] = useState('')
@@ -82,7 +66,15 @@ export default function TelaCadastroRegistros() {
   const [month, setMonth] = useState(getToday().slice(0, 7))
   const [filter, setFilter] = useState<TransactionFilter>('TODOS')
   const [isFormOpen, setIsFormOpen] = useState(requestedType === 'RECEITA' || requestedType === 'DESPESA')
+  const [isAccountFormOpen, setIsAccountFormOpen] = useState(false)
+  const [accountName, setAccountName] = useState('')
+  const [accountType, setAccountType] = useState<Conta['tipoConta']>('CORRENTE')
+  const [openingBalance, setOpeningBalance] = useState('0')
+  const [accountError, setAccountError] = useState('')
+  const [isSavingAccount, setIsSavingAccount] = useState(false)
   const [transactionType, setTransactionType] = useState<TransactionType>(initialType)
+  const [accountId, setAccountId] = useState('')
+  const [destinationAccountId, setDestinationAccountId] = useState('')
   const [description, setDescription] = useState('')
   const [amount, setAmount] = useState('')
   const [categoryId, setCategoryId] = useState('')
@@ -99,9 +91,22 @@ export default function TelaCadastroRegistros() {
       setLoadError('')
 
       try {
-        const response = await listarTransacoesPorConta(dataConnect)
+        const currentUser = auth.currentUser
+        if (!currentUser) throw new Error('Sua sessão expirou.')
+        const user = await obterUsuario(db, currentUser.uid)
+        if (!user) throw new Error('Não encontramos seu perfil financeiro.')
+        const [items, userAccounts, userCategories] = await Promise.all([
+          obterExtrato(db, user.familiaId),
+          listarContas(db, user.familiaId),
+          listarCategorias(db, user.familiaId),
+        ])
         if (!cancelled) {
-          setTransactions(response.data.transacaos)
+          setProfile(user)
+          setTransactions(items)
+          setAccounts(userAccounts)
+          setCategories(userCategories)
+          setAccountId((current) => current || userAccounts[0]?.id || '')
+          setDestinationAccountId((current) => current || userAccounts.find((account) => account.id !== userAccounts[0]?.id)?.id || '')
         }
       } catch (error) {
         console.error('Erro ao carregar registros:', error)
@@ -126,12 +131,16 @@ export default function TelaCadastroRegistros() {
     filter === 'TODOS' || transaction.tipoMovimentacao === filter,
   )
   const totalIncome = monthTransactions
-    .filter((transaction) => transaction.tipoMovimentacao === 'RECEITA')
+    .filter((transaction) => transaction.tipoMovimentacao === 'RECEITA'
+      && transaction.status === 'EFETIVADO' && !transaction.estornado)
     .reduce((total, transaction) => total + transaction.valor, 0)
   const totalExpenses = monthTransactions
-    .filter((transaction) => transaction.tipoMovimentacao === 'DESPESA')
+    .filter((transaction) => transaction.tipoMovimentacao === 'DESPESA'
+      && transaction.status === 'EFETIVADO' && !transaction.estornado)
     .reduce((total, transaction) => total + transaction.valor, 0)
-  const selectedCategories = categories[transactionType]
+  const selectedCategories = categories.filter((category) =>
+    category.tipo === transactionType || category.tipo === 'AMBAS',
+  )
 
   function openForm(type: TransactionType = 'DESPESA') {
     setTransactionType(type)
@@ -141,6 +150,8 @@ export default function TelaCadastroRegistros() {
     setDate(getToday())
     setStatus('EFETIVADO')
     setFormError('')
+    setAccountId(accounts[0]?.id || '')
+    setDestinationAccountId(accounts.find((account) => account.id !== accounts[0]?.id)?.id || '')
     setIsFormOpen(true)
   }
 
@@ -153,20 +164,50 @@ export default function TelaCadastroRegistros() {
       setFormError('Informe um valor maior que zero.')
       return
     }
+    if (!profile || !accountId) {
+      setFormError('Cadastre ou selecione uma conta para continuar.')
+      return
+    }
+    if (transactionType === 'TRANSFERENCIA' && (!destinationAccountId || destinationAccountId === accountId)) {
+      setFormError('Selecione contas de origem e destino diferentes.')
+      return
+    }
+    const selectedCategory = selectedCategories.find((category) => category.id === categoryId)
+    if (!selectedCategory) {
+      setFormError('Selecione uma categoria.')
+      return
+    }
 
     setIsSaving(true)
     try {
-      const variables = {
-        contaId: null,
-        categoriaId: categoryId,
-        descricao: description.trim(),
-        valor: parsedAmount,
-        dataTransacao: new Date(`${date}T12:00:00`).toISOString(),
-        tipoMovimentacao: transactionType,
-        status,
-      } as unknown as CriarTransacaoVariables
-
-      await criarTransacao(dataConnect, variables)
+      const dataTransacao = new Date(`${date}T12:00:00`)
+      if (transactionType === 'TRANSFERENCIA') {
+        await cadastrarTransferencia(db, profile.familiaId, {
+          contaOrigemId: accountId,
+          contaDestinoId: destinationAccountId,
+          descricao: description.trim(),
+          valor: parsedAmount,
+          dataTransacao,
+          status,
+          criadoPorUsuarioId: profile.id,
+          criadoPorNome: profile.nome,
+          categoriaId: selectedCategory.id,
+        })
+      } else {
+        await cadastrarTransacao(db, profile.familiaId, {
+          descricao: description.trim(),
+          valor: parsedAmount,
+          tipoMovimentacao: transactionType,
+          status,
+          dataTransacao,
+          contaId: accountId,
+          categoriaId: selectedCategory.id,
+          categoriaNome: selectedCategory.nome,
+          criadoPorUsuarioId: profile.id,
+          criadoPorNome: profile.nome,
+          estornado: false,
+        })
+      }
       setIsFormOpen(false)
       setFeedback('Registro salvo.')
       setReloadKey((key) => key + 1)
@@ -178,6 +219,62 @@ export default function TelaCadastroRegistros() {
     }
   }
 
+  async function settleTransaction(transactionId: string) {
+    if (!profile) return
+    try {
+      await efetivarTransacaoPendente(db, profile.familiaId, transactionId, profile.id)
+      setFeedback('Movimentação efetivada e saldo atualizado.')
+      setReloadKey((key) => key + 1)
+    } catch (error) {
+      console.error('Erro ao efetivar movimentação:', error)
+      setFeedback('Não foi possível efetivar a movimentação. Tente novamente.')
+    }
+  }
+
+  async function handleCreateAccount(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setAccountError('')
+    if (!profile || !accountName.trim()) {
+      setAccountError('Informe o nome da conta.')
+      return
+    }
+    const normalizedBalance = openingBalance.includes(',')
+      ? openingBalance.replace(/\./g, '').replace(',', '.')
+      : openingBalance
+    const balance = Number(normalizedBalance)
+    if (!Number.isFinite(balance)) {
+      setAccountError('Informe um saldo inicial válido.')
+      return
+    }
+
+    setIsSavingAccount(true)
+    try {
+      const id = await criarConta(db, profile.familiaId, profile.id, {
+        nome: accountName.trim(),
+        tipoConta: accountType,
+        saldoAtual: balance,
+        ativo: true,
+      })
+      setAccounts((current) => [...current, {
+        id,
+        nome: accountName.trim(),
+        tipoConta: accountType,
+        saldoAtual: balance,
+        ativo: true,
+      }])
+      setAccountId(id)
+      setIsAccountFormOpen(false)
+      setAccountName('')
+      setOpeningBalance('0')
+      setFeedback('Conta criada.')
+    } catch (error) {
+      console.error('Erro ao criar conta:', error)
+      setAccountError('Não foi possível criar a conta. Tente novamente.')
+    } finally {
+      setIsSavingAccount(false)
+    }
+  }
+
   return (
     <main className="home-page records-page">
       <div className="home-shell">
@@ -185,7 +282,7 @@ export default function TelaCadastroRegistros() {
           <Link className="home-brand" to="/inicio" aria-label="FinUp - início">
             <Logo />
           </Link>
-          <div className="records-header-actions">
+          <div className="records-heading-actions">
             <Link className="records-back-link" to="/inicio">Visão geral</Link>
             <LogoutButton />
           </div>
@@ -197,9 +294,14 @@ export default function TelaCadastroRegistros() {
             <h1 id="records-title">Registros</h1>
             <p>Acompanhe receitas e despesas da sua conta.</p>
           </div>
-          <button className="records-create-button" type="button" onClick={() => openForm()}>
-            <span aria-hidden="true">+</span> Novo registro
-          </button>
+          <div className="records-header-actions">
+            <button className="records-secondary-button" type="button" onClick={() => setIsAccountFormOpen(true)}>
+              Nova conta
+            </button>
+            <button className="records-create-button" type="button" onClick={() => openForm()}>
+              <span aria-hidden="true">+</span> Novo registro
+            </button>
+          </div>
         </section>
 
         {feedback && <p className="records-feedback" role="status">{feedback}</p>}
@@ -219,6 +321,7 @@ export default function TelaCadastroRegistros() {
               ['TODOS', 'Todos'],
               ['RECEITA', 'Receitas'],
               ['DESPESA', 'Despesas'],
+              ['TRANSFERENCIA', 'Transferências'],
             ] as const).map(([value, label]) => (
               <button
                 key={value}
@@ -278,26 +381,35 @@ export default function TelaCadastroRegistros() {
               <ul className="records-list">
                 {visibleTransactions.map((transaction) => {
                   const isIncome = transaction.tipoMovimentacao === 'RECEITA'
+                  const isTransfer = transaction.tipoMovimentacao === 'TRANSFERENCIA'
+                  const isTransferIncome = isTransfer && transaction.direcaoTransferencia === 'ENTRADA'
                   return (
                     <li className="records-row" key={transaction.id}>
                       <div className="records-description">
-                        <span className={isIncome ? 'records-type-icon is-income' : 'records-type-icon is-expense'} aria-hidden="true">
-                          {isIncome ? '↑' : '↓'}
+                        <span className={isTransfer ? 'records-type-icon is-transfer' : isIncome ? 'records-type-icon is-income' : 'records-type-icon is-expense'} aria-hidden="true">
+                          {isTransfer ? '↔' : isIncome ? '↑' : '↓'}
                         </span>
                         <span>
                           <strong>{transaction.descricao}</strong>
-                          <small>{transaction.criadoPorUsuario.nome}</small>
+                          <small>{transaction.criadoPorNome} · {accounts.find((account) => account.id === transaction.contaId)?.nome}</small>
                         </span>
                       </div>
-                      <span className="records-category">{transaction.categoria.nome}</span>
-                      <time className="records-date" dateTime={transaction.dataTransacao}>
+                      <span className="records-category">{transaction.categoriaNome}</span>
+                      <time className="records-date" dateTime={transaction.dataTransacao.toISOString()}>
                         {formatDate(transaction.dataTransacao)}
                       </time>
-                      <span className={transaction.status === 'PENDENTE' ? 'records-status is-pending' : 'records-status'}>
-                        {transaction.status === 'PENDENTE' ? 'Pendente' : 'Efetivado'}
+                      <span className="records-row-status">
+                        <span className={transaction.status === 'PENDENTE' ? 'records-status is-pending' : 'records-status'}>
+                          {transaction.status === 'PENDENTE' ? 'Pendente' : 'Efetivado'}
+                        </span>
+                        {transaction.status === 'PENDENTE' && (
+                          <button className="records-retry" type="button" onClick={() => void settleTransaction(transaction.id)}>
+                            Efetivar
+                          </button>
+                        )}
                       </span>
-                      <strong className={isIncome ? 'records-value records-income' : 'records-value records-expense'}>
-                        {isIncome ? '+' : '−'} {currencyFormatter.format(transaction.valor)}
+                      <strong className={isTransfer ? 'records-value' : isIncome ? 'records-value records-income' : 'records-value records-expense'}>
+                        {isIncome || isTransferIncome ? '+' : '−'} {currencyFormatter.format(transaction.valor)}
                       </strong>
                     </li>
                   )
@@ -318,7 +430,9 @@ export default function TelaCadastroRegistros() {
             <header className="records-dialog-header">
               <div>
                 <p className="eyebrow">Novo lançamento</p>
-                <h2 id="records-dialog-title">{transactionType === 'RECEITA' ? 'Nova receita' : 'Nova despesa'}</h2>
+                <h2 id="records-dialog-title">
+                  {transactionType === 'RECEITA' ? 'Nova receita' : transactionType === 'DESPESA' ? 'Nova despesa' : 'Nova transferência'}
+                </h2>
               </div>
               <button className="records-close" type="button" aria-label="Fechar formulário" onClick={() => setIsFormOpen(false)} disabled={isSaving}>
                 ×
@@ -343,7 +457,87 @@ export default function TelaCadastroRegistros() {
                 >
                   ↓ Despesa
                 </button>
+                <button
+                  type="button"
+                  className={transactionType === 'TRANSFERENCIA' ? 'is-selected' : ''}
+                  aria-pressed={transactionType === 'TRANSFERENCIA'}
+                  onClick={() => { setTransactionType('TRANSFERENCIA'); setCategoryId('') }}
+                >
+                  ↔ Transferência
+                </button>
               </div>
+
+              <label htmlFor="record-account">
+                {transactionType === 'TRANSFERENCIA' ? 'Conta de origem' : 'Conta'}
+              </label>
+              <select id="record-account" value={accountId} onChange={(event) => setAccountId(event.target.value)} required>
+                <option value="" disabled>Selecione uma conta</option>
+                {accounts.map((account) => (
+                  <option key={account.id} value={account.id}>{account.nome}</option>
+                ))}
+              </select>
+
+              {transactionType === 'TRANSFERENCIA' && (
+                <>
+                  <label htmlFor="record-destination-account">Conta de destino</label>
+                  <select
+                    id="record-destination-account"
+                    value={destinationAccountId}
+                    onChange={(event) => setDestinationAccountId(event.target.value)}
+                    required
+                  >
+                    <option value="" disabled>Selecione uma conta</option>
+                    {accounts.filter((account) => account.id !== accountId).map((account) => (
+                      <option key={account.id} value={account.id}>{account.nome}</option>
+                    ))}
+                  </select>
+                </>
+              )}
+
+              {isAccountFormOpen && (
+                <div className="records-overlay" onMouseDown={(event) => {
+                  if (event.target === event.currentTarget && !isSavingAccount) setIsAccountFormOpen(false)
+                }}>
+                  <section className="records-dialog" role="dialog" aria-modal="true" aria-labelledby="account-dialog-title">
+                    <header className="records-dialog-header">
+                      <div>
+                        <p className="eyebrow">Contas da família</p>
+                        <h2 id="account-dialog-title">Nova conta</h2>
+                      </div>
+                      <button className="records-close" type="button" aria-label="Fechar formulário" onClick={() => setIsAccountFormOpen(false)} disabled={isSavingAccount}>
+                        ×
+                      </button>
+                    </header>
+                    <form className="records-form" onSubmit={handleCreateAccount}>
+                      <label htmlFor="account-name">Nome</label>
+                      <input id="account-name" value={accountName} onChange={(event) => setAccountName(event.target.value)} maxLength={80} required />
+                      <label htmlFor="account-type">Tipo</label>
+                      <select id="account-type" value={accountType} onChange={(event) => setAccountType(event.target.value as Conta['tipoConta'])}>
+                        <option value="CORRENTE">Conta corrente</option>
+                        <option value="POUPANCA">Poupança</option>
+                        <option value="CARTAO_CREDITO">Cartão de crédito</option>
+                        <option value="CAIXINHA">Caixinha</option>
+                      </select>
+                      <label htmlFor="account-opening-balance">Saldo inicial</label>
+                      <input
+                        id="account-opening-balance"
+                        type="text"
+                        inputMode="decimal"
+                        value={openingBalance}
+                        onChange={(event) => setOpeningBalance(event.target.value)}
+                        required
+                      />
+                      {accountError && <p className="records-form-error" role="alert">{accountError}</p>}
+                      <footer className="records-form-actions">
+                        <button className="records-cancel" type="button" onClick={() => setIsAccountFormOpen(false)} disabled={isSavingAccount}>Cancelar</button>
+                        <button className="records-save" type="submit" disabled={isSavingAccount}>
+                          {isSavingAccount ? 'Salvando...' : 'Criar conta'}
+                        </button>
+                      </footer>
+                    </form>
+                  </section>
+                </div>
+              )}
 
               <label htmlFor="record-description">Descrição</label>
               <input
@@ -351,7 +545,7 @@ export default function TelaCadastroRegistros() {
                 autoFocus
                 value={description}
                 onChange={(event) => setDescription(event.target.value)}
-                placeholder={transactionType === 'RECEITA' ? 'Ex.: Salário' : 'Ex.: Mercado'}
+                placeholder={transactionType === 'RECEITA' ? 'Ex.: Salário' : transactionType === 'DESPESA' ? 'Ex.: Mercado' : 'Ex.: Transferência entre contas'}
                 maxLength={120}
                 required
               />
@@ -382,7 +576,7 @@ export default function TelaCadastroRegistros() {
               <select id="record-category" value={categoryId} onChange={(event) => setCategoryId(event.target.value)} required>
                 <option value="" disabled>Selecione uma categoria</option>
                 {selectedCategories.map((category) => (
-                  <option key={category.id} value={category.id}>{category.name}</option>
+                  <option key={category.id} value={category.id}>{category.nome}</option>
                 ))}
               </select>
 

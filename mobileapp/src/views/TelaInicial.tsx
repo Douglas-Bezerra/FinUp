@@ -1,14 +1,63 @@
 import { StyleSheet, Text, View, Pressable } from "react-native";
+import { useEffect, useState } from "react";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 import { RootStackParamList } from "../navigation/types";
 
 import { colors } from "../styles/colors";
+import { auth, db } from "../firebase";
+import { listarContas, obterExtrato, obterUsuario } from "../../../shared/services/finupService";
 
 export default function TelaInicial() {
     const navigation =
         useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+    const [nomeUsuario, setNomeUsuario] = useState("");
+    const [saldoTotal, setSaldoTotal] = useState(0);
+    const [receitas, setReceitas] = useState(0);
+    const [despesas, setDespesas] = useState(0);
+    const [loadError, setLoadError] = useState("");
+
+    useEffect(() => {
+        let cancelled = false;
+        async function carregarResumo() {
+            try {
+                const currentUser = auth.currentUser;
+                if (!currentUser) throw new Error("Sua sessão expirou.");
+                const profile = await obterUsuario(db, currentUser.uid);
+                if (!profile) throw new Error("Não encontramos seu perfil financeiro.");
+                const [accounts, transactions] = await Promise.all([
+                    listarContas(db, profile.familiaId),
+                    obterExtrato(db, profile.familiaId),
+                ]);
+                if (cancelled) return;
+                setNomeUsuario(profile.nome);
+                setSaldoTotal(accounts.reduce((total, account) => total + account.saldoAtual, 0));
+                const currentMonth = new Date().toISOString().slice(0, 7);
+                setReceitas(transactions
+                    .filter((item) => item.tipoMovimentacao === "RECEITA" && item.status === "EFETIVADO" && !item.estornado
+                        && item.dataTransacao.toISOString().slice(0, 7) === currentMonth)
+                    .reduce((total, item) => total + item.valor, 0));
+                setDespesas(transactions
+                    .filter((item) => item.tipoMovimentacao === "DESPESA" && item.status === "EFETIVADO" && !item.estornado
+                        && item.dataTransacao.toISOString().slice(0, 7) === currentMonth)
+                    .reduce((total, item) => total + item.valor, 0));
+            } catch (error) {
+                console.error("Erro ao carregar resumo financeiro:", error);
+                if (!cancelled) setLoadError("Não foi possível carregar seu resumo financeiro.");
+            }
+        }
+        void carregarResumo();
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
+    const currency = (value: number) => value.toLocaleString("pt-BR", {
+        style: "currency",
+        currency: "BRL",
+        maximumFractionDigits: 2,
+    });
 
     return (
         <View style={styles.container}>
@@ -16,7 +65,7 @@ export default function TelaInicial() {
             {/* Cabeçalho */}
             <View style={styles.header}>
                 <View>
-                    <Text style={styles.greeting}>Bom dia!</Text>
+                    <Text style={styles.greeting}>{nomeUsuario ? `Olá, ${nomeUsuario.split(/\s+/)[0]}` : "Sua vida financeira"}</Text>
                     <Text style={styles.title}>Visão Geral</Text>
                 </View>
 
@@ -85,27 +134,28 @@ export default function TelaInicial() {
                 <Text style={styles.balanceLabel}>SALDO TOTAL</Text>
 
                 <Text style={styles.balance}>
-                    R$ <Text>24.680,50</Text>
+                    {currency(saldoTotal)}
                 </Text>
 
+                {loadError ? <Text style={styles.greeting}>{loadError}</Text> : null}
                 <View style={styles.summary}>
                     <View>
                         <Text style={styles.summaryLabel}>Receitas</Text>
-                        <Text style={styles.income}>+R$ 8.500</Text>
+                        <Text style={styles.income}>+{currency(receitas)}</Text>
                     </View>
 
                     <View style={styles.divider} />
 
                     <View>
                         <Text style={styles.summaryLabel}>Despesas</Text>
-                        <Text style={styles.expense}>-R$ 4.200</Text>
+                        <Text style={styles.expense}>-{currency(despesas)}</Text>
                     </View>
 
                     <View style={styles.divider} />
 
                     <View>
                         <Text style={styles.summaryLabel}>Caixinha</Text>
-                        <Text style={styles.savings}>R$ 2.350</Text>
+                        <Text style={styles.savings}>{currency(0)}</Text>
                     </View>
                 </View>
             </View>

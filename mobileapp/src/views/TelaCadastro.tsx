@@ -12,12 +12,12 @@ import {
   Alert,
 } from "react-native";
 
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { auth } from "../firebase";
+import { createUserWithEmailAndPassword, deleteUser } from "firebase/auth";
+import { auth, db } from "../firebase";
 
 import { colors } from "../styles/colors";
 import { RootStackParamList } from "../navigation/types";
-import { criarUsuario } from "../dataconnect-generated";
+import { criarUsuarioPrincipal } from "../../../shared/services/finupService";
 
 {/* Importando Componentes para "montar" TelaCadastro */ }
 import Input from "../components/Input";
@@ -191,27 +191,43 @@ export default function TelaCadastro() {
                   return;
                 }
                 try {
-                  await createUserWithEmailAndPassword(
+                  const credential = await createUserWithEmailAndPassword(
                     auth,
-                    email.trim(),
+                    email.trim().toLowerCase(),
                     password
                   );
 
-                  await criarUsuario({
-                    nome: name.trim(),
-                    email: email.trim(),
-                    papel: "PRINCIPAL",
-                  });
+                  try {
+                    await criarUsuarioPrincipal(
+                      db,
+                      credential.user.uid,
+                      credential.user.email ?? email,
+                      name.trim()
+                    );
+                  } catch (error) {
+                    try {
+                      await deleteUser(credential.user);
+                    } catch (rollbackError) {
+                      console.error("Falha ao remover a conta após erro no Firestore:", rollbackError);
+                      throw new Error("A conta foi criada, mas não foi possível salvar o perfil nem reverter a autenticação.");
+                    }
+                    throw error;
+                  }
                   Alert.alert(
                     "Conta criada com sucesso!",
                     "Sua conta foi criada. Você já pode fazer login."
                   );
                 }
-                catch (error: any) {
-                  if (error.code === "auth/email-already-in-use") {
+                catch (error: unknown) {
+                  const errorCode = typeof error === "object" && error !== null && "code" in error
+                    ? String(error.code)
+                    : "";
+                  if (errorCode === "auth/email-already-in-use") {
                     setFirebaseError("Este e-mail já está cadastrado.");
                   } else {
-                    setFirebaseError("Não foi possível criar sua conta.");
+                    setFirebaseError(error instanceof Error
+                      ? error.message
+                      : "Não foi possível criar sua conta no Firebase.");
                   }
                 }
               }}
