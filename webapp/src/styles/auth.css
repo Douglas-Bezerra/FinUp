@@ -104,7 +104,7 @@
   display: grid;
   place-items: start;
   min-width: 0;
-  height: 25%;
+  height: 100%;
   padding: 20px 20px;
   box-sizing: border-box;
   border-right: 1px solid var(--finup-border);
