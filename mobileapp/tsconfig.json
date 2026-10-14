@@ -1,3 +1,4 @@
+/*Configuração do TypeScript */
 {
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
