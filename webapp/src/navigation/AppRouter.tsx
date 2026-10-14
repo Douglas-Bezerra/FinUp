@@ -10,6 +10,8 @@ import TelaConvites from '../views/TelaConvites'
 import TelaCadastroRegistros from '../views/TelaCadastroRegistros'
 import TelaLogin from '../views/TelaLogin'
 import TelaInicial from '../views/TelaInicial'
+import TelaMenu from '../views/TelaMenu'
+import TelaGerenciamento from '../views/TelaGerenciamento'
 import ProtectedRoute from './ProtectedRoute'
 
 export default function AppRouter() {
@@ -17,7 +19,9 @@ export default function AppRouter() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<TelaLogin />} />
+        <Route path="/menu" element={<ProtectedRoute><TelaMenu /></ProtectedRoute>} />
         <Route path="/inicio" element={<ProtectedRoute><TelaInicial /></ProtectedRoute>} />
+        <Route path="/gerenciamento" element={<ProtectedRoute><TelaGerenciamento /></ProtectedRoute>} />
         <Route path="/registros" element={<ProtectedRoute><TelaCadastroRegistros /></ProtectedRoute>} />
         <Route path="/cadastro" element={<TelaCadastroUsuario />} />
         <Route path="/convites" element={<ProtectedRoute><TelaConvites /></ProtectedRoute>} />

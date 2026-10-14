@@ -1,0 +1,8 @@
+/* Shared navigation controls. */
+
+.back-button { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; color: var(--finup-muted); font-size: 13px; font-weight: 600; text-decoration: none; }
+.back-button:hover,
+.back-button:focus-visible { color: var(--finup-primary); }
+.back-button:focus-visible { outline: 2px solid var(--finup-primary); outline-offset: 3px; border-radius: 6px; }
+.back-button svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
+.login-logo > .back-button { position: relative; z-index: 1; }

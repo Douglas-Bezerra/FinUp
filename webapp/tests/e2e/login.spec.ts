@@ -47,3 +47,21 @@ test('protege a tela de registros contra acesso sem login', async ({ page }) => 
     page.getByRole('heading', { name: 'Bem-vindo de volta' }),
   ).toBeVisible()
 })
+
+test('protege o gerenciamento financeiro contra acesso sem login', async ({ page }) => {
+  await page.goto('/gerenciamento')
+
+  await expect(page).toHaveURL('/')
+  await expect(
+    page.getByRole('heading', { name: 'Bem-vindo de volta' }),
+  ).toBeVisible()
+})
+
+test('protege o menu contra acesso sem login', async ({ page }) => {
+  await page.goto('/menu')
+
+  await expect(page).toHaveURL('/')
+  await expect(
+    page.getByRole('heading', { name: 'Bem-vindo de volta' }),
+  ).toBeVisible()
+})

@@ -3,9 +3,10 @@
 // =============================================================================
 
 import { useEffect, useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { criarConvite, obterUsuario } from '../../../shared/services/finupService'
 import { auth, db } from '../firebase'
+import BackButton from '../components/BackButton'
 import LogoutButton from '../components/LogoutButton'
 import '../App.css'
 
@@ -76,7 +77,7 @@ export default function TelaConvites() {
   }
 
   if (isLoading) {
-    return <main className="login-page"><p className="welcome">Carregando...</p></main>
+    return <main className="login-page"><BackButton /><p className="welcome">Carregando...</p></main>
   }
 
   return (
@@ -84,7 +85,7 @@ export default function TelaConvites() {
       <section className="login-panel standalone-panel" aria-labelledby="convites-title">
         <div className="login-card">
           <div className="standalone-toolbar">
-            <Link className="back-link" to="/inicio">Voltar para o início</Link>
+            <BackButton />
             <LogoutButton />
           </div>
           <div className="form-heading">

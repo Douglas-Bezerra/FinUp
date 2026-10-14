@@ -90,3 +90,8 @@ webapp/.env.local
 /tests/
 /scripts/
 *.seed.ts
+
+# ============================
+# Arquivos de docx
+# ============================
+*.docx

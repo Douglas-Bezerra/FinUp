@@ -12,6 +12,7 @@ import {
 } from '../../../shared/services/finupService'
 import type { Categoria, Conta, Transacao, Usuario } from '../../../shared/types/finup'
 import { auth, db } from '../firebase'
+import BackButton from '../components/BackButton'
 import LogoutButton from '../components/LogoutButton'
 import Logo from '../components/Logo'
 import '../App.css'
@@ -52,7 +53,7 @@ function getMonth(date: Date) {
 }
 
 export default function TelaCadastroRegistros() {
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const requestedType = searchParams.get('tipo')
   const initialType: TransactionType = requestedType === 'RECEITA' ? 'RECEITA' : 'DESPESA'
   const [profile, setProfile] = useState<Usuario | null>(null)
@@ -83,6 +84,13 @@ export default function TelaCadastroRegistros() {
   const [formError, setFormError] = useState('')
   const [isSaving, setIsSaving] = useState(false)
 
+  function closeForm() {
+    setIsFormOpen(false)
+    if (searchParams.has('tipo')) {
+      setSearchParams({}, { replace: true })
+    }
+  }
+
   useEffect(() => {
     let cancelled = false
 
@@ -105,8 +113,14 @@ export default function TelaCadastroRegistros() {
           setTransactions(items)
           setAccounts(userAccounts)
           setCategories(userCategories)
-          setAccountId((current) => current || userAccounts[0]?.id || '')
-          setDestinationAccountId((current) => current || userAccounts.find((account) => account.id !== userAccounts[0]?.id)?.id || '')
+          const firstActiveAccountId = userAccounts.find((account) => account.ativo)?.id || ''
+          setAccountId((current) => userAccounts.some((account) => account.id === current && account.ativo)
+            ? current
+            : firstActiveAccountId)
+          setDestinationAccountId((current) => userAccounts.some((account) => account.id === current
+            && account.ativo && account.id !== firstActiveAccountId)
+            ? current
+            : userAccounts.find((account) => account.ativo && account.id !== firstActiveAccountId)?.id || '')
         }
       } catch (error) {
         console.error('Erro ao carregar registros:', error)
@@ -139,7 +153,7 @@ export default function TelaCadastroRegistros() {
       && transaction.status === 'EFETIVADO' && !transaction.estornado)
     .reduce((total, transaction) => total + transaction.valor, 0)
   const selectedCategories = categories.filter((category) =>
-    category.tipo === transactionType || category.tipo === 'AMBAS',
+    category.ativo !== false && (category.tipo === transactionType || category.tipo === 'AMBAS'),
   )
 
   function openForm(type: TransactionType = 'DESPESA') {
@@ -208,7 +222,7 @@ export default function TelaCadastroRegistros() {
           estornado: false,
         })
       }
-      setIsFormOpen(false)
+      closeForm()
       setFeedback('Registro salvo.')
       setReloadKey((key) => key + 1)
     } catch (error) {
@@ -279,11 +293,11 @@ export default function TelaCadastroRegistros() {
     <main className="home-page records-page">
       <div className="home-shell">
         <header className="home-header records-header">
-          <Link className="home-brand" to="/inicio" aria-label="FinUp - início">
+          <Link className="home-brand" to="/menu" aria-label="FinUp - menu">
             <Logo />
           </Link>
           <div className="records-heading-actions">
-            <Link className="records-back-link" to="/inicio">Visão geral</Link>
+            <BackButton />
             <LogoutButton />
           </div>
         </header>
@@ -399,10 +413,14 @@ export default function TelaCadastroRegistros() {
                         {formatDate(transaction.dataTransacao)}
                       </time>
                       <span className="records-row-status">
-                        <span className={transaction.status === 'PENDENTE' ? 'records-status is-pending' : 'records-status'}>
-                          {transaction.status === 'PENDENTE' ? 'Pendente' : 'Efetivado'}
+                        <span className={transaction.estornado
+                          ? 'records-status is-cancelled'
+                          : transaction.status === 'PENDENTE' ? 'records-status is-pending' : 'records-status'}>
+                          {transaction.estornado
+                            ? 'Estornado'
+                            : transaction.status === 'PENDENTE' ? 'Pendente' : 'Efetivado'}
                         </span>
-                        {transaction.status === 'PENDENTE' && (
+                        {transaction.status === 'PENDENTE' && !transaction.estornado && (
                           <button className="records-retry" type="button" onClick={() => void settleTransaction(transaction.id)}>
                             Efetivar
                           </button>
@@ -422,9 +440,9 @@ export default function TelaCadastroRegistros() {
 
       {isFormOpen && (
         <div className="records-overlay" onKeyDown={(event) => {
-          if (event.key === 'Escape' && !isSaving) setIsFormOpen(false)
+          if (event.key === 'Escape' && !isSaving) closeForm()
         }} onMouseDown={(event) => {
-          if (event.target === event.currentTarget && !isSaving) setIsFormOpen(false)
+          if (event.target === event.currentTarget && !isSaving) closeForm()
         }}>
           <section className="records-dialog" role="dialog" aria-modal="true" aria-labelledby="records-dialog-title">
             <header className="records-dialog-header">
@@ -434,7 +452,7 @@ export default function TelaCadastroRegistros() {
                   {transactionType === 'RECEITA' ? 'Nova receita' : transactionType === 'DESPESA' ? 'Nova despesa' : 'Nova transferência'}
                 </h2>
               </div>
-              <button className="records-close" type="button" aria-label="Fechar formulário" onClick={() => setIsFormOpen(false)} disabled={isSaving}>
+              <button className="records-close" type="button" aria-label="Fechar formulário" onClick={closeForm} disabled={isSaving}>
                 ×
               </button>
             </header>
@@ -472,7 +490,7 @@ export default function TelaCadastroRegistros() {
               </label>
               <select id="record-account" value={accountId} onChange={(event) => setAccountId(event.target.value)} required>
                 <option value="" disabled>Selecione uma conta</option>
-                {accounts.map((account) => (
+                {accounts.filter((account) => account.ativo).map((account) => (
                   <option key={account.id} value={account.id}>{account.nome}</option>
                 ))}
               </select>
@@ -487,7 +505,7 @@ export default function TelaCadastroRegistros() {
                     required
                   >
                     <option value="" disabled>Selecione uma conta</option>
-                    {accounts.filter((account) => account.id !== accountId).map((account) => (
+                    {accounts.filter((account) => account.ativo && account.id !== accountId).map((account) => (
                       <option key={account.id} value={account.id}>{account.nome}</option>
                     ))}
                   </select>
@@ -589,7 +607,7 @@ export default function TelaCadastroRegistros() {
               {formError && <p className="records-form-error" role="alert">{formError}</p>}
 
               <footer className="records-form-actions">
-                <button className="records-cancel" type="button" onClick={() => setIsFormOpen(false)} disabled={isSaving}>
+                <button className="records-cancel" type="button" onClick={closeForm} disabled={isSaving}>
                   Cancelar
                 </button>
                 <button className="records-save" type="submit" disabled={isSaving}>

@@ -32,9 +32,15 @@ Os aplicativos validam o ID `finup-app6` na inicialização para evitar conexõe
 - `familias/{familiaId}/transacoes/{transacaoId}`: receitas, despesas e registros das duas pontas de uma transferência.
 - `familias/{familiaId}/transferencias/{transferenciaId}`: vínculo atômico das duas pontas de uma transferência.
 - `familias/{familiaId}/logs_atividades/{logId}`: auditoria das operações.
+- `familias/{familiaId}/cartoes_plasticos/{cartaoId}`: cartões associados a uma conta e, opcionalmente, a um membro da família.
+- `familias/{familiaId}/orcamentos_metas/{orcamentoId}`: limite por categoria, usuário e mês (`AAAA-MM`).
+- `familias/{familiaId}/parcelamentos/{parcelamentoId}`: dados do parcelamento e referências à conta/categoria; a geração automática de parcelas ainda não está implementada.
+- `familias/{familiaId}/recorrencias/{recorrenciaId}`: configuração de movimentações recorrentes; a geração automática dos lançamentos ainda não está implementada.
+- `familias/{familiaId}/faturas_cartao/{faturaId}`: totais e status por conta/mês; a agregação automática das compras ainda não está implementada.
+- `instituicoes_bancarias/{instituicaoId}`: catálogo global somente para leitura no cliente. Os documentos devem ser cadastrados por um processo administrativo confiável antes de associar instituições às contas.
 - `convites/{token}`: convites vinculados ao e-mail autenticado.
 
-As regras restringem os documentos financeiros a membros da família e os convites a quem os enviou ou ao e-mail convidado. As consultas atuais usam índices de campo simples; os índices compostos serão adicionados em `firestore.indexes.json` caso novas consultas os exijam.
+As regras restringem os documentos financeiros a membros da família e os convites a quem os enviou ou ao e-mail convidado. Referências a contas, categorias, cartões e usuários são verificadas dentro da família. O Firestore materializa uma coleção ao gravar seu primeiro documento; portanto, as novas subcoleções aparecem ao cadastrar a primeira entidade, sem necessidade de criar coleções vazias. As consultas atuais usam índices de campo simples; os índices compostos serão adicionados em `firestore.indexes.json` caso novas consultas os exijam.
 
 ## Desenvolvimento
 

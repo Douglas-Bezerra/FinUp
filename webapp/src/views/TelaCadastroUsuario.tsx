@@ -4,9 +4,10 @@
 
 import { useState, type FormEvent } from 'react'
 import { createUserWithEmailAndPassword, deleteUser, updateProfile, type User } from 'firebase/auth'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { criarUsuarioPrincipal, criarUsuarioSecundario } from '../../../shared/services/finupService'
 import { auth, db } from '../firebase'
+import BackButton from '../components/BackButton'
 import Logo from '../components/Logo'
 import '../App.css'
 
@@ -116,7 +117,7 @@ export default function TelaCadastroUsuario() {
       if (isInvitation) {
         await criarUsuarioSecundario(db, credential.user.uid, credential.user.email ?? email, name.trim(), invitationToken)
         profileCreated = true
-        navigate('/inicio', { replace: true })
+        navigate('/menu', { replace: true })
       } else {
         await criarUsuarioPrincipal(db, credential.user.uid, credential.user.email ?? email, name.trim())
         profileCreated = true
@@ -164,7 +165,7 @@ export default function TelaCadastroUsuario() {
       <div className="login-layout">
         <div>
           <section className="login-logo" aria-label="FinUp">
-            <Link className="back-link" to="/">Voltar para o login</Link>
+            <BackButton fallback="/" label="Voltar para o login" />
             <Logo />
           </section>
         </div>

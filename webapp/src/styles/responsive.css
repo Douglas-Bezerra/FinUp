@@ -39,6 +39,9 @@
   .showcase-description { font-size: 15px; }
   .login-panel .login-card h2 { font-size: 26px; }
   .home-header { align-items: flex-start; }
+  .home-header .back-button { flex-basis: 100%; }
+  .records-header { align-items: flex-start; }
+  .records-heading-actions { justify-content: space-between; }
   .home-brand .logo-subtitle { display: none; }
   .home-account { flex-wrap: wrap; justify-content: flex-end; }
   .home-account > div:not(.home-avatar) { display: none; }
@@ -58,7 +61,6 @@
   .records-heading { align-items: stretch; flex-direction: column; gap: 16px; }
   .records-create-button { width: 100%; }
   .records-heading-actions { width: 100%; }
-  .records-heading-actions .records-create-button { width: auto; flex: 1; }
   .records-toolbar { align-items: stretch; flex-direction: column; }
   .records-month-field input { width: 100%; }
   .records-filters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }

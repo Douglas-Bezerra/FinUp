@@ -1,3 +1,7 @@
+// shared/services/finupService.ts
+// Serviço que fornece acesso ao banco de dados do Firebase
+// ========================================================
+
 import {
   addDoc,
   collection,
@@ -9,11 +13,19 @@ import {
   runTransaction,
   Timestamp,
   type Firestore,
+  updateDoc,
 } from 'firebase/firestore'
 import type {
   Categoria,
+  CartaoPlastico,
   Conta,
+  FaturaCartao,
+  InstituicaoBancaria,
+  LogAtividade,
+  OrcamentoMeta,
+  Parcelamento,
   PapelUsuario,
+  Recorrencia,
   StatusTransacao,
   TipoMovimentacao,
   Transacao,
@@ -41,6 +53,40 @@ const defaultCategories: Categoria[] = [
 
 function familyCollection(db: Firestore, familyId: string, name: string) {
   return collection(db, 'familias', familyId, name)
+}
+
+function familyDocument(db: Firestore, familyId: string, name: string, id: string) {
+  return doc(db, 'familias', familyId, name, id)
+}
+
+function assertNonEmpty(value: string, label: string) {
+  if (!value.trim()) throw new Error(`${label} não pode ficar vazio.`)
+}
+
+function assertPositive(value: number, label: string) {
+  if (!Number.isFinite(value) || value <= 0) throw new Error(`${label} deve ser maior que zero.`)
+}
+
+function assertMonth(value: string) {
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(value)) throw new Error('Mês de referência inválido; use AAAA-MM.')
+}
+
+function optionalTimestamp(value: Date | null | undefined) {
+  return value ? Timestamp.fromDate(value) : null
+}
+
+function omitUndefined<T extends Record<string, unknown>>(data: T): Partial<T> {
+  return Object.fromEntries(Object.entries(data).filter(([, value]) => value !== undefined)) as Partial<T>
+}
+
+function mapDatedDocument<T>(id: string, data: Record<string, unknown>, dateFields: string[]): T {
+  const mapped: Record<string, unknown> = { ...data, id }
+  for (const field of dateFields) {
+    if (mapped[field] !== null && mapped[field] !== undefined) {
+      mapped[field] = toDate(mapped[field])
+    }
+  }
+  return mapped as T
 }
 
 function toDate(value: unknown): Date {
@@ -173,11 +219,6 @@ export async function criarUsuarioSecundario(
       throw new Error('Este convite expirou.')
     }
 
-    const familyRef = doc(db, 'familias', invite.familiaId)
-    if (!(await transaction.get(familyRef)).exists()) {
-      throw new Error('A família associada ao convite não existe.')
-    }
-
     const now = Timestamp.now()
     transaction.update(inviteRef, {
       statusConvite: 'ACEITO',
@@ -229,6 +270,36 @@ export async function listarContas(db: Firestore, familiaId: string): Promise<Co
   return snapshot.docs.map((account) => ({ id: account.id, ...account.data() }) as Conta)
 }
 
+export async function listarInstituicoesBancarias(db: Firestore): Promise<InstituicaoBancaria[]> {
+  const snapshot = await getDocs(query(collection(db, 'instituicoes_bancarias'), orderBy('nome')))
+  return snapshot.docs.map((institution) => ({
+    id: institution.id,
+    ativo: institution.data().ativo !== false,
+    ...institution.data(),
+  }) as InstituicaoBancaria)
+}
+
+export async function atualizarConta(
+  db: Firestore,
+  familiaId: string,
+  contaId: string,
+  conta: Pick<Conta, 'nome' | 'tipoConta' | 'instituicaoId'>,
+): Promise<void> {
+  await updateDoc(doc(db, 'familias', familiaId, 'contas', contaId), omitUndefined({
+    nome: conta.nome.trim(),
+    tipoConta: conta.tipoConta,
+    instituicaoId: conta.instituicaoId,
+  }))
+}
+
+export async function arquivarConta(db: Firestore, familiaId: string, contaId: string): Promise<void> {
+  await updateDoc(doc(db, 'familias', familiaId, 'contas', contaId), { ativo: false })
+}
+
+export async function ativarConta(db: Firestore, familiaId: string, contaId: string): Promise<void> {
+  await updateDoc(doc(db, 'familias', familiaId, 'contas', contaId), { ativo: true })
+}
+
 export async function criarConta(
   db: Firestore,
   familiaId: string,
@@ -249,7 +320,276 @@ export async function criarConta(
 
 export async function listarCategorias(db: Firestore, familiaId: string): Promise<Categoria[]> {
   const snapshot = await getDocs(query(familyCollection(db, familiaId, 'categorias'), orderBy('nome')))
-  return snapshot.docs.map((category) => ({ id: category.id, ...category.data() }) as Categoria)
+  return snapshot.docs.map((category) => ({
+    id: category.id,
+    ...category.data(),
+    ativo: category.data().ativo !== false,
+  }) as Categoria)
+}
+
+export async function criarCategoria(
+  db: Firestore,
+  familiaId: string,
+  categoria: Omit<Categoria, 'id'>,
+): Promise<string> {
+  const reference = await addDoc(familyCollection(db, familiaId, 'categorias'), {
+    nome: categoria.nome.trim(),
+    icone: categoria.icone,
+    tipo: categoria.tipo,
+    categoriaPaiId: categoria.categoriaPaiId ?? null,
+    ativo: true,
+  })
+  return reference.id
+}
+
+export async function atualizarCategoria(
+  db: Firestore,
+  familiaId: string,
+  categoriaId: string,
+  categoria: Pick<Categoria, 'nome' | 'icone' | 'tipo' | 'categoriaPaiId'>,
+): Promise<void> {
+  await updateDoc(doc(db, 'familias', familiaId, 'categorias', categoriaId), {
+    nome: categoria.nome.trim(),
+    icone: categoria.icone,
+    tipo: categoria.tipo,
+    categoriaPaiId: categoria.categoriaPaiId ?? null,
+  })
+}
+
+export async function arquivarCategoria(
+  db: Firestore,
+  familiaId: string,
+  categoriaId: string,
+): Promise<void> {
+  await updateDoc(doc(db, 'familias', familiaId, 'categorias', categoriaId), { ativo: false })
+}
+
+export async function ativarCategoria(
+  db: Firestore,
+  familiaId: string,
+  categoriaId: string,
+): Promise<void> {
+  await updateDoc(doc(db, 'familias', familiaId, 'categorias', categoriaId), { ativo: true })
+}
+
+export async function listarCartoesPlasticos(db: Firestore, familiaId: string): Promise<CartaoPlastico[]> {
+  const snapshot = await getDocs(query(familyCollection(db, familiaId, 'cartoes_plasticos'), orderBy('nomeExibicao')))
+  return snapshot.docs.map((card) => mapDatedDocument<CartaoPlastico>(
+    card.id,
+    card.data(),
+    ['dataCriacao'],
+  ))
+}
+
+export async function criarCartaoPlastico(
+  db: Firestore,
+  familiaId: string,
+  cartao: Omit<CartaoPlastico, 'id' | 'dataCriacao'>,
+): Promise<string> {
+  assertNonEmpty(cartao.nomeExibicao, 'Nome de exibição')
+  const reference = await addDoc(familyCollection(db, familiaId, 'cartoes_plasticos'), omitUndefined({
+    ...cartao,
+    nomeExibicao: cartao.nomeExibicao.trim(),
+    dataCriacao: Timestamp.now(),
+  }))
+  return reference.id
+}
+
+export async function atualizarCartaoPlastico(
+  db: Firestore,
+  familiaId: string,
+  cartaoId: string,
+  cartao: Pick<CartaoPlastico, 'contaId' | 'usuarioPortadorId' | 'nomeExibicao' | 'bandeira'>,
+): Promise<void> {
+  assertNonEmpty(cartao.nomeExibicao, 'Nome de exibição')
+  await updateDoc(familyDocument(db, familiaId, 'cartoes_plasticos', cartaoId), omitUndefined({
+    ...cartao,
+    nomeExibicao: cartao.nomeExibicao.trim(),
+  }))
+}
+
+export async function arquivarCartaoPlastico(db: Firestore, familiaId: string, cartaoId: string): Promise<void> {
+  await updateDoc(familyDocument(db, familiaId, 'cartoes_plasticos', cartaoId), { ativo: false })
+}
+
+export async function listarOrcamentosMetas(db: Firestore, familiaId: string): Promise<OrcamentoMeta[]> {
+  const snapshot = await getDocs(query(familyCollection(db, familiaId, 'orcamentos_metas'), orderBy('mesAno', 'desc')))
+  return snapshot.docs.map((budget) => mapDatedDocument<OrcamentoMeta>(
+    budget.id,
+    budget.data(),
+    ['dataCriacao'],
+  ))
+}
+
+export async function criarOrcamentoMeta(
+  db: Firestore,
+  familiaId: string,
+  orcamento: Omit<OrcamentoMeta, 'id' | 'dataCriacao'>,
+): Promise<string> {
+  assertPositive(orcamento.valorTeto, 'O teto do orçamento')
+  assertMonth(orcamento.mesAno)
+  const reference = await addDoc(familyCollection(db, familiaId, 'orcamentos_metas'), {
+    ...orcamento,
+    dataCriacao: Timestamp.now(),
+  })
+  return reference.id
+}
+
+export async function atualizarOrcamentoMeta(
+  db: Firestore,
+  familiaId: string,
+  orcamentoId: string,
+  orcamento: Pick<OrcamentoMeta, 'usuarioId' | 'categoriaId' | 'valorTeto' | 'mesAno'>,
+): Promise<void> {
+  assertPositive(orcamento.valorTeto, 'O teto do orçamento')
+  assertMonth(orcamento.mesAno)
+  await updateDoc(familyDocument(db, familiaId, 'orcamentos_metas', orcamentoId), orcamento)
+}
+
+export async function arquivarOrcamentoMeta(db: Firestore, familiaId: string, orcamentoId: string): Promise<void> {
+  await updateDoc(familyDocument(db, familiaId, 'orcamentos_metas', orcamentoId), { ativo: false })
+}
+
+export async function listarParcelamentos(db: Firestore, familiaId: string): Promise<Parcelamento[]> {
+  const snapshot = await getDocs(query(familyCollection(db, familiaId, 'parcelamentos'), orderBy('dataInicio', 'desc')))
+  return snapshot.docs.map((plan) => mapDatedDocument<Parcelamento>(plan.id, plan.data(), ['dataInicio', 'dataCriacao']))
+}
+
+export async function criarParcelamento(
+  db: Firestore,
+  familiaId: string,
+  parcelamento: Omit<Parcelamento, 'id' | 'dataCriacao'>,
+): Promise<string> {
+  assertNonEmpty(parcelamento.descricao, 'Descrição')
+  assertPositive(parcelamento.valorTotal, 'O valor total')
+  if (!Number.isInteger(parcelamento.totalParcelas) || parcelamento.totalParcelas < 1) {
+    throw new Error('O número de parcelas deve ser um inteiro positivo.')
+  }
+  const reference = await addDoc(familyCollection(db, familiaId, 'parcelamentos'), omitUndefined({
+    ...parcelamento,
+    descricao: parcelamento.descricao.trim(),
+    dataInicio: Timestamp.fromDate(parcelamento.dataInicio),
+    dataCriacao: Timestamp.now(),
+  }))
+  return reference.id
+}
+
+export async function atualizarParcelamento(
+  db: Firestore,
+  familiaId: string,
+  parcelamentoId: string,
+  parcelamento: Pick<Parcelamento, 'descricao' | 'valorTotal' | 'totalParcelas' | 'dataInicio' | 'contaId' | 'categoriaId' | 'tipoMovimentacao' | 'cartaoPlasticoId'>,
+): Promise<void> {
+  assertNonEmpty(parcelamento.descricao, 'Descrição')
+  assertPositive(parcelamento.valorTotal, 'O valor total')
+  if (!Number.isInteger(parcelamento.totalParcelas) || parcelamento.totalParcelas < 1) {
+    throw new Error('O número de parcelas deve ser um inteiro positivo.')
+  }
+  await updateDoc(familyDocument(db, familiaId, 'parcelamentos', parcelamentoId), omitUndefined({
+    ...parcelamento,
+    descricao: parcelamento.descricao.trim(),
+    dataInicio: Timestamp.fromDate(parcelamento.dataInicio),
+  }))
+}
+
+export async function arquivarParcelamento(db: Firestore, familiaId: string, parcelamentoId: string): Promise<void> {
+  await updateDoc(familyDocument(db, familiaId, 'parcelamentos', parcelamentoId), { ativo: false })
+}
+
+export async function listarRecorrencias(db: Firestore, familiaId: string): Promise<Recorrencia[]> {
+  const snapshot = await getDocs(query(familyCollection(db, familiaId, 'recorrencias'), orderBy('diaVencimento')))
+  return snapshot.docs.map((recurrence) => mapDatedDocument<Recorrencia>(
+    recurrence.id,
+    recurrence.data(),
+    ['dataProximaExecucao', 'dataFim', 'dataCriacao'],
+  ))
+}
+
+export async function criarRecorrencia(
+  db: Firestore,
+  familiaId: string,
+  recorrencia: Omit<Recorrencia, 'id' | 'dataCriacao'>,
+): Promise<string> {
+  assertNonEmpty(recorrencia.descricao, 'Descrição')
+  assertPositive(recorrencia.valorEstimado, 'O valor estimado')
+  if (!Number.isInteger(recorrencia.diaVencimento) || recorrencia.diaVencimento < 1 || recorrencia.diaVencimento > 31) {
+    throw new Error('O dia de vencimento deve estar entre 1 e 31.')
+  }
+  const reference = await addDoc(familyCollection(db, familiaId, 'recorrencias'), {
+    ...recorrencia,
+    descricao: recorrencia.descricao.trim(),
+    dataProximaExecucao: optionalTimestamp(recorrencia.dataProximaExecucao),
+    dataFim: optionalTimestamp(recorrencia.dataFim),
+    dataCriacao: Timestamp.now(),
+  })
+  return reference.id
+}
+
+export async function atualizarRecorrencia(
+  db: Firestore,
+  familiaId: string,
+  recorrenciaId: string,
+  recorrencia: Pick<Recorrencia, 'descricao' | 'valorEstimado' | 'diaVencimento' | 'dataProximaExecucao' | 'dataFim' | 'contaId' | 'categoriaId' | 'tipoMovimentacao'>,
+): Promise<void> {
+  assertNonEmpty(recorrencia.descricao, 'Descrição')
+  assertPositive(recorrencia.valorEstimado, 'O valor estimado')
+  if (!Number.isInteger(recorrencia.diaVencimento) || recorrencia.diaVencimento < 1 || recorrencia.diaVencimento > 31) {
+    throw new Error('O dia de vencimento deve estar entre 1 e 31.')
+  }
+  await updateDoc(familyDocument(db, familiaId, 'recorrencias', recorrenciaId), {
+    ...recorrencia,
+    descricao: recorrencia.descricao.trim(),
+    dataProximaExecucao: optionalTimestamp(recorrencia.dataProximaExecucao),
+    dataFim: optionalTimestamp(recorrencia.dataFim),
+  })
+}
+
+export async function arquivarRecorrencia(db: Firestore, familiaId: string, recorrenciaId: string): Promise<void> {
+  await updateDoc(familyDocument(db, familiaId, 'recorrencias', recorrenciaId), { ativo: false })
+}
+
+export async function listarFaturasCartao(db: Firestore, familiaId: string): Promise<FaturaCartao[]> {
+  const snapshot = await getDocs(query(familyCollection(db, familiaId, 'faturas_cartao'), orderBy('mesReferencia', 'desc')))
+  return snapshot.docs.map((invoice) => mapDatedDocument<FaturaCartao>(
+    invoice.id,
+    invoice.data(),
+    ['dataCriacao'],
+  ))
+}
+
+export async function criarFaturaCartao(
+  db: Firestore,
+  familiaId: string,
+  fatura: Omit<FaturaCartao, 'id' | 'dataCriacao' | 'valorTotal' | 'valorPago' | 'status'>,
+): Promise<string> {
+  assertMonth(fatura.mesReferencia)
+  const reference = await addDoc(familyCollection(db, familiaId, 'faturas_cartao'), {
+    ...fatura,
+    valorTotal: 0,
+    valorPago: 0,
+    status: 'ABERTA',
+    dataCriacao: Timestamp.now(),
+  })
+  return reference.id
+}
+
+export async function atualizarFaturaCartao(
+  db: Firestore,
+  familiaId: string,
+  faturaId: string,
+  fatura: Pick<FaturaCartao, 'valorTotal' | 'valorPago' | 'status'>,
+): Promise<void> {
+  if (!Number.isFinite(fatura.valorTotal) || fatura.valorTotal < 0
+    || !Number.isFinite(fatura.valorPago) || fatura.valorPago < 0
+    || fatura.valorPago > fatura.valorTotal) {
+    throw new Error('Os valores da fatura são inválidos.')
+  }
+  await updateDoc(familyDocument(db, familiaId, 'faturas_cartao', faturaId), fatura)
+}
+
+export async function listarLogsAtividade(db: Firestore, familiaId: string): Promise<LogAtividade[]> {
+  const snapshot = await getDocs(query(familyCollection(db, familiaId, 'logs_atividades'), orderBy('dataAcao', 'desc')))
+  return snapshot.docs.map((log) => mapDatedDocument<LogAtividade>(log.id, log.data(), ['dataAcao']))
 }
 
 export async function obterExtrato(db: Firestore, familiaId: string): Promise<Transacao[]> {
@@ -409,6 +749,7 @@ export async function cadastrarTransferencia(
       acao: 'CRIAR_TRANSFERENCIA',
       dataAcao: now,
       descricaoSnapshot: input.descricao,
+      valoresAntigos: {},
       valoresNovos: { valor: input.valor, status: input.status },
     })
   })
@@ -430,7 +771,10 @@ export async function efetivarTransacaoPendente(
     const transactionSnapshot = await transaction.get(transactionRef)
     if (!transactionSnapshot.exists()) throw new Error('A movimentação não existe.')
     const data = transactionSnapshot.data()
-    if (data.status !== 'PENDENTE') throw new Error('A movimentação não está pendente.')
+    if (data.status !== 'PENDENTE') {
+      if (data.status === 'EFETIVADO') throw new Error('A movimentação já foi processada.')
+      throw new Error('A movimentação não está pendente.')
+    }
     if (data.estornado) throw new Error('Uma movimentação estornada não pode ser efetivada.')
 
     if (data.tipoMovimentacao === 'TRANSFERENCIA') {
@@ -510,6 +854,348 @@ export async function efetivarTransacaoPendente(
       acao: 'EFETIVAR',
       dataAcao: now,
       descricaoSnapshot: data.descricao,
+    })
+  })
+}
+
+type TransactionEdit = {
+  descricao: string
+  valor: number
+  tipoMovimentacao: 'RECEITA' | 'DESPESA'
+  status: StatusTransacao
+  dataTransacao: Date
+  contaId: string
+  categoriaId: string
+  categoriaNome: string
+}
+
+type TransferEdit = {
+  descricao: string
+  valor: number
+  status: StatusTransacao
+  dataTransacao: Date
+  contaOrigemId: string
+  contaDestinoId: string
+}
+
+function movementEffect(tipo: TipoMovimentacao, status: StatusTransacao, valor: number, estornado: boolean) {
+  if (status !== 'EFETIVADO' || estornado) return 0
+  return balanceDelta(tipo, valor)
+}
+
+function transferEffect(
+  accountId: string,
+  transfer: Record<string, unknown>,
+) {
+  if (transfer.status !== 'EFETIVADO' || transfer.estornado === true) return 0
+  const originId = transfer.contaOrigemId
+  const destinationId = transfer.contaDestinoId
+  const amount = Number(transfer.valor)
+  if (typeof originId !== 'string' || typeof destinationId !== 'string' || !Number.isFinite(amount)) {
+    throw new Error('Os dados da transferência são inválidos.')
+  }
+  if (accountId === originId) return -amount
+  if (accountId === destinationId) return amount
+  return 0
+}
+
+export async function atualizarTransacao(
+  db: Firestore,
+  familiaId: string,
+  transacaoId: string,
+  usuarioId: string,
+  input: TransactionEdit | TransferEdit,
+): Promise<void> {
+  if (!input.descricao.trim()) throw new Error('Informe uma descrição.')
+  assertPositiveAmount(input.valor)
+  const transactionRef = doc(db, 'familias', familiaId, 'transacoes', transacaoId)
+  const logRef = doc(familyCollection(db, familiaId, 'logs_atividades'))
+  const now = Timestamp.now()
+
+  await runTransaction(db, async (transaction) => {
+    const movementSnapshot = await transaction.get(transactionRef)
+    if (!movementSnapshot.exists()) throw new Error('A movimentação não existe.')
+    const movement = movementSnapshot.data()
+    if (movement.estornado) throw new Error('Uma movimentação estornada não pode ser editada.')
+
+    if (movement.tipoMovimentacao === 'TRANSFERENCIA') {
+      if (!('contaOrigemId' in input)) throw new Error('Edite os dados da transferência como uma única operação.')
+      if (input.contaOrigemId === input.contaDestinoId) {
+        throw new Error('A conta de origem e destino devem ser diferentes.')
+      }
+      if (!movement.transferenciaId) throw new Error('A transferência vinculada está incompleta.')
+
+      const transferRef = doc(db, 'familias', familiaId, 'transferencias', movement.transferenciaId)
+      const transferSnapshot = await transaction.get(transferRef)
+      if (!transferSnapshot.exists()) throw new Error('Os dados da transferência não existem.')
+      const transfer = transferSnapshot.data()
+      if (transfer.estornado) throw new Error('Uma transferência estornada não pode ser editada.')
+
+      const originRef = doc(db, 'familias', familiaId, 'transacoes', transfer.transacaoOrigemId)
+      const destinationRef = doc(db, 'familias', familiaId, 'transacoes', transfer.transacaoDestinoId)
+      const [originSnapshot, destinationSnapshot] = await Promise.all([
+        transaction.get(originRef),
+        transaction.get(destinationRef),
+      ])
+      if (!originSnapshot.exists() || !destinationSnapshot.exists()) {
+        throw new Error('Os dados da transferência estão incompletos.')
+      }
+
+      const accountIds = [...new Set([
+        transfer.contaOrigemId,
+        transfer.contaDestinoId,
+        input.contaOrigemId,
+        input.contaDestinoId,
+      ])]
+      const accountRefs = accountIds.map((id) => doc(db, 'familias', familiaId, 'contas', id))
+      const accountSnapshots = await Promise.all(accountRefs.map((reference) => transaction.get(reference)))
+      if (accountSnapshots.some((snapshot) => !snapshot.exists())) throw new Error('Uma conta selecionada não existe.')
+
+      const newTransfer = {
+        contaOrigemId: input.contaOrigemId,
+        contaDestinoId: input.contaDestinoId,
+        valor: input.valor,
+        status: input.status,
+        estornado: false,
+      }
+      accountRefs.forEach((reference, index) => {
+        const accountId = accountIds[index]
+        const account = accountSnapshots[index]?.data()
+        const oldEffect = transferEffect(accountId, transfer)
+        const newEffect = transferEffect(accountId, newTransfer)
+        const balance = Number(account?.saldoAtual)
+        if (!Number.isFinite(balance)) throw new Error('O saldo atual de uma conta é inválido.')
+        if (oldEffect !== newEffect) {
+          const nextBalance = balance + newEffect - oldEffect
+          if (nextBalance < 0 && newEffect < oldEffect) {
+            throw new Error('A conta de origem não tem saldo suficiente para esta alteração.')
+          }
+          transaction.update(reference, {
+            saldoAtual: nextBalance,
+            ultimaMovimentacaoId: accountId === input.contaOrigemId
+              ? transfer.transacaoOrigemId
+              : accountId === input.contaDestinoId
+                ? transfer.transacaoDestinoId
+                : accountId === transfer.contaOrigemId
+                  ? transfer.transacaoOrigemId
+                  : transfer.transacaoDestinoId,
+          })
+        }
+      })
+
+      const sharedMovementUpdate = {
+        descricao: input.descricao.trim(),
+        valor: input.valor,
+        status: input.status,
+        dataTransacao: Timestamp.fromDate(input.dataTransacao),
+        dataAtualizacao: now,
+        atualizadoPorUsuarioId: usuarioId,
+      }
+      transaction.update(originRef, {
+        ...sharedMovementUpdate,
+        contaId: input.contaOrigemId,
+        contaDestinoId: input.contaDestinoId,
+      })
+      transaction.update(destinationRef, {
+        ...sharedMovementUpdate,
+        contaId: input.contaDestinoId,
+        contaDestinoId: input.contaOrigemId,
+      })
+      transaction.update(transferRef, {
+        contaOrigemId: input.contaOrigemId,
+        contaDestinoId: input.contaDestinoId,
+        valor: input.valor,
+        status: input.status,
+        dataTransacao: Timestamp.fromDate(input.dataTransacao),
+        dataAtualizacao: now,
+        estornado: false,
+      })
+      transaction.set(logRef, {
+        transacaoId: movement.transferenciaId,
+        usuarioId,
+        acao: 'EDITAR_TRANSFERENCIA',
+        dataAcao: now,
+        descricaoSnapshot: input.descricao.trim(),
+        valoresAntigos: {
+          descricao: movement.descricao,
+          valor: transfer.valor,
+          status: transfer.status,
+          dataTransacao: transfer.dataTransacao,
+          contaOrigemId: transfer.contaOrigemId,
+          contaDestinoId: transfer.contaDestinoId,
+        },
+        valoresNovos: { valor: input.valor, status: input.status },
+      })
+      return
+    }
+
+    if (!('contaId' in input)) throw new Error('Informe uma conta para a movimentação.')
+    const oldAccountId = movement.contaId
+    if (typeof oldAccountId !== 'string' || !oldAccountId) throw new Error('A movimentação não possui uma conta válida.')
+    const accountIds = [...new Set([oldAccountId, input.contaId])]
+    const accountRefs = accountIds.map((id) => doc(db, 'familias', familiaId, 'contas', id))
+    const accountSnapshots = await Promise.all(accountRefs.map((reference) => transaction.get(reference)))
+    if (accountSnapshots.some((snapshot) => !snapshot.exists())) throw new Error('Uma conta selecionada não existe.')
+    const oldEffect = movementEffect(
+      movement.tipoMovimentacao as TipoMovimentacao,
+      movement.status as StatusTransacao,
+      Number(movement.valor),
+      movement.estornado === true,
+    )
+    const newEffect = movementEffect(input.tipoMovimentacao, input.status, input.valor, false)
+
+    accountRefs.forEach((reference, index) => {
+      const account = accountSnapshots[index].data()
+      const accountId = accountIds[index]
+      const accountOldEffect = accountId === oldAccountId ? oldEffect : 0
+      const accountNewEffect = accountId === input.contaId ? newEffect : 0
+      const balance = Number(account?.saldoAtual)
+      if (!Number.isFinite(balance)) throw new Error('O saldo atual da conta é inválido.')
+      if (accountOldEffect !== accountNewEffect) {
+        transaction.update(reference, {
+          saldoAtual: balance + accountNewEffect - accountOldEffect,
+          ultimaMovimentacaoId: transacaoId,
+        })
+      }
+    })
+
+    transaction.update(transactionRef, {
+      descricao: input.descricao.trim(),
+      valor: input.valor,
+      tipoMovimentacao: input.tipoMovimentacao,
+      status: input.status,
+      dataTransacao: Timestamp.fromDate(input.dataTransacao),
+      contaId: input.contaId,
+      categoriaId: input.categoriaId,
+      categoriaNome: input.categoriaNome,
+      dataAtualizacao: now,
+      atualizadoPorUsuarioId: usuarioId,
+    })
+    transaction.set(logRef, {
+      transacaoId,
+      usuarioId,
+      acao: 'EDITAR',
+      dataAcao: now,
+      descricaoSnapshot: input.descricao.trim(),
+      valoresAntigos: {
+        descricao: movement.descricao,
+        valor: movement.valor,
+        tipoMovimentacao: movement.tipoMovimentacao,
+        status: movement.status,
+        dataTransacao: movement.dataTransacao,
+        contaId: movement.contaId,
+        categoriaId: movement.categoriaId,
+        categoriaNome: movement.categoriaNome,
+      },
+      valoresNovos: { valor: input.valor, status: input.status },
+    })
+  })
+}
+
+export async function estornarTransacao(
+  db: Firestore,
+  familiaId: string,
+  transacaoId: string,
+  usuarioId: string,
+): Promise<void> {
+  const transactionRef = doc(db, 'familias', familiaId, 'transacoes', transacaoId)
+  const logRef = doc(familyCollection(db, familiaId, 'logs_atividades'))
+  const now = Timestamp.now()
+
+  await runTransaction(db, async (transaction) => {
+    const movementSnapshot = await transaction.get(transactionRef)
+    if (!movementSnapshot.exists()) throw new Error('A movimentação não existe.')
+    const movement = movementSnapshot.data()
+    if (movement.estornado) throw new Error('A movimentação já foi estornada.')
+
+    if (movement.tipoMovimentacao === 'TRANSFERENCIA') {
+      if (!movement.transferenciaId) throw new Error('A transferência vinculada está incompleta.')
+      const transferRef = doc(db, 'familias', familiaId, 'transferencias', movement.transferenciaId)
+      const transferSnapshot = await transaction.get(transferRef)
+      if (!transferSnapshot.exists()) throw new Error('Os dados da transferência não existem.')
+      const transfer = transferSnapshot.data()
+      const originRef = doc(db, 'familias', familiaId, 'transacoes', transfer.transacaoOrigemId)
+      const destinationRef = doc(db, 'familias', familiaId, 'transacoes', transfer.transacaoDestinoId)
+      const accountIds = [...new Set([transfer.contaOrigemId, transfer.contaDestinoId])]
+      const accountRefs = accountIds.map((id) => doc(db, 'familias', familiaId, 'contas', id))
+      const [originSnapshot, destinationSnapshot, ...accountSnapshots] = await Promise.all([
+        transaction.get(originRef),
+        transaction.get(destinationRef),
+        ...accountRefs.map((reference) => transaction.get(reference)),
+      ])
+      if (!originSnapshot.exists() || !destinationSnapshot.exists()
+        || accountSnapshots.some((snapshot) => !snapshot.exists())) {
+        throw new Error('Os dados da transferência estão incompletos.')
+      }
+
+      accountRefs.forEach((reference, index) => {
+        const balance = Number(accountSnapshots[index]?.data()?.saldoAtual)
+        if (!Number.isFinite(balance)) throw new Error('O saldo atual de uma conta é inválido.')
+        const effect = transferEffect(accountIds[index], transfer)
+        if (effect !== 0) {
+          transaction.update(reference, {
+            saldoAtual: balance - effect,
+            ultimaMovimentacaoId: accountIds[index] === transfer.contaOrigemId
+              ? transfer.transacaoOrigemId
+              : transfer.transacaoDestinoId,
+          })
+        }
+      })
+
+      transaction.update(originRef, { estornado: true, dataAtualizacao: now, atualizadoPorUsuarioId: usuarioId })
+      transaction.update(destinationRef, { estornado: true, dataAtualizacao: now, atualizadoPorUsuarioId: usuarioId })
+      transaction.update(transferRef, { estornado: true, dataAtualizacao: now })
+      transaction.set(logRef, {
+        transacaoId: movement.transferenciaId,
+        usuarioId,
+        acao: 'ESTORNAR_TRANSFERENCIA',
+        dataAcao: now,
+        descricaoSnapshot: movement.descricao,
+        valoresAntigos: {
+          valor: transfer.valor,
+          status: transfer.status,
+          contaOrigemId: transfer.contaOrigemId,
+          contaDestinoId: transfer.contaDestinoId,
+        },
+        valoresNovos: { estornado: true },
+      })
+      return
+    }
+
+    const accountId = movement.contaId
+    if (typeof accountId !== 'string' || !accountId) throw new Error('A movimentação não possui uma conta válida.')
+    const accountRef = doc(db, 'familias', familiaId, 'contas', accountId)
+    const accountSnapshot = await transaction.get(accountRef)
+    if (!accountSnapshot.exists()) throw new Error('A conta da movimentação não existe.')
+
+    const effect = movementEffect(
+      movement.tipoMovimentacao as TipoMovimentacao,
+      movement.status as StatusTransacao,
+      Number(movement.valor),
+      false,
+    )
+    if (effect !== 0) {
+      const balance = Number(accountSnapshot.data().saldoAtual)
+      if (!Number.isFinite(balance)) throw new Error('O saldo atual da conta é inválido.')
+      transaction.update(accountRef, { saldoAtual: balance - effect, ultimaMovimentacaoId: transacaoId })
+    }
+    transaction.update(transactionRef, {
+      estornado: true,
+      dataAtualizacao: now,
+      atualizadoPorUsuarioId: usuarioId,
+    })
+    transaction.set(logRef, {
+      transacaoId,
+      usuarioId,
+      acao: 'ESTORNAR',
+      dataAcao: now,
+      descricaoSnapshot: movement.descricao,
+      valoresAntigos: {
+        valor: movement.valor,
+        status: movement.status,
+        estornado: movement.estornado,
+      },
+      valoresNovos: { estornado: true },
     })
   })
 }

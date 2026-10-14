@@ -41,7 +41,7 @@ export default function TelaLogin() {
 
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      navigate("/inicio", { replace: true });
+      navigate("/menu", { replace: true });
     } catch (error: unknown) {
       const messages: Record<string, string> = {
         "auth/invalid-credential": "E-mail ou senha incorretos.",

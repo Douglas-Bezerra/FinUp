@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { obterUsuario } from '../../../shared/services/finupService'
 import { auth, db } from '../firebase'
+import BackButton from '../components/BackButton'
 import Logo from '../components/Logo'
 import LogoutButton from '../components/LogoutButton'
 import '../App.css'
@@ -25,18 +26,11 @@ function getFirstName(name: string) {
   return name.trim().split(/\s+/)[0] || 'usuário'
 }
 
-function ActionIcon({ type }: { type: 'income' | 'expense' | 'savings' | 'assistant' | 'invite' }) {
+function ActionIcon({ type }: { type: 'income' | 'expense' | 'savings' | 'assistant' }) {
   if (type === 'income') return <span aria-hidden="true">↑</span>
   if (type === 'expense') return <span aria-hidden="true">↓</span>
   if (type === 'savings') return <span aria-hidden="true">$</span>
-  if (type === 'assistant') return <span aria-hidden="true">✦</span>
-
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-      <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8a2.5 2.5 0 0 1-2.5 2.5H11l-4.5 4v-4H6.5A2.5 2.5 0 0 1 4 13.5v-8Z" />
-      <path d="M8 9h8M8 12h5" />
-    </svg>
-  )
+  return <span aria-hidden="true">✦</span>
 }
 
 export default function TelaInicial() {
@@ -73,6 +67,7 @@ export default function TelaInicial() {
   if (isLoading) {
     return (
       <main className="login-page home-page">
+        <BackButton />
         <p className="welcome">Carregando sua área financeira...</p>
       </main>
     )
@@ -82,6 +77,7 @@ export default function TelaInicial() {
     return (
       <main className="login-page home-page">
         <section className="home-empty-state">
+          <BackButton />
           <Logo />
           <p className="feedback error" role="alert">{feedback}</p>
           <LogoutButton />
@@ -101,9 +97,10 @@ export default function TelaInicial() {
     <main className="home-page">
       <div className="home-shell">
         <header className="home-header">
-          <Link className="home-brand" to="/inicio" aria-label="FinUp - início">
+          <Link className="home-brand" to="/menu" aria-label="FinUp - menu">
             <Logo />
           </Link>
+          <BackButton />
           <div className="home-account">
             <div className="home-avatar" aria-hidden="true">{getFirstName(profile.nome).charAt(0).toUpperCase()}</div>
             <div>
@@ -122,11 +119,11 @@ export default function TelaInicial() {
           </section>
 
           <section className="home-quick-actions" aria-label="Ações rápidas">
-            <Link className="home-quick-action" to="/registros?tipo=RECEITA">
+            <Link className="home-quick-action" to="/registros?tipo=RECEITA" state={{ backTo: '/inicio' }}>
               <span className="home-quick-icon home-quick-icon-income"><ActionIcon type="income" /></span>
               <span>Receita</span>
             </Link>
-            <Link className="home-quick-action" to="/registros?tipo=DESPESA">
+            <Link className="home-quick-action" to="/registros?tipo=DESPESA" state={{ backTo: '/inicio' }}>
               <span className="home-quick-icon home-quick-icon-expense"><ActionIcon type="expense" /></span>
               <span>Despesa</span>
             </Link>
@@ -138,12 +135,6 @@ export default function TelaInicial() {
               <span className="home-quick-icon home-quick-icon-assistant"><ActionIcon type="assistant" /></span>
               <span>Assistente</span>
             </button>
-            {isPrincipal && (
-              <Link className="home-quick-action" to="/convites" title="Convidar usuário">
-                <span className="home-quick-icon home-quick-icon-invite"><ActionIcon type="invite" /></span>
-                <span>Convite</span>
-              </Link>
-            )}
           </section>
         </div>
         {actionFeedback && <p className="home-action-feedback" role="status">{actionFeedback}</p>}
@@ -170,7 +161,7 @@ export default function TelaInicial() {
             <h2>Comece pelo que importa</h2>
             <p>Organize sua primeira conta e acompanhe suas decisões financeiras.</p>
           </div>
-          <Link className="home-action-button" to="/registros">
+          <Link className="home-action-button" to="/registros" state={{ backTo: '/inicio' }}>
             Registrar movimentação
           </Link>
         </section>

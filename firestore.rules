@@ -1,3 +1,7 @@
+// firestore.rules
+// Arquivo que contém as regras de acesso ao banco de dados do Firebase
+// ========================================================================
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -27,6 +31,10 @@ service cloud.firestore {
 
     function transferPath(familyId, transferId) {
       return /databases/$(database)/documents/familias/$(familyId)/transferencias/$(transferId);
+    }
+
+    function familyResourcePath(familyId, collectionName, resourceId) {
+      return /databases/$(database)/documents/familias/$(familyId)/$(collectionName)/$(resourceId);
     }
 
     function familyMember(familyId) {
@@ -117,7 +125,9 @@ service cloud.firestore {
           'contaId', 'contaDestinoId', 'categoriaId', 'categoriaNome',
           'criadoPorUsuarioId', 'criadoPorNome', 'dataCriacao', 'dataAtualizacao',
           'estornado', 'transferenciaId', 'direcaoTransferencia',
-          'atualizadoPorUsuarioId', 'formaPagamento', 'parcelas', 'diaVencimento'
+          'atualizadoPorUsuarioId', 'formaPagamento', 'parcelas', 'diaVencimento',
+          'cartaoPlasticoId', 'parcelamentoId', 'recorrenciaId', 'faturaId',
+          'parcelaAtual', 'observacao'
         ])
         && movement.descricao is string
         && movement.descricao.size() > 0
@@ -132,6 +142,17 @@ service cloud.firestore {
         && movement.dataCriacao is timestamp
         && movement.dataAtualizacao is timestamp
         && movement.estornado == false
+        && (!('cartaoPlasticoId' in movement)
+          || exists(familyResourcePath(familyId, 'cartoes_plasticos', movement.cartaoPlasticoId)))
+        && (!('parcelamentoId' in movement)
+          || exists(familyResourcePath(familyId, 'parcelamentos', movement.parcelamentoId)))
+        && (!('recorrenciaId' in movement)
+          || exists(familyResourcePath(familyId, 'recorrencias', movement.recorrenciaId)))
+        && (!('faturaId' in movement)
+          || exists(familyResourcePath(familyId, 'faturas_cartao', movement.faturaId)))
+        && (!('parcelaAtual' in movement)
+          || (movement.parcelaAtual is int && movement.parcelaAtual > 0))
+        && (!('observacao' in movement) || movement.observacao is string)
         && (
           (movement.tipoMovimentacao == 'TRANSFERENCIA'
             && movement.contaDestinoId is string
@@ -142,7 +163,7 @@ service cloud.firestore {
             movement.tipoMovimentacao in ['RECEITA', 'DESPESA']
             && movement.contaId is string
             && movement.categoriaNome is string
-            && movement.transferenciaId == null
+            && movement.get('transferenciaId', null) == null
           )
         );
     }
@@ -190,6 +211,154 @@ service cloud.firestore {
           : validAccountBalance(familyId, movement.contaId, transactionId, movement));
     }
 
+    function movementEffect(movement) {
+      return movement.status == 'EFETIVADO' && movement.estornado == false
+        ? (movement.tipoMovimentacao == 'RECEITA' ? movement.valor : -movement.valor)
+        : 0;
+    }
+
+    function transferEffect(transfer, accountId) {
+      return transfer.status == 'EFETIVADO' && transfer.get('estornado', false) == false
+        ? (accountId == transfer.contaOrigemId
+          ? -transfer.valor
+          : (accountId == transfer.contaDestinoId ? transfer.valor : 0))
+        : 0;
+    }
+
+    function validAccountDelta(familyId, accountId, movementId, delta) {
+      let path = accountPath(familyId, accountId);
+      let before = get(path).data;
+      let after = getAfter(path).data;
+      return exists(path)
+        && existsAfter(path)
+        && after.saldoAtual == before.saldoAtual + delta
+        && (delta == 0 || after.ultimaMovimentacaoId == movementId);
+    }
+
+    function validTransactionBalanceAdjustment(familyId, transactionId) {
+      let movementPath = transactionPath(familyId, transactionId);
+      let before = get(movementPath).data;
+      let after = getAfter(movementPath).data;
+      let oldAccount = before.contaId;
+      let newAccount = after.contaId;
+      let delta = movementEffect(after) - movementEffect(before);
+      return before.tipoMovimentacao in ['RECEITA', 'DESPESA']
+        && after.tipoMovimentacao in ['RECEITA', 'DESPESA']
+        && exists(accountPath(familyId, oldAccount))
+        && exists(accountPath(familyId, newAccount))
+        && (oldAccount == newAccount
+          ? validAccountDelta(familyId, newAccount, transactionId, delta)
+          : validAccountDelta(familyId, oldAccount, transactionId, -movementEffect(before))
+            && validAccountDelta(familyId, newAccount, transactionId, movementEffect(after)));
+    }
+
+    function validTransferAccountAdjustment(familyId, transferId, accountId) {
+      let beforePath = transferPath(familyId, transferId);
+      let before = get(beforePath).data;
+      let after = getAfter(beforePath).data;
+      let delta = transferEffect(after, accountId) - transferEffect(before, accountId);
+      let movementId = accountId == after.contaOrigemId
+        ? after.transacaoOrigemId
+        : (accountId == after.contaDestinoId
+          ? after.transacaoDestinoId
+          : (accountId == before.contaOrigemId
+            ? before.transacaoOrigemId
+            : before.transacaoDestinoId));
+      return exists(beforePath)
+        && existsAfter(beforePath)
+        && validAccountDelta(familyId, accountId, movementId, delta);
+    }
+
+    function validTransferBalanceAdjustment(familyId, transferId, transfer) {
+      let before = get(transferPath(familyId, transferId)).data;
+      return validTransferAccountAdjustment(familyId, transferId, before.contaOrigemId)
+        && validTransferAccountAdjustment(familyId, transferId, before.contaDestinoId)
+        && validTransferAccountAdjustment(familyId, transferId, transfer.contaOrigemId)
+        && validTransferAccountAdjustment(familyId, transferId, transfer.contaDestinoId);
+    }
+
+    function validTransferAccountAdjustmentFromMovement(familyId, accountId, movementId) {
+      let movement = getAfter(transactionPath(familyId, movementId)).data;
+      return movement.tipoMovimentacao == 'TRANSFERENCIA'
+        && validTransferAccountAdjustment(familyId, movement.transferenciaId, accountId);
+    }
+
+    function validEditableTransaction(familyId, transactionId) {
+      let movement = request.resource.data;
+      return resource.data.tipoMovimentacao in ['RECEITA', 'DESPESA']
+        && resource.data.estornado == false
+        && movement.keys().hasOnly([
+          'descricao', 'valor', 'tipoMovimentacao', 'status', 'dataTransacao',
+          'contaId', 'contaDestinoId', 'categoriaId', 'categoriaNome',
+          'criadoPorUsuarioId', 'criadoPorNome', 'dataCriacao', 'dataAtualizacao',
+          'estornado', 'transferenciaId', 'direcaoTransferencia',
+          'atualizadoPorUsuarioId', 'formaPagamento', 'parcelas', 'diaVencimento',
+          'cartaoPlasticoId', 'parcelamentoId', 'recorrenciaId', 'faturaId',
+          'parcelaAtual', 'observacao'
+        ])
+        && movement.criadoPorUsuarioId == resource.data.criadoPorUsuarioId
+        && movement.criadoPorNome == resource.data.criadoPorNome
+        && movement.dataCriacao == resource.data.dataCriacao
+        && movement.tipoMovimentacao in ['RECEITA', 'DESPESA']
+        && movement.status in ['EFETIVADO', 'PENDENTE']
+        && movement.estornado is bool
+        && movement.valor is number
+        && movement.valor > 0
+        && movement.descricao is string
+        && movement.descricao.size() > 0
+        && movement.dataTransacao is timestamp
+        && movement.dataAtualizacao is timestamp
+        && movement.atualizadoPorUsuarioId == request.auth.uid
+        && movement.contaId is string
+        && movement.categoriaId is string
+        && movement.categoriaNome is string
+        && movement.transferenciaId == null
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'descricao', 'valor', 'tipoMovimentacao', 'status', 'dataTransacao',
+          'contaId', 'categoriaId', 'categoriaNome', 'dataAtualizacao',
+          'estornado', 'atualizadoPorUsuarioId'
+        ])
+        && validTransactionBalanceAdjustment(familyId, transactionId);
+    }
+
+    function validUpdatedTransferLeg(familyId, transactionId, movement) {
+      return resource.data.tipoMovimentacao == 'TRANSFERENCIA'
+        && resource.data.estornado == false
+        && movement.tipoMovimentacao == 'TRANSFERENCIA'
+        && movement.transferenciaId == resource.data.transferenciaId
+        && movement.criadoPorUsuarioId == resource.data.criadoPorUsuarioId
+        && movement.dataCriacao == resource.data.dataCriacao
+        && movement.keys().hasOnly([
+          'descricao', 'valor', 'tipoMovimentacao', 'status', 'dataTransacao',
+          'contaId', 'contaDestinoId', 'categoriaId', 'categoriaNome',
+          'criadoPorUsuarioId', 'criadoPorNome', 'dataCriacao', 'dataAtualizacao',
+          'estornado', 'transferenciaId', 'direcaoTransferencia',
+          'atualizadoPorUsuarioId', 'formaPagamento', 'parcelas', 'diaVencimento',
+          'cartaoPlasticoId', 'parcelamentoId', 'recorrenciaId', 'faturaId',
+          'parcelaAtual', 'observacao'
+        ])
+        && movement.status in ['EFETIVADO', 'PENDENTE']
+        && movement.valor is number
+        && movement.valor > 0
+        && movement.descricao is string
+        && movement.descricao.size() > 0
+        && movement.dataTransacao is timestamp
+        && movement.dataAtualizacao is timestamp
+        && movement.atualizadoPorUsuarioId == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'descricao', 'valor', 'status', 'dataTransacao', 'contaId',
+          'contaDestinoId', 'dataAtualizacao', 'estornado', 'atualizadoPorUsuarioId'
+        ])
+        && existsAfter(transferPath(familyId, movement.transferenciaId))
+        && movement.estornado
+          == getAfter(transferPath(familyId, movement.transferenciaId)).data.get('estornado', false)
+        && validTransferDocument(
+          familyId,
+          movement.transferenciaId,
+          getAfter(transferPath(familyId, movement.transferenciaId)).data
+        );
+    }
+
     function validTransferDocument(familyId, transferId, transfer) {
       let originTransaction = getAfter(transactionPath(familyId, transfer.transacaoOrigemId)).data;
       let destinationTransaction = getAfter(transactionPath(familyId, transfer.transacaoDestinoId)).data;
@@ -201,7 +370,7 @@ service cloud.firestore {
         && transfer.keys().hasOnly([
           'contaOrigemId', 'contaDestinoId', 'transacaoOrigemId',
           'transacaoDestinoId', 'status', 'valor', 'dataTransacao',
-          'criadoPorUsuarioId', 'dataCriacao', 'dataAtualizacao'
+          'criadoPorUsuarioId', 'dataCriacao', 'dataAtualizacao', 'estornado'
         ])
         && transfer.contaOrigemId is string
         && transfer.contaDestinoId is string
@@ -214,7 +383,6 @@ service cloud.firestore {
         && transfer.status in ['EFETIVADO', 'PENDENTE']
         && transfer.dataTransacao is timestamp
         && transfer.dataCriacao is timestamp
-        && transfer.criadoPorUsuarioId == request.auth.uid
         && existsAfter(transactionPath(familyId, transfer.transacaoOrigemId))
         && existsAfter(transactionPath(familyId, transfer.transacaoDestinoId))
         && originTransaction.tipoMovimentacao == 'TRANSFERENCIA'
@@ -233,10 +401,11 @@ service cloud.firestore {
         && destinationTransaction.contaDestinoId == transfer.contaOrigemId
         && originTransaction.criadoPorUsuarioId == transfer.criadoPorUsuarioId
         && destinationTransaction.criadoPorUsuarioId == transfer.criadoPorUsuarioId
+        && originTransaction.descricao == destinationTransaction.descricao
         && originTransaction.dataTransacao == transfer.dataTransacao
         && destinationTransaction.dataTransacao == transfer.dataTransacao
-        && originTransaction.estornado == false
-        && destinationTransaction.estornado == false;
+        && originTransaction.estornado == transfer.get('estornado', false)
+        && destinationTransaction.estornado == transfer.get('estornado', false);
     }
 
     match /usuarios/{userId} {
@@ -277,8 +446,13 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /instituicoes_bancarias/{institutionId} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
     match /familias/{familyId} {
-      allow read: if familyMember(familyId);
+      allow read: if signedIn() && (request.auth.uid == familyId || familyMember(familyId));
       allow create: if signedIn()
         && request.auth.uid == familyId
         && request.resource.data.principalUsuarioId == request.auth.uid;
@@ -289,31 +463,250 @@ service cloud.firestore {
         allow create: if familyMember(familyId)
           && request.resource.data.keys().hasOnly([
             'nome', 'tipoConta', 'saldoAtual', 'limiteTotal', 'diaFechamento',
-            'diaVencimento', 'ativo', 'criadaPorUsuarioId', 'dataCriacao'
+            'diaVencimento', 'ativo', 'criadaPorUsuarioId', 'dataCriacao',
+            'usuarioId', 'instituicaoId'
           ])
           && request.resource.data.nome is string
           && request.resource.data.tipoConta in ['CORRENTE', 'POUPANCA', 'CARTAO_CREDITO', 'CAIXINHA']
           && request.resource.data.saldoAtual is number
           && request.resource.data.ativo == true
           && request.resource.data.criadaPorUsuarioId == request.auth.uid
-          && request.resource.data.dataCriacao is timestamp;
+          && request.resource.data.dataCriacao is timestamp
+          && (request.resource.data.get('usuarioId', null) == null
+            || get(userPath(request.resource.data.usuarioId)).data.familiaId == familyId)
+          && (request.resource.data.get('instituicaoId', null) == null
+            || exists(/databases/$(database)/documents/instituicoes_bancarias/$(request.resource.data.instituicaoId)));
         allow update: if familyMember(familyId)
-          && request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['saldoAtual', 'ultimaMovimentacaoId'])
-          && request.resource.data.saldoAtual is number
-          && request.resource.data.ultimaMovimentacaoId is string
-          && validAccountEffect(familyId, accountId, request.resource.data.ultimaMovimentacaoId);
+          && (
+            (
+              request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['nome', 'tipoConta', 'ativo', 'usuarioId', 'instituicaoId'])
+              && request.resource.data.nome is string
+              && request.resource.data.tipoConta in ['CORRENTE', 'POUPANCA', 'CARTAO_CREDITO', 'CAIXINHA']
+              && request.resource.data.ativo is bool
+              && (request.resource.data.get('usuarioId', null) == null
+                || get(userPath(request.resource.data.usuarioId)).data.familiaId == familyId)
+              && (request.resource.data.get('instituicaoId', null) == null
+                || exists(/databases/$(database)/documents/instituicoes_bancarias/$(request.resource.data.instituicaoId)))
+            )
+            || (
+              request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['saldoAtual', 'ultimaMovimentacaoId'])
+              && 'ultimaMovimentacaoId' in request.resource.data
+              && request.resource.data.saldoAtual is number
+              && request.resource.data.ultimaMovimentacaoId is string
+              && (
+                validAccountEffect(familyId, accountId, request.resource.data.ultimaMovimentacaoId)
+                || validTransactionBalanceAdjustment(
+                  familyId,
+                  request.resource.data.ultimaMovimentacaoId
+                )
+                    || validTransferAccountAdjustmentFromMovement(
+                  familyId,
+                      accountId,
+                      request.resource.data.ultimaMovimentacaoId
+                )
+              )
+            )
+          );
         allow delete: if false;
       }
 
       match /categorias/{categoryId} {
         allow read: if familyMember(familyId);
         allow create: if familyMember(familyId)
-          && request.resource.data.keys().hasOnly(['nome', 'icone', 'tipo'])
+          && request.resource.data.keys().hasOnly(['nome', 'icone', 'tipo', 'ativo', 'categoriaPaiId'])
           && request.resource.data.nome is string
           && request.resource.data.icone is string
-          && request.resource.data.tipo in ['RECEITA', 'DESPESA', 'TRANSFERENCIA', 'AMBAS'];
-        allow update, delete: if false;
+          && request.resource.data.tipo in ['RECEITA', 'DESPESA', 'TRANSFERENCIA', 'AMBAS']
+          && (!('ativo' in request.resource.data) || request.resource.data.ativo == true)
+          && (!('categoriaPaiId' in request.resource.data)
+            || request.resource.data.categoriaPaiId == null
+            || exists(familyResourcePath(familyId, 'categorias', request.resource.data.categoriaPaiId)));
+        allow update: if familyMember(familyId)
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['nome', 'icone', 'tipo', 'ativo', 'categoriaPaiId'])
+          && request.resource.data.nome is string
+          && request.resource.data.icone is string
+          && request.resource.data.tipo in ['RECEITA', 'DESPESA', 'TRANSFERENCIA', 'AMBAS']
+          && (!('ativo' in request.resource.data) || request.resource.data.ativo is bool)
+          && (!('categoriaPaiId' in request.resource.data)
+            || request.resource.data.categoriaPaiId == null
+            || exists(familyResourcePath(familyId, 'categorias', request.resource.data.categoriaPaiId)));
+        allow delete: if false;
+      }
+
+      match /cartoes_plasticos/{cardId} {
+        allow read: if familyMember(familyId);
+        allow create: if familyMember(familyId)
+          && request.resource.data.keys().hasOnly([
+            'contaId', 'usuarioPortadorId', 'nomeExibicao', 'bandeira', 'ativo', 'dataCriacao'
+          ])
+          && request.resource.data.contaId is string
+          && exists(accountPath(familyId, request.resource.data.contaId))
+          && request.resource.data.nomeExibicao is string
+          && request.resource.data.nomeExibicao.size() > 0
+          && request.resource.data.bandeira in ['ELO', 'VISA', 'MASTERCARD', 'AMEX', 'HIPERCARD', 'OUTRA']
+          && request.resource.data.ativo == true
+          && request.resource.data.dataCriacao is timestamp
+          && (!('usuarioPortadorId' in request.resource.data)
+            || request.resource.data.usuarioPortadorId == null
+            || get(userPath(request.resource.data.usuarioPortadorId)).data.familiaId == familyId);
+        allow update: if familyMember(familyId)
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['contaId', 'usuarioPortadorId', 'nomeExibicao', 'bandeira', 'ativo'])
+          && request.resource.data.contaId is string
+          && exists(accountPath(familyId, request.resource.data.contaId))
+          && request.resource.data.nomeExibicao is string
+          && request.resource.data.nomeExibicao.size() > 0
+          && request.resource.data.bandeira in ['ELO', 'VISA', 'MASTERCARD', 'AMEX', 'HIPERCARD', 'OUTRA']
+          && request.resource.data.ativo is bool
+          && (!('usuarioPortadorId' in request.resource.data)
+            || request.resource.data.usuarioPortadorId == null
+            || get(userPath(request.resource.data.usuarioPortadorId)).data.familiaId == familyId);
+        allow delete: if false;
+      }
+
+      match /orcamentos_metas/{budgetId} {
+        allow read: if familyMember(familyId);
+        allow create: if familyMember(familyId)
+          && request.resource.data.keys().hasOnly([
+            'usuarioId', 'categoriaId', 'valorTeto', 'mesAno', 'ativo', 'dataCriacao'
+          ])
+          && request.resource.data.usuarioId == request.auth.uid
+          && exists(familyResourcePath(familyId, 'categorias', request.resource.data.categoriaId))
+          && request.resource.data.valorTeto is number
+          && request.resource.data.valorTeto > 0
+          && request.resource.data.mesAno is string
+          && request.resource.data.mesAno.matches('^[0-9]{4}-(0[1-9]|1[0-2])$')
+          && request.resource.data.ativo == true
+          && request.resource.data.dataCriacao is timestamp;
+        allow update: if familyMember(familyId)
+          && resource.data.usuarioId == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['categoriaId', 'valorTeto', 'mesAno', 'ativo'])
+          && exists(familyResourcePath(familyId, 'categorias', request.resource.data.categoriaId))
+          && request.resource.data.valorTeto is number
+          && request.resource.data.valorTeto > 0
+          && request.resource.data.mesAno.matches('^[0-9]{4}-(0[1-9]|1[0-2])$')
+          && request.resource.data.ativo is bool;
+        allow delete: if false;
+      }
+
+      match /parcelamentos/{installmentId} {
+        allow read: if familyMember(familyId);
+        allow create: if familyMember(familyId)
+          && request.resource.data.keys().hasOnly([
+            'descricao', 'valorTotal', 'totalParcelas', 'dataInicio', 'contaId',
+            'categoriaId', 'tipoMovimentacao', 'cartaoPlasticoId', 'ativo',
+            'criadoPorUsuarioId', 'dataCriacao'
+          ])
+          && request.resource.data.descricao is string
+          && request.resource.data.descricao.size() > 0
+          && request.resource.data.valorTotal is number
+          && request.resource.data.valorTotal > 0
+          && request.resource.data.totalParcelas is int
+          && request.resource.data.totalParcelas > 0
+          && request.resource.data.dataInicio is timestamp
+          && exists(accountPath(familyId, request.resource.data.contaId))
+          && exists(familyResourcePath(familyId, 'categorias', request.resource.data.categoriaId))
+          && request.resource.data.tipoMovimentacao in ['RECEITA', 'DESPESA']
+          && request.resource.data.ativo == true
+          && request.resource.data.criadoPorUsuarioId == request.auth.uid
+          && request.resource.data.dataCriacao is timestamp
+          && (!('cartaoPlasticoId' in request.resource.data)
+            || exists(familyResourcePath(familyId, 'cartoes_plasticos', request.resource.data.cartaoPlasticoId)));
+        allow update: if familyMember(familyId)
+          && resource.data.criadoPorUsuarioId == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'descricao', 'valorTotal', 'totalParcelas', 'dataInicio', 'contaId',
+            'categoriaId', 'tipoMovimentacao', 'cartaoPlasticoId', 'ativo'
+          ])
+          && request.resource.data.descricao is string
+          && request.resource.data.descricao.size() > 0
+          && request.resource.data.valorTotal is number
+          && request.resource.data.valorTotal > 0
+          && request.resource.data.totalParcelas is int
+          && request.resource.data.totalParcelas > 0
+          && request.resource.data.dataInicio is timestamp
+          && exists(accountPath(familyId, request.resource.data.contaId))
+          && exists(familyResourcePath(familyId, 'categorias', request.resource.data.categoriaId))
+          && request.resource.data.tipoMovimentacao in ['RECEITA', 'DESPESA']
+          && request.resource.data.ativo is bool
+          && (!('cartaoPlasticoId' in request.resource.data)
+            || exists(familyResourcePath(familyId, 'cartoes_plasticos', request.resource.data.cartaoPlasticoId)));
+        allow delete: if false;
+      }
+
+      match /recorrencias/{recurrenceId} {
+        allow read: if familyMember(familyId);
+        allow create: if familyMember(familyId)
+          && request.resource.data.keys().hasOnly([
+            'descricao', 'valorEstimado', 'diaVencimento', 'dataProximaExecucao',
+            'dataFim', 'contaId', 'categoriaId', 'tipoMovimentacao', 'ativo',
+            'criadoPorUsuarioId', 'dataCriacao'
+          ])
+          && request.resource.data.descricao is string
+          && request.resource.data.descricao.size() > 0
+          && request.resource.data.valorEstimado is number
+          && request.resource.data.valorEstimado > 0
+          && request.resource.data.diaVencimento is int
+          && request.resource.data.diaVencimento >= 1
+          && request.resource.data.diaVencimento <= 31
+          && (request.resource.data.dataProximaExecucao == null
+            || request.resource.data.dataProximaExecucao is timestamp)
+          && (request.resource.data.dataFim == null || request.resource.data.dataFim is timestamp)
+          && exists(accountPath(familyId, request.resource.data.contaId))
+          && exists(familyResourcePath(familyId, 'categorias', request.resource.data.categoriaId))
+          && request.resource.data.tipoMovimentacao in ['RECEITA', 'DESPESA']
+          && request.resource.data.ativo == true
+          && request.resource.data.criadoPorUsuarioId == request.auth.uid
+          && request.resource.data.dataCriacao is timestamp;
+        allow update: if familyMember(familyId)
+          && resource.data.criadoPorUsuarioId == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'descricao', 'valorEstimado', 'diaVencimento', 'dataProximaExecucao',
+            'dataFim', 'contaId', 'categoriaId', 'tipoMovimentacao', 'ativo'
+          ])
+          && request.resource.data.descricao is string
+          && request.resource.data.descricao.size() > 0
+          && request.resource.data.valorEstimado is number
+          && request.resource.data.valorEstimado > 0
+          && request.resource.data.diaVencimento is int
+          && request.resource.data.diaVencimento >= 1
+          && request.resource.data.diaVencimento <= 31
+          && (request.resource.data.dataProximaExecucao == null
+            || request.resource.data.dataProximaExecucao is timestamp)
+          && (request.resource.data.dataFim == null || request.resource.data.dataFim is timestamp)
+          && exists(accountPath(familyId, request.resource.data.contaId))
+          && exists(familyResourcePath(familyId, 'categorias', request.resource.data.categoriaId))
+          && request.resource.data.tipoMovimentacao in ['RECEITA', 'DESPESA']
+          && request.resource.data.ativo is bool;
+        allow delete: if false;
+      }
+
+      match /faturas_cartao/{invoiceId} {
+        allow read: if familyMember(familyId);
+        allow create: if familyMember(familyId)
+          && request.resource.data.keys().hasOnly([
+            'contaId', 'mesReferencia', 'valorTotal', 'valorPago', 'status', 'dataCriacao'
+          ])
+          && exists(accountPath(familyId, request.resource.data.contaId))
+          && request.resource.data.mesReferencia.matches('^[0-9]{4}-(0[1-9]|1[0-2])$')
+          && request.resource.data.valorTotal == 0
+          && request.resource.data.valorPago == 0
+          && request.resource.data.status == 'ABERTA'
+          && request.resource.data.dataCriacao is timestamp;
+        allow update: if familyMember(familyId)
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['valorTotal', 'valorPago', 'status'])
+          && request.resource.data.valorTotal is number
+          && request.resource.data.valorTotal >= 0
+          && request.resource.data.valorPago is number
+          && request.resource.data.valorPago >= 0
+          && request.resource.data.valorPago <= request.resource.data.valorTotal
+          && request.resource.data.status in ['ABERTA', 'FECHADA', 'PAGA'];
+        allow delete: if false;
       }
 
       match /transacoes/{transactionId} {
@@ -321,7 +714,11 @@ service cloud.firestore {
         allow create: if familyMember(familyId)
           && validNewTransaction(familyId, transactionId, request.resource.data);
         allow update: if familyMember(familyId)
-          && validEffectiveTransactionUpdate(familyId, transactionId);
+          && (
+            validEffectiveTransactionUpdate(familyId, transactionId)
+            || validEditableTransaction(familyId, transactionId)
+            || validUpdatedTransferLeg(familyId, transactionId, request.resource.data)
+          );
         allow delete: if false;
       }
 
@@ -335,20 +732,50 @@ service cloud.firestore {
             || validTransferBalances(familyId, transferId, request.resource.data)
           );
         allow update: if familyMember(familyId)
-          && resource.data.status == 'PENDENTE'
-          && request.resource.data.status == 'EFETIVADO'
-          && request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['status', 'dataAtualizacao'])
-          && request.resource.data.dataAtualizacao is timestamp
-          && validTransferDocument(familyId, transferId, request.resource.data)
-          && validTransferBalances(familyId, transferId, request.resource.data);
+          && (
+            (
+              resource.data.status == 'PENDENTE'
+              && request.resource.data.status == 'EFETIVADO'
+              && request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['status', 'dataAtualizacao'])
+              && request.resource.data.dataAtualizacao is timestamp
+              && validTransferDocument(familyId, transferId, request.resource.data)
+              && validTransferBalances(familyId, transferId, request.resource.data)
+            )
+            || (
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                'contaOrigemId', 'contaDestinoId', 'valor', 'status',
+                'dataTransacao', 'dataAtualizacao', 'estornado'
+              ])
+              && request.resource.data.dataAtualizacao is timestamp
+              && (
+                request.resource.data.estornado == resource.data.get('estornado', false)
+                || request.resource.data.estornado == true
+              )
+              && validTransferDocument(familyId, transferId, request.resource.data)
+              && validTransferBalanceAdjustment(familyId, transferId, request.resource.data)
+            )
+          );
         allow delete: if false;
       }
 
       match /logs_atividades/{logId} {
         allow read: if familyMember(familyId);
         allow create: if familyMember(familyId)
-          && request.resource.data.usuarioId == request.auth.uid;
+          && request.resource.data.keys().hasOnly([
+            'transacaoId', 'usuarioId', 'acao', 'dataAcao',
+            'descricaoSnapshot', 'valoresAntigos', 'valoresNovos'
+          ])
+          && request.resource.data.transacaoId is string
+          && request.resource.data.usuarioId == request.auth.uid
+          && request.resource.data.acao is string
+          && request.resource.data.dataAcao is timestamp
+          && (!('descricaoSnapshot' in request.resource.data)
+            || request.resource.data.descricaoSnapshot is string)
+          && (!('valoresAntigos' in request.resource.data)
+            || request.resource.data.valoresAntigos is map)
+          && (!('valoresNovos' in request.resource.data)
+            || request.resource.data.valoresNovos is map);
         allow update, delete: if false;
       }
 

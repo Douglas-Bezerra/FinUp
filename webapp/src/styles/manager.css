@@ -1,0 +1,46 @@
+.manager-heading { align-items: center; }
+.manager-link-button { text-decoration: none; }
+.manager-tabs { display: flex; gap: 8px; overflow-x: auto; padding: 14px 0; border-top: 1px solid var(--finup-border); }
+.manager-tab { flex: 0 0 auto; min-height: 40px; padding: 0 16px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--finup-muted); cursor: pointer; font: inherit; font-size: 13px; font-weight: 650; }
+.manager-tab:hover,
+.manager-tab:focus-visible { border-color: var(--finup-border); color: var(--finup-foreground); }
+.manager-tab.is-active { border-color: rgba(74, 222, 128, 0.3); background: rgba(74, 222, 128, 0.1); color: var(--finup-primary); }
+.manager-panel { min-height: 260px; padding: 6px 0 24px; }
+.manager-list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.manager-card { display: flex; align-items: center; justify-content: space-between; gap: 18px; min-width: 0; padding: 17px 18px; border: 1px solid var(--finup-border); border-radius: 10px; background: var(--finup-surface); }
+.manager-card.is-archived { opacity: 0.68; }
+.manager-card-main { display: flex; flex: 1; align-items: center; gap: 14px; min-width: 0; }
+.manager-card-main > div { display: grid; gap: 5px; min-width: 0; }
+.manager-card-main strong { overflow: hidden; color: var(--finup-foreground); font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+.manager-card-main span:not(.manager-card-icon):not(.manager-badge) { color: var(--finup-muted); font-size: 12px; }
+.manager-card-icon { display: grid; flex: 0 0 40px; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: rgba(74, 222, 128, 0.12); color: var(--finup-primary); font-size: 21px; }
+.manager-card-icon.is-income { background: rgba(74, 222, 128, 0.12); color: var(--finup-primary); }
+.manager-card-icon.is-expense { background: rgba(255, 107, 107, 0.12); color: var(--finup-danger); }
+.manager-card-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 8px; }
+.manager-action { min-height: 36px; padding: 0 12px; border: 1px solid var(--finup-border); border-radius: 7px; background: transparent; color: var(--finup-muted); cursor: pointer; font: inherit; font-size: 12px; font-weight: 650; }
+.manager-action:hover:not(:disabled),
+.manager-action:focus-visible { border-color: var(--finup-primary); color: var(--finup-primary); }
+.manager-action.is-danger:hover:not(:disabled),
+.manager-action.is-danger:focus-visible { border-color: var(--finup-danger); color: var(--finup-danger); }
+.manager-action:disabled { cursor: not-allowed; opacity: 0.55; }
+.manager-badge { flex: 0 0 auto; padding: 5px 8px; border-radius: 20px; background: rgba(148, 163, 184, 0.12); color: var(--finup-subtle); font-size: 10px; font-weight: 700; }
+.manager-movement-main { flex-wrap: wrap; }
+.manager-movement-main > div { flex: 1; }
+.manager-movement-main small { color: var(--finup-subtle); font-size: 11px; }
+.manager-movement-value { flex: 0 0 auto; color: var(--finup-foreground); font-size: 14px; }
+.manager-empty-link { text-decoration: none; }
+.manager-form-note { margin: 2px 0 0; color: var(--finup-subtle); font-size: 12px; line-height: 1.5; }
+.manager-dialog { max-height: min(90vh, 760px); overflow-y: auto; }
+.manager-dialog .records-form { padding-top: 8px; }
+
+@media (max-width: 600px) {
+  .manager-heading { align-items: stretch; }
+  .manager-heading > .records-create-button { width: 100%; }
+  .manager-card { align-items: stretch; flex-direction: column; gap: 14px; padding: 15px; }
+  .manager-card-actions { justify-content: flex-end; }
+  .manager-movement-main { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 8px 12px; }
+  .manager-movement-main .manager-card-icon { grid-row: 1 / span 2; }
+  .manager-movement-main > div { grid-column: 2 / 4; }
+  .manager-movement-value { grid-column: 2; grid-row: 3; }
+  .manager-movement-main .manager-badge { grid-column: 3; grid-row: 3; justify-self: end; }
+}
