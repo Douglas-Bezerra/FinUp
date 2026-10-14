@@ -120,10 +120,11 @@ export default function TelaLogin() {
             autoCapitalize="none"
           />
           {emailError ? (
-            <Text style={styles.errorText}>
+            <Text style={styles.emailErrorText}>
               {emailError}
             </Text>
           ) : null}
+
 
           <Input
             label="Senha"
@@ -142,10 +143,16 @@ export default function TelaLogin() {
               <Text style={styles.errorText}>
                 {passwordError}
               </Text>
-            ) : null}
+            ) : (
+              <View style={styles.passwordErrorPlaceholder} />
+            )}
 
-            {/* Esqueci senha */}
-            <Pressable style={styles.forgotButton}>
+            <Pressable
+              style={styles.forgotButton}
+              onPress={() => {
+                // Implementar recuperação de senha
+              }}
+            >
               <GradientText style={styles.forgotText}>
                 Esqueci minha senha
               </GradientText>
@@ -217,14 +224,6 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     textAlign: "center",
   },
-  forgotButton: {
-    marginBottom: 40,
-    marginTop: -10,
-  },
-  forgotText: {
-    fontSize: 12,
-    fontWeight: "600",
-  },
   registerArea: {
     justifyContent: "center",
     alignItems: "center",
@@ -239,14 +238,34 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "700",
   },
+
+  passwordFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    width: "100%",
+    marginTop: -10,
+    marginBottom: 30,
+  },
+  passwordErrorPlaceholder: {
+    flex: 1,
+  },
+  forgotButton: {
+    alignItems: "flex-end",
+    justifyContent: "center",
+  },
+  forgotText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
   errorText: {
     color: "#EF4444",
     fontSize: 12,
-    marginTop: -10,
-    marginBottom: 20,
   },
-  passwordFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+  emailErrorText: {
+    color: "#EF4444",
+    fontSize: 12,
+    marginTop: -8,
+    marginBottom: 30,
   },
 });

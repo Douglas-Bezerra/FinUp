@@ -1,3 +1,5 @@
+/*Arquivo para definição de cores do App */
+
 export const colors = {
   background: "#000000",
 

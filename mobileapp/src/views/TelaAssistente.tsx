@@ -132,9 +132,12 @@ export default function TelaAssistente() {
                         Bufunfa
                     </GradientText>
 
-                    <GradientText style={styles.onlineText}>
-                        ● Online · Assistente Financeiro
-                    </GradientText>
+                    <View style={styles.onlineStatus}>
+                        <View style={styles.onlineIndicator} />
+                        <GradientText style={styles.onlineText}>
+                            Online · Assistente Financeiro
+                        </GradientText>
+                    </View>
                 </View>
             </View>
 
@@ -315,9 +318,19 @@ const styles = StyleSheet.create({
         fontWeight: "700",
     },
     onlineText: {
-        color: colors.primary,
         fontSize: 15,
+    },
+    onlineStatus: {
+        flexDirection: "row",
+        alignItems: "center",
         marginTop: 2,
+    },
+    onlineIndicator: {
+        width: 7,
+        height: 7,
+        borderRadius: 4,
+        backgroundColor: "#22C55E",
+        marginRight: 5,
     },
     /* Mensagens */
     messages: {
@@ -358,7 +371,7 @@ const styles = StyleSheet.create({
         borderBottomLeftRadius: 4,
     },
     userBubble: {
-        backgroundColor: colors.primary,
+        backgroundColor: colors.foreground,
         borderBottomRightRadius: 4,
     },
     messageText: {
@@ -452,7 +465,7 @@ const styles = StyleSheet.create({
         justifyContent: "center",
     },
     sendButtonActive: {
-        backgroundColor: colors.primary,
+        backgroundColor: colors.foreground,
     },
     sendButtonInactive: {
         backgroundColor: colors.card,
