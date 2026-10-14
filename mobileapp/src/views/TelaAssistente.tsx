@@ -9,6 +9,8 @@ import {
     Platform,
     Alert,
     Animated,
+    AppState,
+    Linking,
 } from "react-native";
 import { useEffect, useRef, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
@@ -65,6 +67,7 @@ export default function TelaAssistente() {
     const [input, setInput] = useState("");
     const [typing, setTyping] = useState(false);
     const [isListening, setIsListening] = useState(false);
+    const [permissionDenied, setPermissionDenied] = useState(false);
 
     const scrollRef = useRef<ScrollView>(null);
     const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -74,6 +77,26 @@ export default function TelaAssistente() {
             scrollRef.current?.scrollToEnd({ animated: true });
         }, 100);
     }, [messages, typing]);
+
+    // Verificar se a permissão foi concedida após voltar das Configurações
+    useEffect(() => {
+        const checkPermission = async () => {
+            try {
+                const status = await ExpoSpeechRecognitionModule.getPermissionsAsync();
+                if (status.granted) {
+                    setPermissionDenied(false);
+                }
+            } catch {}
+        };
+
+        const sub = AppState.addEventListener("change", (nextState) => {
+            if (nextState === "active") {
+                checkPermission();
+            }
+        });
+
+        return () => sub.remove();
+    }, []);
 
     // Animação de pulso no microfone enquanto escuta
     useEffect(() => {
@@ -137,12 +160,28 @@ export default function TelaAssistente() {
             const perm = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
             if (!perm.granted) {
                 console.log("Permissão recusada:", perm);
-                Alert.alert(
-                    "Permissão necessária",
-                    "Permita o microfone para usar a voz."
-                );
+                setPermissionDenied(true);
+
+                // Se o Android marcou canAskAgain como false, o sistema não abre diálogo; oferecemos ir para as Configurações
+                if (!perm.canAskAgain) {
+                    Alert.alert(
+                        "Permissão do Microfone",
+                        "O Android bloqueou o microfone nas permissões do app. Deseja abrir as Configurações agora para permitir?",
+                        [
+                            { text: "Cancelar", style: "cancel" },
+                            { text: "Abrir Configurações", onPress: () => Linking.openSettings() },
+                        ]
+                    );
+                } else {
+                    Alert.alert(
+                        "Permissão necessária",
+                        "Permita o acesso ao microfone para pesquisar por voz."
+                    );
+                }
                 return;
             }
+
+            setPermissionDenied(false);
 
             await ExpoSpeechRecognitionModule.start({
                 lang: "pt-BR",
@@ -153,7 +192,7 @@ export default function TelaAssistente() {
             console.error("Erro ao iniciar reconhecimento de voz:", error);
             Alert.alert(
                 "Atenção",
-                "O reconhecimento de voz requer um build nativo/desenvolvimento com suporte no Android."
+                "O reconhecimento de voz requer um build nativo com suporte no Android."
             );
             setIsListening(false);
         }
@@ -346,6 +385,22 @@ export default function TelaAssistente() {
                         </Pressable>
                     ))}
                 </ScrollView>
+            )}
+
+            {/* Banner se microfone bloqueado nas permissões do Android */}
+            {permissionDenied && (
+                <View style={styles.permissionBanner}>
+                    <Ionicons name="mic-off-outline" size={18} color="#EF4444" />
+                    <Text style={styles.permissionText}>
+                        Microfone bloqueado no Android.
+                    </Text>
+                    <Pressable
+                        style={styles.permissionBtn}
+                        onPress={() => Linking.openSettings()}
+                    >
+                        <Text style={styles.permissionBtnText}>Configurações</Text>
+                    </Pressable>
+                </View>
             )}
 
             {/* Indicador de escuta */}
@@ -583,6 +638,37 @@ const styles = StyleSheet.create({
         color: colors.mutedForeground,
         fontSize: 15,
     },
+    /* Banner de Permissão */
+    permissionBanner: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        backgroundColor: "rgba(239, 68, 68, 0.12)",
+        borderWidth: 1,
+        borderColor: "rgba(239, 68, 68, 0.3)",
+        borderRadius: 12,
+        marginHorizontal: 16,
+        marginBottom: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        gap: 8,
+    },
+    permissionText: {
+        color: "#FCA5A5",
+        fontSize: 13,
+        flex: 1,
+    },
+    permissionBtn: {
+        backgroundColor: "#EF4444",
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 8,
+    },
+    permissionBtnText: {
+        color: "#FFFFFF",
+        fontSize: 12,
+        fontWeight: "600",
+    },
     /* Indicador de escuta */
     listeningBadge: {
         flexDirection: "row",
@@ -604,10 +690,12 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         alignItems: "flex-end",
         gap: 8,
-        paddingHorizontal: 10,
-        paddingVertical: 30,
+        paddingHorizontal: 16,
+        paddingTop: 10,
+        paddingBottom: Platform.OS === "ios" ? 28 : 16,
         borderTopWidth: 1,
         borderTopColor: colors.border,
+        backgroundColor: colors.background,
     },
     input: {
         flex: 1,
@@ -615,13 +703,16 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: colors.border,
         borderRadius: 12,
-        paddingHorizontal: 10,
+        paddingHorizontal: 14,
+        paddingVertical: 11,
+        minHeight: 46,
+        maxHeight: 110,
         color: colors.foreground,
-        fontSize: 18,
+        fontSize: 15,
     },
     micButton: {
-        width: 48,
-        height: 48,
+        width: 46,
+        height: 46,
         borderRadius: 12,
         backgroundColor: colors.card,
         borderWidth: 1,
@@ -634,8 +725,8 @@ const styles = StyleSheet.create({
         borderColor: colors.danger,
     },
     sendButton: {
-        width: 48,
-        height: 48,
+        width: 46,
+        height: 46,
         borderRadius: 12,
         alignItems: "center",
         justifyContent: "center",
