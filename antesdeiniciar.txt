@@ -1,0 +1,80 @@
+# FinUp: início rápido (Windows CMD)
+# ==================================
+
+Abra o CMD na raiz do projeto, onde estão `firebase.json` e `.firebaserc`.
+O Firebase usado pela web, pelo mobile e pelo Hosting é o projeto `finup-app6`.
+
+## Preparação
+
+Confira e preserve suas alterações locais antes de atualizar o repositório:
+
+01 - git pull origin main
+02 - firebase login
+03 - firebase use finup-app6
+04 - if not exist webapp\.env copy webapp\.env.example webapp\.env
+05 - if not exist mobileapp\.env copy mobileapp\.env.example mobileapp\.env
+06 - npm ci
+07 - cd /d webapp && npm ci && cd /d ..
+08 - cd /d mobileapp && npm ci && cd /d ..
+
+Edite os dois arquivos `.env` locais e informe `VITE_FIREBASE_API_KEY`,
+`VITE_FIREBASE_APP_ID`, `EXPO_PUBLIC_FIREBASE_API_KEY` e
+`EXPO_PUBLIC_FIREBASE_APP_ID` usando a configuração do app web FinUp no
+Firebase Console. Não envie arquivos `.env` ao GitHub; apenas os
+`.env.example` devem ser versionados.
+
+## Executar a aplicação web
+
+No Terminal 01, a partir da raiz do projeto:
+
+09 - cd /d webapp && npm run dev
+
+Abra http://localhost:5173.
+
+## Executar a aplicação mobile
+
+No Terminal 02, a partir da raiz do projeto:
+
+10 - cd /d mobileapp && npm start
+
+Use o QR code com Expo Go ou execute em um emulador Android/iOS.
+
+## Emuladores locais (opcional)
+
+Ative `VITE_USE_FIREBASE_EMULATORS=true` em `webapp\.env` e
+`EXPO_PUBLIC_USE_FIREBASE_EMULATORS=true` em `mobileapp\.env`. O Android
+Emulator acessa a máquina host por `10.0.2.2`; navegador e iOS Simulator
+normalmente usam `127.0.0.1`.
+
+No Terminal 03, a partir da raiz do projeto:
+
+11 - firebase emulators:start --project finup-app6 --only auth,firestore,hosting
+
+Para testar as regras e os fluxos Firestore, é necessário JDK 21 ou superior.
+O teste usa o projeto de demonstração `demo-finup` e não publica dados:
+
+12 - npm run test:firestore
+
+## Validação
+
+Comandos a executar na raiz do projeto:
+
+13 - cd /d webapp && npm run typecheck && npm run lint && npm run build && cd /d ..
+14 - cd /d mobileapp && npx tsc --noEmit -p tsconfig.json && cd /d ..
+15 - cd /d webapp && npx tsc --noEmit -p ..\tsconfig.json && cd /d ..
+
+## Publicação (opcional)
+
+Gere o build web e publique somente se tiver autorização para deploy:
+
+16 - cd /d webapp && npm run build && cd /d .. && firebase deploy --only hosting --project finup-app6
+
+Para publicar regras e índices, também é necessária autorização explícita:
+
+17 - firebase deploy --only firestore:rules,firestore:indexes --project finup-app6
+
+O Hosting utiliza o site `finup-app6`. Links de convite devem ser enviados aos
+convidados; links que apontam para `localhost` só funcionam na sua máquina.
+
+Para encerrar Vite, Expo ou os emuladores, pressione `Ctrl+C` no CMD
+correspondente.
