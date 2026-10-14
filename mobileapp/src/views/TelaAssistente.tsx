@@ -7,9 +7,16 @@ import {
     ScrollView,
     KeyboardAvoidingView,
     Platform,
+    Alert,
+    Animated,
 } from "react-native";
 import { useEffect, useRef, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
+import {
+    ExpoSpeechRecognitionModule,
+    useSpeechRecognitionEvent,
+} from "expo-speech-recognition";
 
 import { colors } from "../styles/colors";
 import GradientText from "../components/GradientText"
@@ -53,17 +60,104 @@ const RESPONSES: Record<string, string> = {
 };
 
 export default function TelaAssistente() {
+    const navigation = useNavigation();
     const [messages, setMessages] = useState<Msg[]>(INITIAL);
     const [input, setInput] = useState("");
     const [typing, setTyping] = useState(false);
+    const [isListening, setIsListening] = useState(false);
 
     const scrollRef = useRef<ScrollView>(null);
+    const pulseAnim = useRef(new Animated.Value(1)).current;
 
     useEffect(() => {
         setTimeout(() => {
             scrollRef.current?.scrollToEnd({ animated: true });
         }, 100);
     }, [messages, typing]);
+
+    // Animação de pulso no microfone enquanto escuta
+    useEffect(() => {
+        if (isListening) {
+            Animated.loop(
+                Animated.sequence([
+                    Animated.timing(pulseAnim, {
+                        toValue: 1.15,
+                        duration: 600,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(pulseAnim, {
+                        toValue: 1,
+                        duration: 600,
+                        useNativeDriver: true,
+                    }),
+                ])
+            ).start();
+        } else {
+            pulseAnim.setValue(1);
+        }
+    }, [isListening]);
+
+    // Eventos do reconhecimento de voz
+    useSpeechRecognitionEvent("start", () => {
+        console.log("Voz iniciada");
+        setIsListening(true);
+    });
+
+    useSpeechRecognitionEvent("end", () => {
+        console.log("Voz finalizada");
+        setIsListening(false);
+    });
+
+    useSpeechRecognitionEvent("result", (event) => {
+        if (event.results && event.results.length > 0) {
+            const transcript = event.results[0]?.transcript;
+            if (transcript) {
+                setInput(transcript);
+            }
+        }
+    });
+
+    useSpeechRecognitionEvent("error", (event) => {
+        console.log("Erro de voz:", event);
+        setIsListening(false);
+    });
+
+    const handleToggleListening = async () => {
+        if (isListening) {
+            try {
+                ExpoSpeechRecognitionModule.stop();
+            } catch (err) {
+                console.error("Erro ao parar gravação:", err);
+            }
+            setIsListening(false);
+            return;
+        }
+
+        try {
+            const perm = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+            if (!perm.granted) {
+                console.log("Permissão recusada:", perm);
+                Alert.alert(
+                    "Permissão necessária",
+                    "Permita o microfone para usar a voz."
+                );
+                return;
+            }
+
+            await ExpoSpeechRecognitionModule.start({
+                lang: "pt-BR",
+                interimResults: true,
+                continuous: false,
+            });
+        } catch (error) {
+            console.error("Erro ao iniciar reconhecimento de voz:", error);
+            Alert.alert(
+                "Atenção",
+                "O reconhecimento de voz requer um build nativo/desenvolvimento com suporte no Android."
+            );
+            setIsListening(false);
+        }
+    };
 
     function now() {
         return new Date().toLocaleTimeString("pt-BR", {
@@ -74,6 +168,13 @@ export default function TelaAssistente() {
 
     function send(text: string) {
         if (!text.trim() || typing) return;
+
+        if (isListening) {
+            try {
+                ExpoSpeechRecognitionModule.stop();
+            } catch {}
+            setIsListening(false);
+        }
 
         const userMsg: Msg = {
             id: Date.now(),
@@ -108,10 +209,19 @@ export default function TelaAssistente() {
     return (
         <KeyboardAvoidingView
             style={styles.container}
-            behavior={Platform.OS === "ios" ? "padding" : undefined}
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 25}
         >
             {/* Cabeçalho */}
             <View style={styles.header}>
+                <Pressable
+                    style={styles.backButton}
+                    onPress={() => navigation.goBack()}
+                    hitSlop={12}
+                >
+                    <Ionicons name="arrow-back" size={22} color={colors.foreground} />
+                </Pressable>
+
                 <LinearGradient
                     colors={colors.gradient.colors}
                     start={colors.gradient.start}
@@ -122,8 +232,6 @@ export default function TelaAssistente() {
                         <GradientText style={styles.finnSymbol}>
                             ✦
                         </GradientText>
-
-
                     </View>
                 </LinearGradient>
 
@@ -202,7 +310,6 @@ export default function TelaAssistente() {
                 {/* Digitando */}
                 {typing && (
                     <View style={styles.messageRow}>
-
                         <GradientText style={styles.botIconText}>
                             ✦
                         </GradientText>
@@ -241,6 +348,16 @@ export default function TelaAssistente() {
                 </ScrollView>
             )}
 
+            {/* Indicador de escuta */}
+            {isListening && (
+                <View style={styles.listeningBadge}>
+                    <Ionicons name="radio" size={14} color={colors.danger} />
+                    <Text style={styles.listeningText}>
+                        Ouvindo... Fale agora
+                    </Text>
+                </View>
+            )}
+
             {/* Campo de mensagem */}
             <View style={styles.inputContainer}>
                 <TextInput
@@ -256,6 +373,25 @@ export default function TelaAssistente() {
                     blurOnSubmit={false}
                 />
 
+                {/* Botão de Microfone */}
+                <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+                    <Pressable
+                        style={[
+                            styles.micButton,
+                            isListening && styles.micButtonListening,
+                        ]}
+                        onPress={handleToggleListening}
+                        disabled={typing}
+                    >
+                        <Ionicons
+                            name={isListening ? "mic" : "mic-outline"}
+                            size={18}
+                            color={isListening ? "#FFFFFF" : colors.foreground}
+                        />
+                    </Pressable>
+                </Animated.View>
+
+                {/* Botão de Enviar */}
                 <Pressable
                     style={[
                         styles.sendButton,
@@ -294,6 +430,16 @@ const styles = StyleSheet.create({
         paddingTop: 30,
         paddingBottom: 14,
         gap: 12,
+    },
+    backButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        backgroundColor: colors.card,
+        borderWidth: 1,
+        borderColor: colors.border,
+        alignItems: "center",
+        justifyContent: "center",
     },
     finnIcon: {
         flex: 1,
@@ -437,6 +583,22 @@ const styles = StyleSheet.create({
         color: colors.mutedForeground,
         fontSize: 15,
     },
+    /* Indicador de escuta */
+    listeningBadge: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 6,
+        backgroundColor: "rgba(255, 107, 107, 0.12)",
+        paddingVertical: 6,
+        borderTopWidth: 1,
+        borderTopColor: "rgba(255, 107, 107, 0.2)",
+    },
+    listeningText: {
+        color: colors.danger,
+        fontSize: 12,
+        fontWeight: "600",
+    },
     /* Input */
     inputContainer: {
         flexDirection: "row",
@@ -456,6 +618,20 @@ const styles = StyleSheet.create({
         paddingHorizontal: 10,
         color: colors.foreground,
         fontSize: 18,
+    },
+    micButton: {
+        width: 48,
+        height: 48,
+        borderRadius: 12,
+        backgroundColor: colors.card,
+        borderWidth: 1,
+        borderColor: colors.border,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    micButtonListening: {
+        backgroundColor: colors.danger,
+        borderColor: colors.danger,
     },
     sendButton: {
         width: 48,

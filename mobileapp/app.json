@@ -9,11 +9,17 @@
     "ios": {
       "supportsTablet": true
     },
+    "plugins": [
+      "expo-speech-recognition"
+    ],
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#000000"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
