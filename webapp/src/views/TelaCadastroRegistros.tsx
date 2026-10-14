@@ -7,10 +7,11 @@ import {
   efetivarTransacaoPendente,
   listarCategorias,
   listarContas,
+  listarInstituicoesBancarias,
   obterExtrato,
   obterUsuario,
 } from '../../../shared/services/finupService'
-import type { Categoria, Conta, Transacao, Usuario } from '../../../shared/types/finup'
+import type { Categoria, Conta, InstituicaoBancaria, Transacao, Usuario } from '../../../shared/types/finup'
 import { auth, db } from '../firebase'
 import BackButton from '../components/BackButton'
 import LogoutButton from '../components/LogoutButton'
@@ -40,6 +41,14 @@ function parseAmount(value: string) {
   return Number.isFinite(amount) && amount > 0 ? amount : null
 }
 
+function parseLimit(value: string) {
+  const normalized = value.includes(',')
+    ? value.replace(/\./g, '').replace(',', '.')
+    : value
+  const limit = Number(normalized)
+  return Number.isFinite(limit) ? limit : null
+}
+
 function formatDate(value: Date) {
   return new Intl.DateTimeFormat('pt-BR', {
     day: '2-digit',
@@ -59,6 +68,7 @@ export default function TelaCadastroRegistros() {
   const [profile, setProfile] = useState<Usuario | null>(null)
   const [transactions, setTransactions] = useState<Transacao[]>([])
   const [accounts, setAccounts] = useState<Conta[]>([])
+  const [institutions, setInstitutions] = useState<InstituicaoBancaria[]>([])
   const [categories, setCategories] = useState<Categoria[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
@@ -70,6 +80,12 @@ export default function TelaCadastroRegistros() {
   const [isAccountFormOpen, setIsAccountFormOpen] = useState(false)
   const [accountName, setAccountName] = useState('')
   const [accountType, setAccountType] = useState<Conta['tipoConta']>('CORRENTE')
+  const [accountInstitutionId, setAccountInstitutionId] = useState('')
+  const [agency, setAgency] = useState('')
+  const [accountNumber, setAccountNumber] = useState('')
+  const [linkedCheckingAccountId, setLinkedCheckingAccountId] = useState('')
+  const [creditLimit, setCreditLimit] = useState('0')
+  const [accountDueDay, setAccountDueDay] = useState('')
   const [openingBalance, setOpeningBalance] = useState('0')
   const [accountError, setAccountError] = useState('')
   const [isSavingAccount, setIsSavingAccount] = useState(false)
@@ -103,16 +119,18 @@ export default function TelaCadastroRegistros() {
         if (!currentUser) throw new Error('Sua sessão expirou.')
         const user = await obterUsuario(db, currentUser.uid)
         if (!user) throw new Error('Não encontramos seu perfil financeiro.')
-        const [items, userAccounts, userCategories] = await Promise.all([
+        const [items, userAccounts, userCategories, bankInstitutions] = await Promise.all([
           obterExtrato(db, user.familiaId),
           listarContas(db, user.familiaId),
           listarCategorias(db, user.familiaId),
+          listarInstituicoesBancarias(db),
         ])
         if (!cancelled) {
           setProfile(user)
           setTransactions(items)
           setAccounts(userAccounts)
           setCategories(userCategories)
+          setInstitutions(bankInstitutions)
           const firstActiveAccountId = userAccounts.find((account) => account.ativo)?.id || ''
           setAccountId((current) => userAccounts.some((account) => account.id === current && account.ativo)
             ? current
@@ -252,6 +270,41 @@ export default function TelaCadastroRegistros() {
       setAccountError('Informe o nome da conta.')
       return
     }
+    const linkedCheckingAccount = accounts.find((account) => account.id === linkedCheckingAccountId)
+    const institutionId = accountType === 'CARTAO_CREDITO'
+      ? linkedCheckingAccount?.instituicaoId ?? ''
+      : accountInstitutionId
+    if (accountType !== 'CARTAO_CREDITO' && institutionId && !agency.trim()) {
+      setAccountError('Informe a agência da conta vinculada à instituição.')
+      return
+    }
+    if (accountType !== 'CARTAO_CREDITO' && institutionId && !accountNumber.trim()) {
+      setAccountError('Informe o número da conta vinculada à instituição.')
+      return
+    }
+    const normalizedDueDay = Number(accountDueDay)
+    if (accountType === 'CARTAO_CREDITO'
+      && (!Number.isInteger(normalizedDueDay) || normalizedDueDay < 1 || normalizedDueDay > 31)) {
+      setAccountError('Informe um dia de vencimento entre 1 e 31.')
+      return
+    }
+    const normalizedLimit = parseLimit(creditLimit)
+    if ((accountType === 'CORRENTE' || accountType === 'CARTAO_CREDITO')
+      && (normalizedLimit === null || normalizedLimit < 0)) {
+      setAccountError('Informe um limite válido, igual ou maior que zero.')
+      return
+    }
+    if (accountType === 'CARTAO_CREDITO') {
+      if (!linkedCheckingAccount || !linkedCheckingAccount.ativo || linkedCheckingAccount.tipoConta !== 'CORRENTE'
+        || !linkedCheckingAccount.instituicaoId) {
+        setAccountError('Selecione uma conta corrente ativa vinculada a uma instituição.')
+        return
+      }
+      if (normalizedLimit === null || normalizedLimit <= 0) {
+        setAccountError('O limite da conta cartão deve ser maior que zero.')
+        return
+      }
+    }
     const normalizedBalance = openingBalance.includes(',')
       ? openingBalance.replace(/\./g, '').replace(',', '.')
       : openingBalance
@@ -268,6 +321,14 @@ export default function TelaCadastroRegistros() {
         tipoConta: accountType,
         saldoAtual: balance,
         ativo: true,
+        instituicaoId: institutionId || null,
+        agencia: accountType === 'CARTAO_CREDITO' ? null : agency.trim() || null,
+        numeroConta: accountType === 'CARTAO_CREDITO' ? null : accountNumber.trim() || null,
+        limiteTotal: accountType === 'CORRENTE' || accountType === 'CARTAO_CREDITO'
+          ? normalizedLimit
+          : null,
+        contaCorrenteId: accountType === 'CARTAO_CREDITO' ? linkedCheckingAccountId : null,
+        diaVencimento: accountType === 'CARTAO_CREDITO' ? normalizedDueDay : null,
       })
       setAccounts((current) => [...current, {
         id,
@@ -275,10 +336,24 @@ export default function TelaCadastroRegistros() {
         tipoConta: accountType,
         saldoAtual: balance,
         ativo: true,
+        instituicaoId: institutionId || null,
+        agencia: accountType === 'CARTAO_CREDITO' ? null : agency.trim() || null,
+        numeroConta: accountType === 'CARTAO_CREDITO' ? null : accountNumber.trim() || null,
+        limiteTotal: accountType === 'CORRENTE' || accountType === 'CARTAO_CREDITO'
+          ? normalizedLimit
+          : null,
+        contaCorrenteId: accountType === 'CARTAO_CREDITO' ? linkedCheckingAccountId : null,
+        diaVencimento: accountType === 'CARTAO_CREDITO' ? normalizedDueDay : null,
       }])
       setAccountId(id)
       setIsAccountFormOpen(false)
       setAccountName('')
+      setAccountInstitutionId('')
+      setAgency('')
+      setAccountNumber('')
+      setLinkedCheckingAccountId('')
+      setCreditLimit('0')
+      setAccountDueDay('')
       setOpeningBalance('0')
       setFeedback('Conta criada.')
     } catch (error) {
@@ -530,12 +605,108 @@ export default function TelaCadastroRegistros() {
                       <label htmlFor="account-name">Nome</label>
                       <input id="account-name" value={accountName} onChange={(event) => setAccountName(event.target.value)} maxLength={80} required />
                       <label htmlFor="account-type">Tipo</label>
-                      <select id="account-type" value={accountType} onChange={(event) => setAccountType(event.target.value as Conta['tipoConta'])}>
+                      <select id="account-type" value={accountType} onChange={(event) => {
+                        const nextType = event.target.value as Conta['tipoConta']
+                        setAccountType(nextType)
+                        setLinkedCheckingAccountId('')
+                        if (nextType === 'CARTAO_CREDITO') {
+                          setAccountInstitutionId('')
+                          setAgency('')
+                          setAccountNumber('')
+                        }
+                      }}>
                         <option value="CORRENTE">Conta corrente</option>
                         <option value="POUPANCA">Poupança</option>
                         <option value="CARTAO_CREDITO">Cartão de crédito</option>
                         <option value="CAIXINHA">Caixinha</option>
+                        <option value="INVESTIMENTO">Conta investimento</option>
                       </select>
+                      {accountType === 'CARTAO_CREDITO' ? (
+                        <>
+                          <label htmlFor="account-checking">Conta corrente vinculada</label>
+                          <select
+                            id="account-checking"
+                            value={linkedCheckingAccountId}
+                            onChange={(event) => {
+                              const checkingAccount = accounts.find((account) => account.id === event.target.value)
+                              setLinkedCheckingAccountId(event.target.value)
+                              setAccountInstitutionId(checkingAccount?.instituicaoId ?? '')
+                            }}
+                            required
+                          >
+                            <option value="">Selecione uma conta corrente</option>
+                            {accounts.filter((account) => account.ativo
+                              && account.tipoConta === 'CORRENTE'
+                              && Boolean(account.instituicaoId)).map((account) => (
+                              <option key={account.id} value={account.id}>{account.nome}</option>
+                            ))}
+                          </select>
+                          <p className="manager-form-note">
+                            Instituição: {institutions.find((item) => item.id === accountInstitutionId)?.nome ?? 'definida pela conta corrente'}
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <label htmlFor="account-institution">Instituição bancária</label>
+                          <select
+                            id="account-institution"
+                            value={accountInstitutionId}
+                            onChange={(event) => setAccountInstitutionId(event.target.value)}
+                          >
+                            <option value="">Sem instituição</option>
+                            {institutions.filter((institution) => institution.ativo).map((institution) => (
+                              <option key={institution.id} value={institution.id}>{institution.nome}</option>
+                            ))}
+                          </select>
+                          <label htmlFor="account-agency">Agência{accountInstitutionId ? ' *' : ''}</label>
+                          <input
+                            id="account-agency"
+                            value={agency}
+                            onChange={(event) => setAgency(event.target.value)}
+                            maxLength={20}
+                            required={Boolean(accountInstitutionId)}
+                          />
+                          <label htmlFor="account-number">Número da conta{accountInstitutionId ? ' *' : ''}</label>
+                          <input
+                            id="account-number"
+                            value={accountNumber}
+                            onChange={(event) => setAccountNumber(event.target.value)}
+                            maxLength={30}
+                            required={Boolean(accountInstitutionId)}
+                          />
+                        </>
+                      )}
+                      {(accountType === 'CORRENTE' || accountType === 'CARTAO_CREDITO') && (
+                        <>
+                          <label htmlFor="account-limit">
+                            {accountType === 'CARTAO_CREDITO' ? 'Limite total de crédito do cartão' : 'Limite de crédito / cheque especial'}
+                          </label>
+                          <input
+                            id="account-limit"
+                            type="text"
+                            inputMode="decimal"
+                            value={creditLimit}
+                            onChange={(event) => setCreditLimit(event.target.value)}
+                            required
+                          />
+                        </>
+                      )}
+                      {accountType === 'CARTAO_CREDITO' && (
+                        <>
+                          <label htmlFor="account-due-day">Dia de vencimento</label>
+                          <input
+                            id="account-due-day"
+                            type="number"
+                            min="1"
+                            max="31"
+                            step="1"
+                            value={accountDueDay}
+                            onChange={(event) => setAccountDueDay(event.target.value)}
+                            required
+                          />
+                          <p className="manager-form-note">Os cartões plásticos vinculados a esta conta compartilham este único limite.</p>
+                        </>
+                      )}
                       <label htmlFor="account-opening-balance">Saldo inicial</label>
                       <input
                         id="account-opening-balance"

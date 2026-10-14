@@ -27,7 +27,7 @@ Os aplicativos validam o ID `finup-app6` na inicialização para evitar conexõe
 
 - `usuarios/{uid}`: perfil associado ao UID do Firebase Authentication.
 - `familias/{familiaId}`: família; o usuário principal usa seu UID como `familiaId`.
-- `familias/{familiaId}/contas/{contaId}`: contas e saldos.
+- `familias/{familiaId}/contas/{contaId}`: contas e saldos; tipos disponíveis incluem corrente, poupança, cartão de crédito, caixinha e investimento. Uma conta pode referenciar uma instituição bancária global por `instituicaoId` e armazenar `agencia` e `numeroConta`; os dois dados são obrigatórios quando aplicáveis. Contas correntes e contas-cartão podem definir `limiteTotal`; a conta-cartão herda a instituição e a conta de pagamento da corrente vinculada em `contaCorrenteId`, dispensando agência e número próprios, e exige `diaVencimento`.
 - `familias/{familiaId}/categorias/{categoriaId}`: categorias iniciais criadas junto com uma nova família.
 - `familias/{familiaId}/transacoes/{transacaoId}`: receitas, despesas e registros das duas pontas de uma transferência.
 - `familias/{familiaId}/transferencias/{transferenciaId}`: vínculo atômico das duas pontas de uma transferência.
@@ -37,7 +37,7 @@ Os aplicativos validam o ID `finup-app6` na inicialização para evitar conexõe
 - `familias/{familiaId}/parcelamentos/{parcelamentoId}`: dados do parcelamento e referências à conta/categoria; a geração automática de parcelas ainda não está implementada.
 - `familias/{familiaId}/recorrencias/{recorrenciaId}`: configuração de movimentações recorrentes; a geração automática dos lançamentos ainda não está implementada.
 - `familias/{familiaId}/faturas_cartao/{faturaId}`: totais e status por conta/mês; a agregação automática das compras ainda não está implementada.
-- `instituicoes_bancarias/{instituicaoId}`: catálogo global somente para leitura no cliente. Os documentos devem ser cadastrados por um processo administrativo confiável antes de associar instituições às contas.
+- `instituicoes_bancarias/{instituicaoId}`: catálogo global de instituições, legível por usuários autenticados e gerenciável por qualquer usuário autenticado. O arquivamento preserva os vínculos das contas existentes.
 - `convites/{token}`: convites vinculados ao e-mail autenticado.
 
 As regras restringem os documentos financeiros a membros da família e os convites a quem os enviou ou ao e-mail convidado. Referências a contas, categorias, cartões e usuários são verificadas dentro da família. O Firestore materializa uma coleção ao gravar seu primeiro documento; portanto, as novas subcoleções aparecem ao cadastrar a primeira entidade, sem necessidade de criar coleções vazias. As consultas atuais usam índices de campo simples; os índices compostos serão adicionados em `firestore.indexes.json` caso novas consultas os exijam.
@@ -76,7 +76,7 @@ npm run test:firestore
 
 ## Operações e saldos
 
-As operações compartilhadas estão em `shared/services/finupService.ts`. Receitas e despesas efetivadas atualizam o saldo na mesma transação Firestore; lançamentos pendentes não alteram o saldo até serem efetivados. Uma transferência efetivada debita a origem e credita o destino atomicamente. O formulário oferece criação de contas e exige contas distintas para transferências.
+As operações compartilhadas estão em `shared/services/finupService.ts`. Receitas e despesas efetivadas atualizam o saldo na mesma transação Firestore; lançamentos pendentes não alteram o saldo até serem efetivados. Uma transferência efetivada debita a origem e credita o destino atomicamente. A identificação por agência e número diferencia contas da mesma instituição sem alterar seus IDs ou saldos. O limite de crédito pertence à conta, não aos cartões plásticos: todos os cartões vinculados à mesma conta-cartão compartilham o valor único de `limiteTotal`. O formulário oferece criação de contas e exige contas distintas para transferências.
 
 ## Regras, índices e Hosting
 

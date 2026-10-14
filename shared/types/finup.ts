@@ -25,12 +25,15 @@ export interface Conta {
   id: string
   usuarioId?: string
   instituicaoId?: string | null
+  agencia?: string | null
+  numeroConta?: string | null
+  contaCorrenteId?: string | null
   nome: string
-  tipoConta: 'CORRENTE' | 'POUPANCA' | 'CARTAO_CREDITO' | 'CAIXINHA'
+  tipoConta: 'CORRENTE' | 'POUPANCA' | 'CARTAO_CREDITO' | 'CAIXINHA' | 'INVESTIMENTO'
   saldoAtual: number
-  limiteTotal?: number
+  limiteTotal?: number | null
   diaFechamento?: number
-  diaVencimento?: number
+  diaVencimento?: number | null
   ativo: boolean
   ultimaMovimentacaoId?: string
 }

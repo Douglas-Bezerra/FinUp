@@ -25,6 +25,31 @@ service cloud.firestore {
       return /databases/$(database)/documents/familias/$(familyId)/contas/$(accountId);
     }
 
+    function validAccountCreditLimit(accountData) {
+      let limit = accountData.get('limiteTotal', null);
+      return limit == null
+        || (limit is number
+          && limit >= 0
+          && (accountData.tipoConta != 'CARTAO_CREDITO' || limit > 0));
+    }
+
+    function validAccountDueDate(accountData) {
+      let dueDay = accountData.get('diaVencimento', null);
+      return dueDay == null || (dueDay is int && dueDay >= 1 && dueDay <= 31);
+    }
+
+    function validCreditAccountLink(familyId, accountData) {
+      let checkingAccountId = accountData.get('contaCorrenteId', null);
+      let checkingAccountPath = accountPath(familyId, checkingAccountId);
+      return checkingAccountId == null
+        || (accountData.tipoConta == 'CARTAO_CREDITO'
+          && checkingAccountId is string
+          && exists(checkingAccountPath)
+          && get(checkingAccountPath).data.tipoConta == 'CORRENTE'
+          && accountData.get('instituicaoId', null)
+            == get(checkingAccountPath).data.get('instituicaoId', null));
+    }
+
     function transactionPath(familyId, transactionId) {
       return /databases/$(database)/documents/familias/$(familyId)/transacoes/$(transactionId);
     }
@@ -448,7 +473,34 @@ service cloud.firestore {
 
     match /instituicoes_bancarias/{institutionId} {
       allow read: if signedIn();
-      allow write: if false;
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['nome', 'codigoBancario', 'corHex', 'ativo'])
+        && request.resource.data.nome is string
+        && request.resource.data.nome.size() > 0
+        && request.resource.data.nome.size() <= 100
+        && request.resource.data.ativo == true
+        && (!('codigoBancario' in request.resource.data)
+          || (request.resource.data.codigoBancario is string
+            && request.resource.data.codigoBancario.size() <= 20))
+        && (!('corHex' in request.resource.data)
+          || request.resource.data.corHex == ''
+          || (request.resource.data.corHex is string
+            && request.resource.data.corHex.matches('^#[0-9A-Fa-f]{6}$')));
+      allow update: if signedIn()
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['nome', 'codigoBancario', 'corHex', 'ativo'])
+        && request.resource.data.nome is string
+        && request.resource.data.nome.size() > 0
+        && request.resource.data.nome.size() <= 100
+        && request.resource.data.ativo is bool
+        && (!('codigoBancario' in request.resource.data)
+          || (request.resource.data.codigoBancario is string
+            && request.resource.data.codigoBancario.size() <= 20))
+        && (!('corHex' in request.resource.data)
+          || request.resource.data.corHex == ''
+          || (request.resource.data.corHex is string
+            && request.resource.data.corHex.matches('^#[0-9A-Fa-f]{6}$')));
+      allow delete: if false;
     }
 
     match /familias/{familyId} {
@@ -464,10 +516,11 @@ service cloud.firestore {
           && request.resource.data.keys().hasOnly([
             'nome', 'tipoConta', 'saldoAtual', 'limiteTotal', 'diaFechamento',
             'diaVencimento', 'ativo', 'criadaPorUsuarioId', 'dataCriacao',
-            'usuarioId', 'instituicaoId'
+            'usuarioId', 'instituicaoId', 'agencia', 'numeroConta',
+            'contaCorrenteId'
           ])
           && request.resource.data.nome is string
-          && request.resource.data.tipoConta in ['CORRENTE', 'POUPANCA', 'CARTAO_CREDITO', 'CAIXINHA']
+          && request.resource.data.tipoConta in ['CORRENTE', 'POUPANCA', 'CARTAO_CREDITO', 'CAIXINHA', 'INVESTIMENTO']
           && request.resource.data.saldoAtual is number
           && request.resource.data.ativo == true
           && request.resource.data.criadaPorUsuarioId == request.auth.uid
@@ -475,19 +528,77 @@ service cloud.firestore {
           && (request.resource.data.get('usuarioId', null) == null
             || get(userPath(request.resource.data.usuarioId)).data.familiaId == familyId)
           && (request.resource.data.get('instituicaoId', null) == null
-            || exists(/databases/$(database)/documents/instituicoes_bancarias/$(request.resource.data.instituicaoId)));
+            || (
+              exists(/databases/$(database)/documents/instituicoes_bancarias/$(request.resource.data.instituicaoId))
+                  && (
+                    request.resource.data.tipoConta == 'CARTAO_CREDITO'
+                    ? request.resource.data.get('contaCorrenteId', null) is string
+                    : request.resource.data.get('agencia', '') is string
+                      && request.resource.data.get('agencia', '').size() > 0
+                      && request.resource.data.get('numeroConta', '') is string
+                      && request.resource.data.get('numeroConta', '').size() > 0
+                  )
+                ))
+          && (request.resource.data.get('agencia', null) == null
+            || (request.resource.data.agencia is string && request.resource.data.agencia.size() <= 20))
+          && (request.resource.data.get('numeroConta', null) == null
+            || (request.resource.data.numeroConta is string && request.resource.data.numeroConta.size() <= 30))
+          && validAccountCreditLimit(request.resource.data)
+          && validAccountDueDate(request.resource.data)
+          && (request.resource.data.get('contaCorrenteId', null) == null
+            || (
+              request.resource.data.tipoConta == 'CARTAO_CREDITO'
+              && request.resource.data.get('limiteTotal', null) is number
+              && request.resource.data.limiteTotal > 0
+              && request.resource.data.get('diaVencimento', null) is int
+              && request.resource.data.diaVencimento >= 1
+              && request.resource.data.diaVencimento <= 31
+              && request.resource.data.get('contaCorrenteId', null) is string
+            ))
+          && validCreditAccountLink(familyId, request.resource.data);
         allow update: if familyMember(familyId)
           && (
             (
               request.resource.data.diff(resource.data).affectedKeys()
-                .hasOnly(['nome', 'tipoConta', 'ativo', 'usuarioId', 'instituicaoId'])
+                .hasOnly([
+                  'nome', 'tipoConta', 'ativo', 'usuarioId', 'instituicaoId',
+                  'agencia', 'numeroConta', 'limiteTotal', 'contaCorrenteId',
+                  'diaVencimento'
+                ])
               && request.resource.data.nome is string
-              && request.resource.data.tipoConta in ['CORRENTE', 'POUPANCA', 'CARTAO_CREDITO', 'CAIXINHA']
+              && request.resource.data.tipoConta in ['CORRENTE', 'POUPANCA', 'CARTAO_CREDITO', 'CAIXINHA', 'INVESTIMENTO']
               && request.resource.data.ativo is bool
               && (request.resource.data.get('usuarioId', null) == null
                 || get(userPath(request.resource.data.usuarioId)).data.familiaId == familyId)
               && (request.resource.data.get('instituicaoId', null) == null
                 || exists(/databases/$(database)/documents/instituicoes_bancarias/$(request.resource.data.instituicaoId)))
+              && (!request.resource.data.diff(resource.data).affectedKeys()
+                .hasAny(['instituicaoId', 'agencia', 'numeroConta'])
+                || request.resource.data.get('instituicaoId', null) == null
+                || (
+                  request.resource.data.tipoConta == 'CARTAO_CREDITO'
+                  ? request.resource.data.get('contaCorrenteId', null) is string
+                  : request.resource.data.get('agencia', '') is string
+                    && request.resource.data.get('agencia', '').size() > 0
+                    && request.resource.data.get('numeroConta', '') is string
+                    && request.resource.data.get('numeroConta', '').size() > 0
+                ))
+              && (request.resource.data.get('agencia', null) == null
+                || (request.resource.data.agencia is string && request.resource.data.agencia.size() <= 20))
+              && (request.resource.data.get('numeroConta', null) == null
+                || (request.resource.data.numeroConta is string && request.resource.data.numeroConta.size() <= 30))
+              && validAccountCreditLimit(request.resource.data)
+              && validAccountDueDate(request.resource.data)
+              && (!request.resource.data.diff(resource.data).affectedKeys()
+                .hasAny(['tipoConta', 'diaVencimento'])
+                || request.resource.data.tipoConta != 'CARTAO_CREDITO'
+                || request.resource.data.get('contaCorrenteId', null) == null
+                || (
+                  request.resource.data.get('diaVencimento', null) is int
+                  && request.resource.data.diaVencimento >= 1
+                  && request.resource.data.diaVencimento <= 31
+                ))
+              && validCreditAccountLink(familyId, request.resource.data)
             )
             || (
               request.resource.data.diff(resource.data).affectedKeys()

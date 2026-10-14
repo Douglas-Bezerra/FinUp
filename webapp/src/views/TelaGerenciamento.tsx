@@ -1,39 +1,36 @@
+// src/views/TelaGerenciamento.tsx
+// Arquivo para tela de gerenciamento de Contas e Categorias
+// ==========================================================
+
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import {
   arquivarCategoria,
-  arquivarConta,
   atualizarCategoria,
-  atualizarConta,
   atualizarTransacao,
   ativarCategoria,
-  ativarConta,
   criarCategoria,
-  criarConta,
   estornarTransacao,
   listarCategorias,
   listarContas,
+  listarInstituicoesBancarias,
   obterExtrato,
   obterUsuario,
 } from '../../../shared/services/finupService'
-import type { Categoria, Conta, TipoCategoria, Transacao, Usuario } from '../../../shared/types/finup'
+import type { Categoria, Conta, InstituicaoBancaria, TipoCategoria, Transacao, Usuario } from '../../../shared/types/finup'
 import { auth, db } from '../firebase'
 import BackButton from '../components/BackButton'
 import Logo from '../components/Logo'
 import LogoutButton from '../components/LogoutButton'
+import ManagerContas from '../components/ManagerContas'
+import ManagerInstFin from '../components/ManagerInstFin'
+import ManagerResourcePanel, { type ManagerResourceTab } from '../components/ManagerResourcePanel'
 import '../App.css'
 
-type Tab = 'contas' | 'categorias' | 'lancamentos'
-type AccountType = Conta['tipoConta']
+type Tab = 'contas' | 'categorias' | 'lancamentos' | 'instituicoes' | ManagerResourceTab
+type Editor = 'categorias' | 'lancamentos'
 type MovementType = 'RECEITA' | 'DESPESA' | 'TRANSFERENCIA'
 type Status = 'EFETIVADO' | 'PENDENTE'
-
-const accountTypeLabels: Record<AccountType, string> = {
-  CORRENTE: 'Conta corrente',
-  POUPANCA: 'Poupança',
-  CARTAO_CREDITO: 'Cartão de crédito',
-  CAIXINHA: 'Caixinha',
-}
 
 const categoryTypeLabels: Record<TipoCategoria, string> = {
   RECEITA: 'Receita',
@@ -67,7 +64,9 @@ export default function TelaGerenciamento() {
   const [profile, setProfile] = useState<Usuario | null>(null)
   const [accounts, setAccounts] = useState<Conta[]>([])
   const [categories, setCategories] = useState<Categoria[]>([])
+  const [institutions, setInstitutions] = useState<InstituicaoBancaria[]>([])
   const [transactions, setTransactions] = useState<Transacao[]>([])
+  const [plasticCardsCount, setPlasticCardsCount] = useState<number | null>(null)
   const [tab, setTab] = useState<Tab>('contas')
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
@@ -76,13 +75,9 @@ export default function TelaGerenciamento() {
   const [reloadKey, setReloadKey] = useState(0)
   const [isSaving, setIsSaving] = useState(false)
 
-  const [editor, setEditor] = useState<Tab | null>(null)
-  const [editingAccount, setEditingAccount] = useState<Conta | null>(null)
+  const [editor, setEditor] = useState<Editor | null>(null)
   const [editingCategory, setEditingCategory] = useState<Categoria | null>(null)
   const [editingTransaction, setEditingTransaction] = useState<Transacao | null>(null)
-  const [accountName, setAccountName] = useState('')
-  const [accountType, setAccountType] = useState<AccountType>('CORRENTE')
-  const [openingBalance, setOpeningBalance] = useState('0')
   const [categoryName, setCategoryName] = useState('')
   const [categoryIcon, setCategoryIcon] = useState('ellipsis-horizontal-outline')
   const [categoryType, setCategoryType] = useState<TipoCategoria>('DESPESA')
@@ -106,16 +101,18 @@ export default function TelaGerenciamento() {
         if (!currentUser) throw new Error('Sua sessão expirou. Entre novamente.')
         const user = await obterUsuario(db, currentUser.uid)
         if (!user) throw new Error('Não encontramos seu perfil financeiro.')
-        const [userAccounts, userCategories, userTransactions] = await Promise.all([
+        const [userAccounts, userCategories, userTransactions, bankInstitutions] = await Promise.all([
           listarContas(db, user.familiaId),
           listarCategorias(db, user.familiaId),
           obterExtrato(db, user.familiaId),
+          listarInstituicoesBancarias(db),
         ])
         if (cancelled) return
         setProfile(user)
         setAccounts(userAccounts)
         setCategories(userCategories)
         setTransactions(userTransactions)
+        setInstitutions(bankInstitutions)
       } catch (error) {
         console.error('Erro ao carregar dados de gerenciamento:', error)
         if (!cancelled) setLoadError('Não foi possível carregar os dados. Tente novamente.')
@@ -141,17 +138,9 @@ export default function TelaGerenciamento() {
     [activeCategories, movementType],
   )
 
-  function showEditor(nextEditor: Tab) {
+  function showEditor(nextEditor: Editor) {
     setFormError('')
     setEditor(nextEditor)
-  }
-
-  function openAccountForm(account?: Conta) {
-    setEditingAccount(account ?? null)
-    setAccountName(account?.nome ?? '')
-    setAccountType(account?.tipoConta ?? 'CORRENTE')
-    setOpeningBalance('0')
-    showEditor('contas')
   }
 
   function openCategoryForm(category?: Categoria) {
@@ -183,48 +172,6 @@ export default function TelaGerenciamento() {
     if (isSaving) return
     setEditor(null)
     setFormError('')
-  }
-
-  async function saveAccount(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setFormError('')
-    if (!profile || !accountName.trim()) {
-      setFormError('Informe o nome da conta.')
-      return
-    }
-    const normalizedBalance = openingBalance.includes(',')
-      ? openingBalance.replace(/\./g, '').replace(',', '.')
-      : openingBalance
-    const balance = Number(normalizedBalance)
-    if (!editingAccount && !Number.isFinite(balance)) {
-      setFormError('Informe um saldo inicial válido.')
-      return
-    }
-
-    setIsSaving(true)
-    try {
-      if (editingAccount) {
-        await atualizarConta(db, profile.familiaId, editingAccount.id, {
-          nome: accountName.trim(),
-          tipoConta: accountType,
-        })
-      } else {
-        await criarConta(db, profile.familiaId, profile.id, {
-          nome: accountName.trim(),
-          tipoConta: accountType,
-          saldoAtual: balance,
-          ativo: true,
-        })
-      }
-      setEditor(null)
-      setFeedback(editingAccount ? 'Conta atualizada.' : 'Conta criada.')
-      setReloadKey((key) => key + 1)
-    } catch (error) {
-      console.error('Erro ao salvar conta:', error)
-      setFormError('Não foi possível salvar a conta. Tente novamente.')
-    } finally {
-      setIsSaving(false)
-    }
   }
 
   async function saveCategory(event: FormEvent<HTMLFormElement>) {
@@ -327,36 +274,6 @@ export default function TelaGerenciamento() {
     }
   }
 
-  async function archiveAccount(account: Conta) {
-    if (!profile || !window.confirm(`Arquivar a conta “${account.nome}”? O histórico será mantido.`)) return
-    setIsSaving(true)
-    try {
-      await arquivarConta(db, profile.familiaId, account.id)
-      setFeedback('Conta arquivada. O histórico foi mantido.')
-      setReloadKey((key) => key + 1)
-    } catch (error) {
-      console.error('Erro ao arquivar conta:', error)
-      setFeedback('Não foi possível arquivar a conta. Tente novamente.')
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
-  async function restoreAccount(account: Conta) {
-    if (!profile) return
-    setIsSaving(true)
-    try {
-      await ativarConta(db, profile.familiaId, account.id)
-      setFeedback('Conta reativada.')
-      setReloadKey((key) => key + 1)
-    } catch (error) {
-      console.error('Erro ao reativar conta:', error)
-      setFeedback('Não foi possível reativar a conta. Tente novamente.')
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
   async function archiveCategory(category: Categoria) {
     if (!profile || !window.confirm(`Arquivar a categoria “${category.nome}”? O histórico será mantido.`)) return
     setIsSaving(true)
@@ -439,13 +356,8 @@ export default function TelaGerenciamento() {
           <div>
             <p className="eyebrow">Sua vida financeira, com clareza</p>
             <h1 id="manager-title">Visão geral e gerenciamento</h1>
-            <p>Gerencie contas, categorias e lançamentos da sua família.</p>
+            <p>Gerencie os cadastros financeiros e lançamentos da sua família.</p>
           </div>
-          {tab === 'contas' && (
-            <button className="records-create-button" type="button" onClick={() => openAccountForm()}>
-              <span aria-hidden="true">+</span> Nova conta
-            </button>
-          )}
           {tab === 'categorias' && (
             <button className="records-create-button" type="button" onClick={() => openCategoryForm()}>
               <span aria-hidden="true">+</span> Nova categoria
@@ -470,9 +382,15 @@ export default function TelaGerenciamento() {
 
         <div className="manager-tabs" role="tablist" aria-label="Coleções financeiras">
           {([
+            ['instituicoes', `Instituições (${institutions.length})`],
             ['contas', `Contas (${accounts.length})`],
             ['categorias', `Categorias (${categories.length})`],
             ['lancamentos', `Lançamentos (${visibleTransactions.length})`],
+            ['cartoes', plasticCardsCount === null ? 'Cartões' : `Cartões (${plasticCardsCount})`],
+            ['orcamentos', 'Orçamentos'],
+            ['parcelamentos', 'Parcelamentos'],
+            ['recorrencias', 'Recorrências'],
+            ['faturas', 'Faturas'],
           ] as const).map(([value, label]) => (
             <button
               key={value}
@@ -498,36 +416,12 @@ export default function TelaGerenciamento() {
           {isLoading ? (
             <p className="records-state" role="status">Atualizando dados...</p>
           ) : tab === 'contas' ? (
-            accounts.length === 0 ? (
-              <div className="records-state">
-                <p className="records-empty-title">Nenhuma conta cadastrada</p>
-                <p>Crie uma conta para começar a organizar suas finanças.</p>
-                <button className="records-empty-action" type="button" onClick={() => openAccountForm()}>
-                  Criar conta
-                </button>
-              </div>
-            ) : (
-              <ul className="manager-list">
-                {accounts.map((account) => (
-                  <li className={account.ativo ? 'manager-card' : 'manager-card is-archived'} key={account.id}>
-                    <div className="manager-card-main">
-                      <span className="manager-card-icon" aria-hidden="true">▣</span>
-                      <div>
-                        <strong>{account.nome}</strong>
-                        <span>{accountTypeLabels[account.tipoConta]} · {currencyFormatter.format(account.saldoAtual)}</span>
-                      </div>
-                      {!account.ativo && <span className="manager-badge">Arquivada</span>}
-                    </div>
-                    <div className="manager-card-actions">
-                      <button type="button" className="manager-action" onClick={() => openAccountForm(account)}>Editar</button>
-                      {account.ativo
-                        ? <button type="button" className="manager-action is-danger" disabled={isSaving} onClick={() => void archiveAccount(account)}>Arquivar</button>
-                        : <button type="button" className="manager-action" disabled={isSaving} onClick={() => void restoreAccount(account)}>Reativar</button>}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )
+            <ManagerContas
+              profile={profile}
+              accounts={accounts}
+              institutions={institutions}
+              onAccountsChanged={setAccounts}
+            />
           ) : tab === 'categorias' ? (
             categories.length === 0 ? (
               <div className="records-state">
@@ -559,7 +453,7 @@ export default function TelaGerenciamento() {
                 ))}
               </ul>
             )
-          ) : visibleTransactions.length === 0 ? (
+          ) : tab === 'lancamentos' && visibleTransactions.length === 0 ? (
             <div className="records-state">
               <p className="records-empty-title">Nenhum lançamento cadastrado</p>
               <p>Os lançamentos criados aparecerão aqui para consulta, edição e estorno.</p>
@@ -567,7 +461,7 @@ export default function TelaGerenciamento() {
                 Criar lançamento
               </Link>
             </div>
-          ) : (
+          ) : tab === 'lancamentos' ? (
             <ul className="manager-list manager-movements">
               {visibleTransactions.map((item) => (
                 <li className={item.estornado ? 'manager-card is-archived' : 'manager-card'} key={item.id}>
@@ -597,6 +491,19 @@ export default function TelaGerenciamento() {
                 </li>
               ))}
             </ul>
+          ) : tab === 'instituicoes' ? (
+            <ManagerInstFin
+              institutions={institutions}
+              onInstitutionsChanged={setInstitutions}
+            />
+          ) : (
+            <ManagerResourcePanel
+              tab={tab}
+              profile={profile}
+              accounts={accounts}
+              categories={categories}
+              onCardsCountChange={setPlasticCardsCount}
+            />
           )}
         </section>
       </div>
@@ -612,34 +519,13 @@ export default function TelaGerenciamento() {
               <div>
                 <p className="eyebrow">Gerenciamento financeiro</p>
                 <h2 id="manager-dialog-title">
-                  {editor === 'contas'
-                    ? editingAccount ? 'Editar conta' : 'Nova conta'
-                    : editor === 'categorias'
-                      ? editingCategory ? 'Editar categoria' : 'Nova categoria'
-                      : 'Editar lançamento'}
+                  {editor === 'categorias'
+                    ? editingCategory ? 'Editar categoria' : 'Nova categoria'
+                    : 'Editar lançamento'}
                 </h2>
               </div>
               <button className="records-close" type="button" aria-label="Fechar formulário" onClick={closeEditor} disabled={isSaving}>×</button>
             </header>
-
-            {editor === 'contas' && (
-              <form className="records-form" onSubmit={(event) => void saveAccount(event)}>
-                <label htmlFor="manager-account-name">Nome</label>
-                <input id="manager-account-name" value={accountName} onChange={(event) => setAccountName(event.target.value)} maxLength={80} required />
-                <label htmlFor="manager-account-type">Tipo</label>
-                <select id="manager-account-type" value={accountType} onChange={(event) => setAccountType(event.target.value as AccountType)}>
-                  {Object.entries(accountTypeLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                </select>
-                {!editingAccount && (
-                  <>
-                    <label htmlFor="manager-account-balance">Saldo inicial</label>
-                    <input id="manager-account-balance" type="text" inputMode="decimal" value={openingBalance} onChange={(event) => setOpeningBalance(event.target.value)} required />
-                  </>
-                )}
-                {formError && <p className="records-form-error" role="alert">{formError}</p>}
-                <button className="records-save" type="submit" disabled={isSaving}>{isSaving ? 'Salvando...' : 'Salvar conta'}</button>
-              </form>
-            )}
 
             {editor === 'categorias' && (
               <form className="records-form" onSubmit={(event) => void saveCategory(event)}>

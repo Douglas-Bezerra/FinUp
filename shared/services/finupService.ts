@@ -274,21 +274,106 @@ export async function listarInstituicoesBancarias(db: Firestore): Promise<Instit
   const snapshot = await getDocs(query(collection(db, 'instituicoes_bancarias'), orderBy('nome')))
   return snapshot.docs.map((institution) => ({
     id: institution.id,
-    ativo: institution.data().ativo !== false,
     ...institution.data(),
+    ativo: institution.data().ativo !== false,
   }) as InstituicaoBancaria)
+}
+
+export async function criarInstituicaoBancaria(
+  db: Firestore,
+  instituicao: Omit<InstituicaoBancaria, 'id'>,
+): Promise<string> {
+  assertNonEmpty(instituicao.nome, 'Nome da instituição')
+  const reference = await addDoc(collection(db, 'instituicoes_bancarias'), omitUndefined({
+    ...instituicao,
+    nome: instituicao.nome.trim(),
+    codigoBancario: instituicao.codigoBancario?.trim(),
+    corHex: instituicao.corHex?.trim(),
+    ativo: true,
+  }))
+  return reference.id
+}
+
+export async function atualizarInstituicaoBancaria(
+  db: Firestore,
+  instituicaoId: string,
+  instituicao: Pick<InstituicaoBancaria, 'nome' | 'codigoBancario' | 'corHex'>,
+): Promise<void> {
+  assertNonEmpty(instituicao.nome, 'Nome da instituição')
+  await updateDoc(doc(db, 'instituicoes_bancarias', instituicaoId), omitUndefined({
+    nome: instituicao.nome.trim(),
+    codigoBancario: instituicao.codigoBancario?.trim(),
+    corHex: instituicao.corHex?.trim(),
+  }))
+}
+
+export async function arquivarInstituicaoBancaria(db: Firestore, instituicaoId: string): Promise<void> {
+  await updateDoc(doc(db, 'instituicoes_bancarias', instituicaoId), { ativo: false })
+}
+
+export async function ativarInstituicaoBancaria(db: Firestore, instituicaoId: string): Promise<void> {
+  await updateDoc(doc(db, 'instituicoes_bancarias', instituicaoId), { ativo: true })
+}
+
+function assertAccountInstitutionDetails(
+  tipoConta: Conta['tipoConta'],
+  instituicaoId: string | null | undefined,
+  agencia: string | null | undefined,
+  numeroConta: string | null | undefined,
+  contaCorrenteId: string | null | undefined,
+) {
+  const creditAccountUsesCheckingDetails = tipoConta === 'CARTAO_CREDITO' && Boolean(contaCorrenteId)
+  if (instituicaoId && !creditAccountUsesCheckingDetails && !agencia?.trim()) {
+    throw new Error('Informe a agência da conta vinculada à instituição.')
+  }
+  if (instituicaoId && !creditAccountUsesCheckingDetails && !numeroConta?.trim()) {
+    throw new Error('Informe o número da conta vinculada à instituição.')
+  }
+  if (agencia && agencia.trim().length > 20) {
+    throw new Error('A agência deve ter até 20 caracteres.')
+  }
+  if (numeroConta && numeroConta.trim().length > 30) {
+    throw new Error('O número da conta deve ter até 30 caracteres.')
+  }
+}
+
+function assertAccountDueDate(
+  tipoConta: Conta['tipoConta'],
+  diaVencimento: number | null | undefined,
+  contaCorrenteId: string | null | undefined,
+) {
+  if (diaVencimento != null
+    && (!Number.isInteger(diaVencimento) || diaVencimento < 1 || diaVencimento > 31)) {
+    throw new Error('O dia de vencimento deve estar entre 1 e 31.')
+  }
+  if (tipoConta === 'CARTAO_CREDITO' && contaCorrenteId && diaVencimento == null) {
+    throw new Error('Informe um dia de vencimento entre 1 e 31.')
+  }
 }
 
 export async function atualizarConta(
   db: Firestore,
   familiaId: string,
   contaId: string,
-  conta: Pick<Conta, 'nome' | 'tipoConta' | 'instituicaoId'>,
+  conta: Pick<Conta, 'nome' | 'tipoConta' | 'instituicaoId' | 'agencia' | 'numeroConta' | 'limiteTotal' | 'contaCorrenteId' | 'diaVencimento'>,
 ): Promise<void> {
+  assertAccountInstitutionDetails(conta.tipoConta, conta.instituicaoId, conta.agencia, conta.numeroConta, conta.contaCorrenteId)
+  assertAccountDueDate(conta.tipoConta, conta.diaVencimento, conta.contaCorrenteId)
+  if (conta.limiteTotal != null && (!Number.isFinite(conta.limiteTotal) || conta.limiteTotal < 0)) {
+    throw new Error('Informe um limite válido, igual ou maior que zero.')
+  }
+  if (conta.tipoConta === 'CARTAO_CREDITO' && conta.limiteTotal != null && conta.limiteTotal <= 0) {
+    throw new Error('O limite da conta cartão deve ser maior que zero.')
+  }
   await updateDoc(doc(db, 'familias', familiaId, 'contas', contaId), omitUndefined({
     nome: conta.nome.trim(),
     tipoConta: conta.tipoConta,
     instituicaoId: conta.instituicaoId,
+    agencia: conta.agencia?.trim() || null,
+    numeroConta: conta.numeroConta?.trim() || null,
+    limiteTotal: conta.limiteTotal,
+    contaCorrenteId: conta.contaCorrenteId || null,
+    diaVencimento: conta.diaVencimento,
   }))
 }
 
@@ -306,9 +391,19 @@ export async function criarConta(
   usuarioId: string,
   conta: Omit<Conta, 'id'>,
 ): Promise<string> {
+  assertAccountInstitutionDetails(conta.tipoConta, conta.instituicaoId, conta.agencia, conta.numeroConta, conta.contaCorrenteId)
+  assertAccountDueDate(conta.tipoConta, conta.diaVencimento, conta.contaCorrenteId)
+  if (conta.limiteTotal != null && (!Number.isFinite(conta.limiteTotal) || conta.limiteTotal < 0)) {
+    throw new Error('Informe um limite válido, igual ou maior que zero.')
+  }
+  if (conta.tipoConta === 'CARTAO_CREDITO' && conta.limiteTotal != null && conta.limiteTotal <= 0) {
+    throw new Error('O limite da conta cartão deve ser maior que zero.')
+  }
   const accountData = Object.fromEntries(
     Object.entries({
       ...conta,
+      agencia: conta.agencia?.trim() || null,
+      numeroConta: conta.numeroConta?.trim() || null,
       saldoAtual: Number(conta.saldoAtual),
       criadaPorUsuarioId: usuarioId,
       dataCriacao: Timestamp.now(),

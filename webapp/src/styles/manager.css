@@ -1,5 +1,8 @@
 .manager-heading { align-items: center; }
 .manager-link-button { text-decoration: none; }
+.manager-resource-heading { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin: 4px 0 18px; }
+.manager-resource-heading h2 { margin: 0; color: var(--finup-foreground); font-size: 18px; }
+.manager-resource-heading p { margin: 5px 0 0; color: var(--finup-muted); font-size: 13px; }
 .manager-tabs { display: flex; gap: 8px; overflow-x: auto; padding: 14px 0; border-top: 1px solid var(--finup-border); }
 .manager-tab { flex: 0 0 auto; min-height: 40px; padding: 0 16px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--finup-muted); cursor: pointer; font: inherit; font-size: 13px; font-weight: 650; }
 .manager-tab:hover,
@@ -13,6 +16,7 @@
 .manager-card-main > div { display: grid; gap: 5px; min-width: 0; }
 .manager-card-main strong { overflow: hidden; color: var(--finup-foreground); font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
 .manager-card-main span:not(.manager-card-icon):not(.manager-badge) { color: var(--finup-muted); font-size: 12px; }
+.manager-card-main small { color: var(--finup-subtle); font-size: 11px; line-height: 1.4; }
 .manager-card-icon { display: grid; flex: 0 0 40px; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: rgba(74, 222, 128, 0.12); color: var(--finup-primary); font-size: 21px; }
 .manager-card-icon.is-income { background: rgba(74, 222, 128, 0.12); color: var(--finup-primary); }
 .manager-card-icon.is-expense { background: rgba(255, 107, 107, 0.12); color: var(--finup-danger); }
@@ -30,12 +34,21 @@
 .manager-movement-value { flex: 0 0 auto; color: var(--finup-foreground); font-size: 14px; }
 .manager-empty-link { text-decoration: none; }
 .manager-form-note { margin: 2px 0 0; color: var(--finup-subtle); font-size: 12px; line-height: 1.5; }
+.manager-color-fieldset { display: grid; gap: 10px; margin: 4px 0; padding: 0; border: 0; }
+.manager-color-fieldset legend { margin-bottom: 2px; color: var(--finup-foreground); font-size: 13px; font-weight: 650; }
+.manager-color-palette { display: flex; flex-wrap: wrap; gap: 12px; }
+.manager-color-option { width: 34px; height: 34px; padding: 0; border: 3px solid var(--institution-color); border-radius: 50%; background: var(--institution-color); cursor: pointer; }
+.manager-color-option:hover,
+.manager-color-option:focus-visible { outline: 2px solid var(--finup-foreground); outline-offset: 3px; }
+.manager-color-option.is-selected { box-shadow: 0 0 0 3px var(--finup-surface), 0 0 0 5px var(--institution-color); }
 .manager-dialog { max-height: min(90vh, 760px); overflow-y: auto; }
 .manager-dialog .records-form { padding-top: 8px; }
 
 @media (max-width: 600px) {
   .manager-heading { align-items: stretch; }
   .manager-heading > .records-create-button { width: 100%; }
+  .manager-resource-heading { align-items: stretch; flex-direction: column; }
+  .manager-resource-heading > .records-create-button { width: 100%; }
   .manager-card { align-items: stretch; flex-direction: column; gap: 14px; padding: 15px; }
   .manager-card-actions { justify-content: flex-end; }
   .manager-movement-main { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 8px 12px; }
