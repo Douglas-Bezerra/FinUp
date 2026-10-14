@@ -17,6 +17,9 @@
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.18.3"
   },
+  "overrides": {
+  "@grpc/grpc-js": "^1.13.6"
+  },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
     "@types/react": "^19.2.18",

@@ -1,3 +1,7 @@
+# src/webapp/.gitignore
+# Arquivo com as informações do que não precisam subir para o Github
+# ==================================================================
+
 # Logs
 logs
 *.log
