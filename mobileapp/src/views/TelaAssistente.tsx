@@ -318,7 +318,6 @@ const styles = StyleSheet.create({
         fontWeight: "700",
     },
     onlineText: {
-        color: colors.primary,
         fontSize: 15,
     },
     onlineStatus: {
@@ -372,7 +371,7 @@ const styles = StyleSheet.create({
         borderBottomLeftRadius: 4,
     },
     userBubble: {
-        backgroundColor: colors.primary,
+        backgroundColor: colors.foreground,
         borderBottomRightRadius: 4,
     },
     messageText: {
@@ -466,7 +465,7 @@ const styles = StyleSheet.create({
         justifyContent: "center",
     },
     sendButtonActive: {
-        backgroundColor: colors.primary,
+        backgroundColor: colors.foreground,
     },
     sendButtonInactive: {
         backgroundColor: colors.card,
