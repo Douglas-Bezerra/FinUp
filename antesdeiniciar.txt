@@ -13,9 +13,9 @@ Confira e preserve suas alterações locais antes de atualizar o repositório:
 03 - firebase use finup-app6
 04 - if not exist webapp\.env copy webapp\.env.example webapp\.env
 05 - if not exist mobileapp\.env copy mobileapp\.env.example mobileapp\.env
-06 - npm ci
-07 - cd /d webapp && npm ci && cd /d ..
-08 - cd /d mobileapp && npm ci && cd /d ..
+06 - npm ci ou npm install
+07 - cd /d webapp && npm ci ou npm install && cd /d ..
+08 - cd /d mobileapp && npm ci ou npm install && cd /d ..
 
 Edite os dois arquivos `.env` locais e informe `VITE_FIREBASE_API_KEY`,
 `VITE_FIREBASE_APP_ID`, `EXPO_PUBLIC_FIREBASE_API_KEY` e
