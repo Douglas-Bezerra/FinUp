@@ -231,6 +231,7 @@
 .logo-image { display: block; max-width: 80%; max-height: 80%; object-fit: contain; }
 .logo-symbol { color: #ff6b00; font-size: 22px; line-height: 1; }
 .logo-name { display: flex; align-items: center; font-size: 38px; line-height: 1; font-weight: 700; }
+.logo-name span { color: var(--finup-foreground); }
 .logo-name strong,
 .forgot-button,
 .register-area button { background: linear-gradient(90deg, #ffb000, #ff6b00 40%, #ff3040 72%, #ff0000); background-clip: text; -webkit-background-clip: text; color: transparent; }
@@ -268,6 +269,16 @@
 .register-area { display: flex; justify-content: center; gap: 6px; margin-top: 24px; color: var(--finup-subtle); font-size: 13px; }
 .login-panel .register-area { max-width: 430px; margin-right: auto; margin-left: auto; }
 .standalone-panel { width: min(100%, 500px); }
+.standalone-panel .login-card { max-width: 480px; padding: 28px 24px; }
 .secondary-button { width: 100%; margin-top: 12px; padding: 14px; border: 1px solid #ff6b00; border-radius: 14px; background: transparent; color: #ffb000; cursor: pointer; font: inherit; font-size: 14px; font-weight: 700; }
 .cadastro-page .welcome { text-align: center; }
 .register-area button { font-size: 13px; }
+form + .feedback,
+.submit-button + .feedback { margin-top: 20px; }
+.invite-feedback-container { margin-top: 24px; display: flex; flex-direction: column; gap: 12px; }
+.invite-feedback { margin: 0 !important; padding: 12px 14px; border-radius: 12px; font-size: 13px; line-height: 1.5; text-align: center; background: rgba(125, 220, 138, 0.12); border: 1px solid rgba(125, 220, 138, 0.35); color: #7ddc8a; }
+.invite-feedback.error { background: rgba(255, 107, 107, 0.12); border-color: rgba(255, 107, 107, 0.35); color: #ff6b6b; }
+.invite-link-wrapper { display: flex; flex-direction: column; gap: 10px; }
+.invite-link-input { width: 100%; box-sizing: border-box; margin: 0 !important; padding: 12px 14px !important; border: 1px solid var(--finup-border) !important; border-radius: 12px !important; background: var(--finup-surface-raised) !important; color: var(--finup-foreground) !important; font-size: 13px !important; text-align: center; }
+.invite-link-input:focus { border-color: var(--finup-primary) !important; box-shadow: 0 0 0 3px var(--finup-focus) !important; }
+

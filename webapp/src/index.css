@@ -1,3 +1,7 @@
+/* src/index.css */
+/* Estilos globais para aplicação web. */
+/* ==================================== */
+
 :root {
   font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
   color: var(--finup-foreground);

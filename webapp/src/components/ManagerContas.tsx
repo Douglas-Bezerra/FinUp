@@ -1,6 +1,6 @@
 // src/components/ManagerContas.tsx
-// Arquivo para gerenciar Contas
-// ========================================
+// Arquivo para gerenciar Contas (Corrente, Poupança, Investimentos, etc)
+// =======================================================================
 
 import { useState, type FormEvent } from 'react'
 import {

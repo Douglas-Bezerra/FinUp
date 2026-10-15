@@ -1,6 +1,6 @@
-// firestore.rules
-// Arquivo que contém as regras de acesso ao banco de dados do Firebase
-// ========================================================================
+# firestore.rules
+# Arquivo que contém as regras de acesso ao banco de dados do Firebase
+# ========================================================================
 
 rules_version = '2';
 service cloud.firestore {

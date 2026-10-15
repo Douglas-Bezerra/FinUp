@@ -1,6 +1,6 @@
-// src/views/TelaCadastroRegistros.tsx
-// Tela de cadastro de lançamentos.
-// =====================================
+// webapp/src/views/TelaCadastroRegistros.tsx
+// Tela de cadastro de lançamentos no webapp.
+// ============================================
 
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'

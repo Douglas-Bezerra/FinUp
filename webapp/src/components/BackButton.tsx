@@ -1,6 +1,6 @@
 // src/components/BackButton.tsx
 // Botão de voltar para tela anterior
-// =============================================================================
+// =======================================
 
 import { Link, useLocation } from 'react-router-dom'
 
@@ -11,7 +11,7 @@ type BackButtonProps = {
 
 export default function BackButton({
   fallback = '/menu',
-  label = 'Voltar à tela anterior',
+  label = 'Voltar',
 }: BackButtonProps) {
   const location = useLocation()
   const locationState = location.state

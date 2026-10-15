@@ -1,5 +1,5 @@
 // src/components/ManagerInstFin.tsx
-// Arquivo para gerenciar Instituições financeiras
+// Arquivo para gerenciar Instituições Financeiras
 // ================================================
 
 import { useState, type CSSProperties, type FormEvent } from 'react'

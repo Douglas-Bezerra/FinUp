@@ -1,3 +1,7 @@
+// src/views/TelaCadastroRegistros.tsx
+// Arquivo principal do sistema FinUp que efetua o lançamento de transações.
+// ==========================================================================
+
 import { Alert, StyleSheet, Text, View, Pressable, Modal } from "react-native";
 import { useState, useEffect } from "react";
 
