@@ -20,7 +20,7 @@ type Props = {
 const institutionColors = [
   { name: 'Ouro', value: '#FCFC30' },
   { name: 'Azul', value: '#1c60ab' },
-  { name: 'Verde', value: '#16A34A' },
+  { name: 'Verde', value: '#00AE9D' },
   { name: 'Roxo', value: '#820AD1' },
   { name: 'Vermelho', value: '#CC092F' },
   { name: 'Laranja', value: '#FF6200' },

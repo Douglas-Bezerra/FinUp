@@ -520,7 +520,7 @@ service cloud.firestore {
             'contaCorrenteId'
           ])
           && request.resource.data.nome is string
-          && request.resource.data.tipoConta in ['CORRENTE', 'POUPANCA', 'CARTAO_CREDITO', 'CAIXINHA', 'INVESTIMENTO']
+          && request.resource.data.tipoConta in ['CORRENTE', 'POUPANCA', 'CARTAO_CREDITO', 'CAIXINHA', 'INVESTIMENTO', 'OUTROS']
           && request.resource.data.saldoAtual is number
           && request.resource.data.ativo == true
           && request.resource.data.criadaPorUsuarioId == request.auth.uid
@@ -566,7 +566,7 @@ service cloud.firestore {
                   'diaVencimento'
                 ])
               && request.resource.data.nome is string
-              && request.resource.data.tipoConta in ['CORRENTE', 'POUPANCA', 'CARTAO_CREDITO', 'CAIXINHA', 'INVESTIMENTO']
+              && request.resource.data.tipoConta in ['CORRENTE', 'POUPANCA', 'CARTAO_CREDITO', 'CAIXINHA', 'INVESTIMENTO', 'OUTROS']
               && request.resource.data.ativo is bool
               && (request.resource.data.get('usuarioId', null) == null
                 || get(userPath(request.resource.data.usuarioId)).data.familiaId == familyId)

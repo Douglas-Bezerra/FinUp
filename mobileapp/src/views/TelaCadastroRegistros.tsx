@@ -646,6 +646,7 @@ export default function TelaCadastroRegistros() {
                   ["POUPANCA", "Poupança"],
                   ["CARTAO_CREDITO", "Cartão"],
                   ["CAIXINHA", "Caixinha"],
+                  ["OUTROS", "Outros"],
                 ] as const).map(([value, label]) => (
                   <Pressable
                     key={value}

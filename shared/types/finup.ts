@@ -1,3 +1,7 @@
+// shared/types/finup.ts
+// Arquivo de tipos (define campos e tipos de dados) para aplicação web e mobile
+//==============================================================================
+
 export type PapelUsuario = 'PRINCIPAL' | 'SECUNDARIO'
 export type TipoMovimentacao = 'RECEITA' | 'DESPESA' | 'TRANSFERENCIA'
 export type StatusTransacao = 'EFETIVADO' | 'PENDENTE'
@@ -29,7 +33,7 @@ export interface Conta {
   numeroConta?: string | null
   contaCorrenteId?: string | null
   nome: string
-  tipoConta: 'CORRENTE' | 'POUPANCA' | 'CARTAO_CREDITO' | 'CAIXINHA' | 'INVESTIMENTO'
+  tipoConta: 'CORRENTE' | 'POUPANCA' | 'CARTAO_CREDITO' | 'CAIXINHA' | 'INVESTIMENTO' | 'OUTROS'
   saldoAtual: number
   limiteTotal?: number | null
   diaFechamento?: number

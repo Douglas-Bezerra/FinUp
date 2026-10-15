@@ -1376,6 +1376,7 @@ export default function TelaCadastroRegistros() {
                 <option value="CARTAO_CREDITO">Cartão de crédito</option>
                 <option value="CAIXINHA">Caixinha / Caixa</option>
                 <option value="INVESTIMENTO">Conta investimento</option>
+                <option value="OUTROS">Outros</option>
               </select>
 
               {accountType === 'CARTAO_CREDITO' ? (

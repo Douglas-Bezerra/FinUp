@@ -27,6 +27,7 @@ const accountTypeLabels: Record<AccountType, string> = {
   CARTAO_CREDITO: 'Cartão de crédito',
   INVESTIMENTO: 'Conta investimento',
   CAIXINHA: 'Caixinha',
+  OUTROS: 'Outros',
 }
 
 const currencyFormatter = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
