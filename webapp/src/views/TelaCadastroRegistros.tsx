@@ -1,9 +1,9 @@
 // webapp/src/views/TelaCadastroRegistros.tsx
-// Tela de cadastro de lançamentos no webapp.
-// ============================================
+// Tela de cadastro de lançamentos, o coração do aplicativo, no webapp.
+// ====================================================================
 
 import { useEffect, useState, type FormEvent } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import {
   atualizarFaturaCartao,
   cadastrarTransacao,
@@ -728,9 +728,9 @@ export default function TelaCadastroRegistros() {
     <main className="home-page records-page">
       <div className="home-shell">
         <header className="home-header records-header">
-          <Link className="home-brand" to="/menu" aria-label="FinUp - menu">
+          <div className="home-brand">
             <Logo />
-          </Link>
+          </div>
           <div className="records-heading-actions">
             <BackButton />
             <LogoutButton />

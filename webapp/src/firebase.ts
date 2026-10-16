@@ -1,6 +1,6 @@
-// src/firebase.ts
-// Configuração e Inicialização do Firebase
-// =============================================================================
+// webapp/src/firebase.ts
+// Regras de configuração do Firebase para o aplicativo webapp
+// ===========================================================
 
 import { initializeApp } from 'firebase/app';
 import { connectAuthEmulator, getAuth } from 'firebase/auth';

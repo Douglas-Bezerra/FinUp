@@ -1,4 +1,4 @@
-// src/components/LogoutButton.tsx
+// webapp/src/components/LogoutButton.tsx
 // Botão de logout do aplicativo web
 // =============================================================================
 

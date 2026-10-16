@@ -1,4 +1,4 @@
-// src/components/Logo.tsx
+// webapp/src/components/Logo.tsx
 // Componente de logotipo do projeto webapp
 // =============================================================================
 

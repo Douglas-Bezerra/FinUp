@@ -1,4 +1,4 @@
-// src/components/ManagerInstFin.tsx
+// webapp/src/views/ManagerInstFin.tsx
 // Arquivo para gerenciar Instituições Financeiras
 // ================================================
 
@@ -18,12 +18,12 @@ type Props = {
 }
 
 const institutionColors = [
-  { name: 'Ouro', value: '#FCFC30' },
-  { name: 'Azul', value: '#1c60ab' },
-  { name: 'Verde', value: '#00AE9D' },
-  { name: 'Roxo', value: '#820AD1' },
-  { name: 'Vermelho', value: '#CC092F' },
-  { name: 'Laranja', value: '#FF6200' },
+  { name: 'Ouro', value: '#FCFC30' }, // Banco do Brasil
+  { name: 'Azul', value: '#1c60ab' }, // Caixa Econômica Federal
+  { name: 'Verde', value: '#00AE9D' }, // Sicoob
+  { name: 'Roxo', value: '#820AD1' }, // Nubank
+  { name: 'Vermelho', value: '#CC092F' }, // Bradesco, Santander
+  { name: 'Laranja', value: '#FF6200' }, // Itaú
   { name: 'Ciano', value: '#0891B2' },
   { name: 'Rosa', value: '#DB2777' },
   { name: 'Grafite', value: '#475569' },

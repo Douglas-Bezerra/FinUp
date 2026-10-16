@@ -1,6 +1,6 @@
 // src/views/TelaMenu.tsx
 // Menu de navegação exibido após a autenticação
-// =============================================================================
+// ==============================================
 
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -78,9 +78,9 @@ export default function TelaMenu() {
     <main className="home-page">
       <div className="home-shell">
         <header className="home-header">
-          <Link className="home-brand" to="/menu" aria-label="FinUp - menu">
+          <div className="home-brand">
             <Logo />
-          </Link>
+          </div>
           <div className="home-account">
             <div className="home-avatar" aria-hidden="true">{firstName.charAt(0).toUpperCase()}</div>
             <div>

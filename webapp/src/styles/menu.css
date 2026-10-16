@@ -1,4 +1,6 @@
-/* Navigation menu styles. */
+/* webapp/src/styles/menu.css */
+/* Arquivo de estilos para a tela de menu. */
+/* ======================================= */
 
 .menu-options { display: grid; gap: 16px; width: min(100%, 680px); margin: 8px auto 0; }
 .menu-option-button { display: flex; align-items: center; gap: 16px; width: 100%; min-height: 76px; box-sizing: border-box; padding: 16px 20px; border: 1px solid var(--finup-border); border-radius: 10px; background: var(--finup-surface); color: var(--finup-foreground); text-align: left; text-decoration: none; transition: border-color 160ms ease, background-color 160ms ease, transform 160ms ease; }

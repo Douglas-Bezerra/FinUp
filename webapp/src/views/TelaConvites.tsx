@@ -1,4 +1,4 @@
-// src/views/TelaConvites.tsx
+// webapp/src/views/TelaConvites.tsx
 // Tela de convites para usuarios secundários do aplicativo web
 // =============================================================================
 
@@ -8,6 +8,7 @@ import { criarConvite, obterUsuario } from '../../../shared/services/finupServic
 import { auth, db } from '../firebase'
 import BackButton from '../components/BackButton'
 import LogoutButton from '../components/LogoutButton'
+import Logo from '../components/Logo'
 import '../App.css'
 
 function createInviteToken() {
@@ -84,6 +85,9 @@ export default function TelaConvites() {
     <main className="login-page cadastro-page">
       <section className="login-panel standalone-panel" aria-labelledby="convites-title">
         <div className="login-card">
+          <div className="brand">
+            <Logo />
+          </div>
           <div className="standalone-toolbar">
             <BackButton />
             <LogoutButton />

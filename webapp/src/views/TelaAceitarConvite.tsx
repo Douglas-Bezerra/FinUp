@@ -1,4 +1,4 @@
-// src/views/TelaAceitarConvite.tsx
+// webapp/src/views/TelaAceitarConvite.tsx
 // Tela de aceitação de convite para usuário secundário do aplicativo web
 // Tela mantida para compatibilidade com versões anteriores do aplicativo
 // =============================================================================

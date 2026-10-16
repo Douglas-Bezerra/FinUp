@@ -1,4 +1,4 @@
-// src/components/ManagerContas.tsx
+// webapp/src/views/ManagerContas.tsx
 // Arquivo para gerenciar Contas (Corrente, Poupança, Investimentos, etc)
 // =======================================================================
 

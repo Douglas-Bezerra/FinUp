@@ -1,8 +1,8 @@
-// src/main.tsx
+// webapp/src/main.tsx
 // Arquivo principal do aplicativo web que chama o App.tsx
 // Para rodar em localhost, execute npm run dev.
 // Para executar o projeto web, execute "npm start" no terminal
-// =============================================================================
+// ============================================================
 
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'

@@ -1,6 +1,7 @@
-// src/App.tsx
-// Ponto de entrada da aplicação web
-// =============================================================================
+// webapp/src/App.tsx
+// Após passar pelo main.tsx, o aplicativo é carregado aqui e redirecionado
+// para o AppRouter, que é responsável por definir a navegação.
+// ========================================================================
 
 import { useEffect, useState } from 'react'
 import AppRouter from './navigation/AppRouter'

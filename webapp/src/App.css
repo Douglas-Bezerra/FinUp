@@ -1,6 +1,6 @@
 /* src/App.css */
-/* Arquivo de estilos para o aplicativo webapp. */
-/* =========================================================================== */
+/* Arquivo que redireciona as regras de estilo para as páginas específicas devido a componentização. */
+/* ============================================================================== */
 
 /* Shared stylesheet entry point. Keep feature styles in their own modules. */
 @import './styles/auth.css';

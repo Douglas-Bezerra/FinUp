@@ -1,6 +1,7 @@
-// src/views/TelaGerenciamento.tsx
-// Arquivo para tela de gerenciamento de Contas e Categorias
-// ==========================================================
+// webapp/src/views/TelaGerenciarCategorias.tsx
+// Arquivo para tela de gerenciamento de Contas e Categorias, Instituição Bancária
+// Cartões, Orçamentos, Parcelamentos e Recorrências, no webapp.
+// ===============================================================================
 
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
@@ -343,9 +344,9 @@ export default function TelaGerenciamento() {
     <main className="home-page manager-page">
       <div className="home-shell">
         <header className="home-header records-header">
-          <Link className="home-brand" to="/menu" aria-label="FinUp - menu">
+          <div className="home-brand">
             <Logo />
-          </Link>
+          </div>
           <div className="records-heading-actions">
             <BackButton />
             <LogoutButton />

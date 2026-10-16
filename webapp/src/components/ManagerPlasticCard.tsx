@@ -1,6 +1,6 @@
-// src/components/ManagerPlasticCard.tsx
+// webapp/src/views/ManagerPlasticCard.tsx
 // Arquivo para gerenciar Cartões plásticos
-// ==========================================
+// ================================================
 
 import { useState, type FormEvent } from 'react'
 import { doc, updateDoc } from 'firebase/firestore'
