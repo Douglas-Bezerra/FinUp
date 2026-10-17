@@ -554,7 +554,7 @@ const styles = StyleSheet.create({
         borderColor: colors.border,
         borderRadius: 16,
         padding: 16,
-        marginTop: 40,
+        marginTop: 30,
     },
     cashFlowHeader: {
         flexDirection: "row",
