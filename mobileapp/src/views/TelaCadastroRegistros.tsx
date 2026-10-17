@@ -264,7 +264,7 @@ export default function TelaCadastroRegistros() {
           <GradientButton
             title="+ Conta"
             onPress={() => setContaAberta(true)}
-            style={{ minWidth: 76 }}
+            style={{ minWidth: 70 }}
           />
           <GradientButton
             title="+ Novo"
@@ -286,7 +286,7 @@ export default function TelaCadastroRegistros() {
         </View>
 
         <View style={[styles.summaryCard, styles.creditCard]}>
-          <Text style={styles.summaryLabel}>Crédito pendente</Text>
+          <Text style={styles.summaryLabel}>Crédito</Text>
           <Text style={styles.creditValue}>{creditPending.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</Text>
         </View>
       </View>
@@ -687,7 +687,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-    padding: 25,
+    padding: 15,
   },
   title: {
     color: colors.foreground,
@@ -699,7 +699,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     marginBottom: 20,
-    marginTop: 15
+    marginTop: 30
   },
   month: {
     color: colors.mutedForeground,

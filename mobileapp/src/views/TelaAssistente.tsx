@@ -443,7 +443,7 @@ const styles = StyleSheet.create({
         alignItems: "flex-end",
         gap: 8,
         paddingHorizontal: 10,
-        paddingVertical: 30,
+        paddingVertical: 15,
         borderTopWidth: 1,
         borderTopColor: colors.border,
     },
@@ -456,6 +456,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 10,
         color: colors.foreground,
         fontSize: 18,
+        marginBottom: 25,
     },
     sendButton: {
         width: 48,
@@ -463,6 +464,7 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         alignItems: "center",
         justifyContent: "center",
+        marginBottom: 25,
     },
     sendButtonActive: {
         backgroundColor: colors.foreground,

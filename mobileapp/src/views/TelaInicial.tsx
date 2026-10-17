@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, Pressable } from "react-native";
+import { StyleSheet, Text, View, Pressable, ScrollView } from "react-native";
 import { useEffect, useState } from "react";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -9,7 +9,10 @@ import { colors } from "../styles/colors";
 import { auth, db } from "../firebase";
 import { listarContas, obterExtrato, obterUsuario } from "../../../shared/services/finupService";
 
+import type { Transacao } from "../../../shared/types/finup";
+
 export default function TelaInicial() {
+
     const navigation =
         useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const [nomeUsuario, setNomeUsuario] = useState("");
@@ -17,6 +20,8 @@ export default function TelaInicial() {
     const [receitas, setReceitas] = useState(0);
     const [despesas, setDespesas] = useState(0);
     const [loadError, setLoadError] = useState("");
+
+    const [transacoes, setTransacoes] = useState<Transacao[]>([]);
 
     useEffect(() => {
         let cancelled = false;
@@ -31,6 +36,7 @@ export default function TelaInicial() {
                     obterExtrato(db, profile.familiaId),
                 ]);
                 if (cancelled) return;
+                setTransacoes(transactions);
                 setNomeUsuario(profile.nome);
                 setSaldoTotal(accounts.reduce((total, account) => total + account.saldoAtual, 0));
                 const currentMonth = new Date().toISOString().slice(0, 7);
@@ -58,6 +64,132 @@ export default function TelaInicial() {
         currency: "BRL",
         maximumFractionDigits: 2,
     });
+
+    {/* Fluxo Mensal */ }
+    const anoAtual = new Date().getFullYear();
+    const mesAtual = new Date().getMonth();
+    const diaAtual = new Date().getDate();
+
+    const meses = [
+        "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
+        "Jul", "Ago", "Set", "Out", "Nov", "Dez",
+    ];
+
+    const fluxoMensal = meses.map((nome, mes) => {
+        const movimentacoes = transacoes.filter((item) => {
+            const data = item.dataTransacao;
+
+            return (
+                data.getFullYear() === anoAtual &&
+                data.getMonth() === mes &&
+                item.status === "EFETIVADO" &&
+                !item.estornado
+            );
+        });
+
+        const totalReceitas = movimentacoes
+            .filter((item) => item.tipoMovimentacao === "RECEITA")
+            .reduce((total, item) => total + item.valor, 0);
+
+        const totalDespesas = movimentacoes
+            .filter((item) => item.tipoMovimentacao === "DESPESA")
+            .reduce((total, item) => total + item.valor, 0);
+
+        return {
+            nome,
+            mes,
+            receitas: totalReceitas,
+            despesas: totalDespesas,
+            resultado: totalReceitas - totalDespesas,
+        };
+    });
+
+    // Altura proporcional das barras, mantendo um limite visual.
+    const maiorResultado = Math.max(
+        1,
+        ...fluxoMensal.map((item) => Math.abs(item.resultado)),
+    );
+
+    const alturaMaximaBarra = 76;
+
+    // Compara o mês atual com o anterior até o mesmo dia,
+    // limitando a comparação ao último dia de cada mês.
+    const inicioMesAtual = new Date(anoAtual, mesAtual, 1);
+    const inicioMesAnterior = new Date(anoAtual, mesAtual - 1, 1);
+
+    const diasComparacaoAnterior = Math.min(
+        diaAtual,
+        new Date(
+            inicioMesAnterior.getFullYear(),
+            inicioMesAnterior.getMonth() + 1,
+            0,
+        ).getDate(),
+    );
+
+    const totalAteData = (
+        ano: number,
+        mes: number,
+        diaLimite: number,
+    ) => {
+        return transacoes
+            .filter((item) => {
+                const data = item.dataTransacao;
+
+                return (
+                    data.getFullYear() === ano &&
+                    data.getMonth() === mes &&
+                    data.getDate() <= diaLimite &&
+                    item.status === "EFETIVADO" &&
+                    !item.estornado &&
+                    (
+                        item.tipoMovimentacao === "RECEITA" ||
+                        item.tipoMovimentacao === "DESPESA"
+                    )
+                );
+            })
+            .reduce((total, item) => {
+                return total + (
+                    item.tipoMovimentacao === "RECEITA"
+                        ? item.valor
+                        : -item.valor
+                );
+            }, 0);
+    };
+
+    const resultadoAtual = totalAteData(
+        anoAtual,
+        mesAtual,
+        diaAtual,
+    );
+
+    const resultadoAnterior = totalAteData(
+        inicioMesAnterior.getFullYear(),
+        inicioMesAnterior.getMonth(),
+        diasComparacaoAnterior,
+    );
+
+    // Só existe percentual comparável se o período anterior
+    // tiver resultado diferente de zero.
+    const percentualFluxo =
+        resultadoAnterior !== 0
+            ? ((resultadoAtual - resultadoAnterior) /
+                Math.abs(resultadoAnterior)) * 100
+            : null;
+
+    const fluxoPositivo = resultadoAtual >= 0;
+
+    const percentualTexto =
+        percentualFluxo === null
+            ? "—"
+            : `${percentualFluxo > 0 ? "+" : ""}${percentualFluxo
+                .toLocaleString("pt-BR", {
+                    minimumFractionDigits: 1,
+                    maximumFractionDigits: 1,
+                })}% ${percentualFluxo > 0
+                    ? "↑"
+                    : percentualFluxo < 0
+                        ? "↓"
+                        : "→"}`;
 
     return (
         <View style={styles.container}>
@@ -176,37 +308,123 @@ export default function TelaInicial() {
                 </View>
             </View>
 
+
             {/* Fluxo de Caixa */}
             <View style={styles.cashFlowCard}>
                 <View style={styles.cashFlowHeader}>
-                    <Text style={styles.cashFlowTitle}>Fluxo de Caixa</Text>
+                    <View>
+                        <Text style={styles.cashFlowTitle}>
+                            Fluxo de Caixa
+                        </Text>
+                        <Text style={styles.cashFlowSubtitle}>
+                            Resultado Mensal · {anoAtual}
+                        </Text>
+                    </View>
 
-                    <View style={styles.percentageBadge}>
-                        <Text style={styles.percentageText}>+18,2% ↑</Text>
+                    <View
+                        style={[
+                            styles.percentageBadge,
+                            fluxoPositivo
+                                ? styles.percentageBadgePositive
+                                : styles.percentageBadgeNegative,
+                        ]}
+                    >
+                        <Text
+                            style={[
+                                styles.percentageText,
+                                fluxoPositivo
+                                    ? styles.percentageTextPositive
+                                    : styles.percentageTextNegative,
+                            ]}
+                        >
+                            {percentualTexto}
+                        </Text>
                     </View>
                 </View>
 
-                {/* Meses */}
-                <View style={styles.months}>
-                    {["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul"].map((month, index) => (
-                        <View
-                            key={month}
-                            style={[
-                                styles.month,
-                                index === 6 && styles.monthActive,
-                            ]}
-                        >
-                            <Text
-                                style={[
-                                    styles.monthText,
-                                    index === 6 && styles.monthTextActive,
-                                ]}
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    nestedScrollEnabled
+                    contentContainerStyle={styles.chartScrollContent}
+                >
+                    {fluxoMensal.map((item) => {
+                        const positivo = item.resultado > 0;
+                        const negativo = item.resultado < 0;
+                        const mesSelecionado = item.mes === mesAtual;
+
+                        const alturaBarra =
+                            item.resultado === 0
+                                ? 3
+                                : Math.max(
+                                    5,
+                                    (
+                                        Math.abs(item.resultado) /
+                                        maiorResultado
+                                    ) * alturaMaximaBarra,
+                                );
+
+                        const corBarra = positivo
+                            ? "#4ADE80"
+                            : negativo
+                                ? "#FF6B6B"
+                                : colors.border;
+
+                        return (
+                            <View
+                                key={item.nome}
+                                style={styles.chartMonthColumn}
                             >
-                                {month}
-                            </Text>
-                        </View>
-                    ))}
-                </View>
+                                <Text
+                                    numberOfLines={1}
+                                    style={[
+                                        styles.chartValue,
+                                        {
+                                            color: corBarra,
+                                        },
+                                    ]}
+                                >
+                                    {item.resultado === 0
+                                        ? "R$ 0"
+                                        : `${negativo ? "-" : "+"}${Math.abs(
+                                            item.resultado,
+                                        ).toLocaleString("pt-BR", {
+                                            maximumFractionDigits: 0,
+                                        })}`}
+                                </Text>
+
+                                <View style={styles.chartBarArea}>
+                                    <View
+                                        style={[
+                                            styles.chartBar,
+                                            {
+                                                height: alturaBarra,
+                                                backgroundColor: corBarra,
+                                            },
+                                        ]}
+                                    />
+                                </View>
+
+                                <View
+                                    style={[
+                                        styles.month,
+                                        mesSelecionado && styles.monthActive,
+                                    ]}
+                                >
+                                    <Text
+                                        style={[
+                                            styles.monthText,
+                                            mesSelecionado &&
+                                            styles.monthTextActive,
+                                        ]}
+                                    >
+                                        {item.nome}
+                                    </Text>
+                                </View>
+                            </View>
+                        );
+                    })}
+                </ScrollView>
             </View>
 
 
@@ -275,22 +493,22 @@ const styles = StyleSheet.create({
     },
     summaryLabel: {
         color: colors.mutedForeground,
-        fontSize: 20,
+        fontSize: 15,
         marginBottom: 3,
     },
     income: {
         color: colors.primary,
-        fontSize: 20,
+        fontSize: 18,
         fontWeight: "600",
     },
     expense: {
         color: "#FF6B6B",
-        fontSize: 20,
+        fontSize: 18,
         fontWeight: "600",
     },
     savings: {
         color: colors.info,
-        fontSize: 20,
+        fontSize: 18,
         fontWeight: "600",
     },
     divider: {
@@ -336,44 +554,83 @@ const styles = StyleSheet.create({
         borderColor: colors.border,
         borderRadius: 16,
         padding: 16,
-        marginTop: 16,
+        marginTop: 40,
     },
     cashFlowHeader: {
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "space-between",
+        marginBottom: 30,
     },
     cashFlowTitle: {
         color: colors.foreground,
-        fontSize: 14,
+        fontSize: 20,
         fontWeight: "600",
     },
+    cashFlowSubtitle: {
+        color: colors.mutedForeground,
+        fontSize: 15,
+        marginTop: 4,
+    },
     percentageBadge: {
-        backgroundColor: "rgba(74, 222, 128, 0.1)",
         paddingHorizontal: 8,
         paddingVertical: 4,
         borderRadius: 8,
     },
-    percentageText: {
-        color: colors.primary,
-        fontSize: 11,
+    percentageBadgePositive: {
+        backgroundColor: "rgba(74, 222, 128, 0.1)",
     },
-    months: {
+    percentageBadgeNegative: {
+        backgroundColor: "rgba(255, 107, 107, 0.12)",
+    },
+    percentageText: {
+        fontSize: 15,
+        fontWeight: "600",
+    },
+    percentageTextPositive: {
+        color: "#4ADE80",
+    },
+    percentageTextNegative: {
+        color: "#FF6B6B",
+    },
+    chartScrollContent: {
         flexDirection: "row",
-        justifyContent: "space-between",
-        marginTop: 16,
+        alignItems: "flex-end",
+        gap: 7,
+        paddingTop: 4,
+    },
+    chartMonthColumn: {
+        width: 42,
+        alignItems: "center",
+    },
+    chartValue: {
+        fontSize: 13,
+        fontWeight: "600",
+        marginBottom: 6,
+    },
+    chartBarArea: {
+        height: 80,
+        width: "100%",
+        alignItems: "center",
+        justifyContent: "flex-end",
+    },
+    chartBar: {
+        width: 22,
+        borderRadius: 5,
+        minHeight: 3,
     },
     month: {
-        paddingHorizontal: 10,
+        paddingHorizontal: 7,
         paddingVertical: 6,
         borderRadius: 8,
+        marginTop: 8,
     },
     monthActive: {
         backgroundColor: colors.primary,
     },
     monthText: {
         color: colors.mutedForeground,
-        fontSize: 11,
+        fontSize: 13,
     },
     monthTextActive: {
         color: colors.primaryForeground,

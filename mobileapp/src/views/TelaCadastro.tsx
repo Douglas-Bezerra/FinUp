@@ -24,6 +24,7 @@ import Input from "../components/Input";
 import Logo from "../components/Logo";
 import GradientButton from "../components/GradientButton";
 
+{/* Definindo o tipo de navegação para a tela de cadastro */ }
 type CadastroNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
   "Cadastro"
@@ -39,6 +40,7 @@ export default function TelaCadastro() {
 
   const [firebaseError, setFirebaseError] = useState("");
 
+  {/* Estado para armazenar mensagens de erro de validação */ }
   const [errors, setErrors] = useState({
     name: "",
     email: "",
@@ -46,6 +48,7 @@ export default function TelaCadastro() {
     confirmPassword: "",
   });
 
+  {/* Função para validar o formulário */ }
   const validateForm = () => {
     const newErrors = {
       name: "",
@@ -270,7 +273,6 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     justifyContent: "center",
     alignItems: "center",
-
   },
   backIcon: {
     color: colors.foreground,
@@ -292,5 +294,4 @@ const styles = StyleSheet.create({
     marginTop: -10,
     marginBottom: 16,
   },
-
 });
