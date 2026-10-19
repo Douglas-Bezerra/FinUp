@@ -730,6 +730,7 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         alignItems: "center",
         justifyContent: "center",
+        marginBottom: 25,
     },
     sendButtonActive: {
         backgroundColor: colors.foreground,

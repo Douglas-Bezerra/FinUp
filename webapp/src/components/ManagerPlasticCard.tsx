@@ -1,6 +1,6 @@
-// src/components/ManagerPlasticCard.tsx
+// webapp/src/views/ManagerPlasticCard.tsx
 // Arquivo para gerenciar Cartões plásticos
-// ==========================================
+// ================================================
 
 import { useState, type FormEvent } from 'react'
 import { doc, updateDoc } from 'firebase/firestore'
@@ -183,7 +183,7 @@ export default function ManagerPlasticCard({ profile, accounts, cards, onCardsCh
               <button className="records-close" type="button" aria-label="Fechar formulário" onClick={closeEditor} disabled={isSaving}>×</button>
             </header>
             <form className="records-form" onSubmit={(event) => void saveCard(event)}>
-              <label htmlFor="plastic-card-name">Nome de exibição</label>
+              <label htmlFor="plastic-card-name">Nome de exibição (Bandeira, Banco, 4 dígitos finais)</label>
               <input id="plastic-card-name" value={cardName} onChange={(event) => setCardName(event.target.value)} maxLength={80} required />
               <label htmlFor="plastic-card-account">Conta de crédito</label>
               <select id="plastic-card-account" value={cardAccountId} onChange={(event) => setCardAccountId(event.target.value)} required>

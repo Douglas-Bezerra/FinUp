@@ -1,6 +1,6 @@
-// src/components/ManagerContas.tsx
-// Arquivo para gerenciar Contas
-// ========================================
+// webapp/src/views/ManagerContas.tsx
+// Arquivo para gerenciar Contas (Corrente, Poupança, Investimentos, etc)
+// =======================================================================
 
 import { useState, type FormEvent } from 'react'
 import {
@@ -27,6 +27,7 @@ const accountTypeLabels: Record<AccountType, string> = {
   CARTAO_CREDITO: 'Cartão de crédito',
   INVESTIMENTO: 'Conta investimento',
   CAIXINHA: 'Caixinha',
+  OUTROS: 'Outros',
 }
 
 const currencyFormatter = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })

@@ -1,17 +1,26 @@
+// webapp/src/views/TelaCadastroRegistros.tsx
+// Tela de cadastro de lançamentos, o coração do aplicativo, no webapp.
+// ====================================================================
+
 import { useEffect, useState, type FormEvent } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import {
+  atualizarFaturaCartao,
+  cadastrarParcelaFaturaCartao,
   cadastrarTransacao,
   cadastrarTransferencia,
   criarConta,
+  criarFaturaCartao,
+  criarParcelamento,
   efetivarTransacaoPendente,
   listarCategorias,
   listarContas,
+  listarFaturasCartao,
   listarInstituicoesBancarias,
   obterExtrato,
   obterUsuario,
 } from '../../../shared/services/finupService'
-import type { Categoria, Conta, InstituicaoBancaria, Transacao, Usuario } from '../../../shared/types/finup'
+import type { Categoria, Conta, FaturaCartao, InstituicaoBancaria, Transacao, Usuario } from '../../../shared/types/finup'
 import { auth, db } from '../firebase'
 import BackButton from '../components/BackButton'
 import LogoutButton from '../components/LogoutButton'
@@ -21,10 +30,14 @@ import '../App.css'
 type TransactionType = 'RECEITA' | 'DESPESA' | 'TRANSFERENCIA'
 type TransactionFilter = 'TODOS' | TransactionType
 
+type FormaPagamentoDespesa = 'DINHEIRO' | 'PIX' | 'CARTAO_DEBITO' | 'CARTAO_CREDITO'
+type FormaRecebimentoReceita = 'DINHEIRO' | 'PIX' | 'CREDITO_CONTA' | 'DEPOSITO'
+
 const currencyFormatter = new Intl.NumberFormat('pt-BR', {
   style: 'currency',
   currency: 'BRL',
 })
+const CASH_INSTITUTION_NAME = 'Wallet/Carteira'
 
 function getToday() {
   const date = new Date()
@@ -61,22 +74,128 @@ function getMonth(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
 }
 
+function getInstallmentDueDate(monthReference: string, dueDay: number, monthOffset: number) {
+  const [year, month] = monthReference.split('-').map(Number)
+  const targetMonth = new Date(year, month - 1 + monthOffset, 1, 12)
+  const lastDay = new Date(targetMonth.getFullYear(), targetMonth.getMonth() + 1, 0).getDate()
+  return new Date(
+    targetMonth.getFullYear(),
+    targetMonth.getMonth(),
+    Math.min(dueDay, lastDay),
+    12,
+  )
+}
+
+function parseDateInput(value: string): Date | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
+  if (!match) return null
+
+  const [, yearValue, monthValue, dayValue] = match
+  const year = Number(yearValue)
+  const month = Number(monthValue)
+  const day = Number(dayValue)
+  if (year < 1 || month < 1 || month > 12 || day < 1 || day > 31) return null
+
+  const date = new Date(0)
+  date.setFullYear(year, month - 1, day)
+  date.setHours(12, 0, 0, 0)
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null
+  return date
+}
+
+interface InfoFaturaCalculada {
+  mesReferencia: string
+  dataFechamento: Date
+  dataVencimento: Date
+  isFaturaAtual: boolean
+  descricaoFatura: string
+}
+
+function calcularFaturaCartao(dataTransacaoStr: string, diaVencimento: number): InfoFaturaCalculada | null {
+  const dCompra = parseDateInput(dataTransacaoStr)
+  if (!dCompra || !Number.isInteger(diaVencimento) || diaVencimento < 1 || diaVencimento > 31) return null
+  const ano = dCompra.getFullYear()
+  const mes = dCompra.getMonth()
+
+  // O fechamento sempre é 10 dias antes do vencimento
+  const vencimentoMesAtual = new Date(ano, mes, diaVencimento, 23, 59, 59, 999)
+  const fechamentoMesAtual = new Date(vencimentoMesAtual)
+  fechamentoMesAtual.setDate(fechamentoMesAtual.getDate() - 10)
+  fechamentoMesAtual.setHours(23, 59, 59, 999)
+
+  let vencimentoEscolhido: Date
+  let fechamentoEscolhido: Date
+  let isFaturaAtual: boolean
+
+  if (dCompra.getTime() <= fechamentoMesAtual.getTime()) {
+    vencimentoEscolhido = vencimentoMesAtual
+    fechamentoEscolhido = fechamentoMesAtual
+    isFaturaAtual = true
+  } else {
+    const vencimentoProximoMes = new Date(ano, mes + 1, diaVencimento, 23, 59, 59, 999)
+    const fechamentoProximoMes = new Date(vencimentoProximoMes)
+    fechamentoProximoMes.setDate(fechamentoProximoMes.getDate() - 10)
+    fechamentoProximoMes.setHours(23, 59, 59, 999)
+    vencimentoEscolhido = vencimentoProximoMes
+    fechamentoEscolhido = fechamentoProximoMes
+    isFaturaAtual = false
+  }
+
+  const anoRef = vencimentoEscolhido.getFullYear()
+  const mesRef = String(vencimentoEscolhido.getMonth() + 1).padStart(2, '0')
+  const mesReferencia = `${anoRef}-${mesRef}`
+  const nomeMes = new Intl.DateTimeFormat('pt-BR', { month: 'short' }).format(vencimentoEscolhido)
+  const descricaoFatura = isFaturaAtual
+    ? `Fatura Atual (${nomeMes}/${anoRef})`
+    : `Próxima Fatura (${nomeMes}/${anoRef})`
+
+  return {
+    mesReferencia,
+    dataFechamento: fechamentoEscolhido,
+    dataVencimento: vencimentoEscolhido,
+    isFaturaAtual,
+    descricaoFatura,
+  }
+}
+
 export default function TelaCadastroRegistros() {
   const [searchParams, setSearchParams] = useSearchParams()
   const requestedType = searchParams.get('tipo')
   const initialType: TransactionType = requestedType === 'RECEITA' ? 'RECEITA' : 'DESPESA'
+
   const [profile, setProfile] = useState<Usuario | null>(null)
   const [transactions, setTransactions] = useState<Transacao[]>([])
   const [accounts, setAccounts] = useState<Conta[]>([])
   const [institutions, setInstitutions] = useState<InstituicaoBancaria[]>([])
   const [categories, setCategories] = useState<Categoria[]>([])
+  const [invoices, setInvoices] = useState<FaturaCartao[]>([])
+
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
   const [feedback, setFeedback] = useState('')
   const [reloadKey, setReloadKey] = useState(0)
   const [month, setMonth] = useState(getToday().slice(0, 7))
   const [filter, setFilter] = useState<TransactionFilter>('TODOS')
+
+  // Form states
   const [isFormOpen, setIsFormOpen] = useState(requestedType === 'RECEITA' || requestedType === 'DESPESA')
+  const [transactionType, setTransactionType] = useState<TransactionType>(initialType)
+  const [date, setDate] = useState(getToday())
+  const [categoryId, setCategoryId] = useState('')
+  const [formaPagamento, setFormaPagamento] = useState<FormaPagamentoDespesa>('DINHEIRO')
+  const [formaRecebimento, setFormaRecebimento] = useState<FormaRecebimentoReceita>('PIX')
+  const [accountId, setAccountId] = useState('')
+  const [creditCardAccountId, setCreditCardAccountId] = useState('')
+  const [installments, setInstallments] = useState('1')
+  const [destinationAccountId, setDestinationAccountId] = useState('')
+  const [description, setDescription] = useState('')
+  const [amount, setAmount] = useState('')
+  const [observation, setObservation] = useState('')
+  const [status, setStatus] = useState<'EFETIVADO' | 'PENDENTE'>('EFETIVADO')
+  const [formError, setFormError] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
+
+  // Account creation sub-modal
   const [isAccountFormOpen, setIsAccountFormOpen] = useState(false)
   const [accountName, setAccountName] = useState('')
   const [accountType, setAccountType] = useState<Conta['tipoConta']>('CORRENTE')
@@ -89,16 +208,6 @@ export default function TelaCadastroRegistros() {
   const [openingBalance, setOpeningBalance] = useState('0')
   const [accountError, setAccountError] = useState('')
   const [isSavingAccount, setIsSavingAccount] = useState(false)
-  const [transactionType, setTransactionType] = useState<TransactionType>(initialType)
-  const [accountId, setAccountId] = useState('')
-  const [destinationAccountId, setDestinationAccountId] = useState('')
-  const [description, setDescription] = useState('')
-  const [amount, setAmount] = useState('')
-  const [categoryId, setCategoryId] = useState('')
-  const [date, setDate] = useState(getToday())
-  const [status, setStatus] = useState<'EFETIVADO' | 'PENDENTE'>('EFETIVADO')
-  const [formError, setFormError] = useState('')
-  const [isSaving, setIsSaving] = useState(false)
 
   function closeForm() {
     setIsFormOpen(false)
@@ -110,7 +219,7 @@ export default function TelaCadastroRegistros() {
   useEffect(() => {
     let cancelled = false
 
-    async function loadTransactions() {
+    async function loadData() {
       setIsLoading(true)
       setLoadError('')
 
@@ -119,29 +228,41 @@ export default function TelaCadastroRegistros() {
         if (!currentUser) throw new Error('Sua sessão expirou.')
         const user = await obterUsuario(db, currentUser.uid)
         if (!user) throw new Error('Não encontramos seu perfil financeiro.')
-        const [items, userAccounts, userCategories, bankInstitutions] = await Promise.all([
+
+        const [items, userAccounts, userCategories, bankInstitutions, userInvoices] = await Promise.all([
           obterExtrato(db, user.familiaId),
           listarContas(db, user.familiaId),
           listarCategorias(db, user.familiaId),
           listarInstituicoesBancarias(db),
+          listarFaturasCartao(db, user.familiaId),
         ])
+
         if (!cancelled) {
           setProfile(user)
           setTransactions(items)
           setAccounts(userAccounts)
           setCategories(userCategories)
           setInstitutions(bankInstitutions)
-          const firstActiveAccountId = userAccounts.find((account) => account.ativo)?.id || ''
+          setInvoices(userInvoices)
+
+          const firstActiveBank = userAccounts.find((account) => account.ativo && account.tipoConta !== 'CARTAO_CREDITO')?.id || ''
+          const firstCreditCard = userAccounts.find((account) => account.ativo && account.tipoConta === 'CARTAO_CREDITO')?.id || ''
+
           setAccountId((current) => userAccounts.some((account) => account.id === current && account.ativo)
             ? current
-            : firstActiveAccountId)
-          setDestinationAccountId((current) => userAccounts.some((account) => account.id === current
-            && account.ativo && account.id !== firstActiveAccountId)
+            : firstActiveBank)
+
+          setCreditCardAccountId((current) => userAccounts.some((account) => account.id === current && account.ativo && account.tipoConta === 'CARTAO_CREDITO')
             ? current
-            : userAccounts.find((account) => account.ativo && account.id !== firstActiveAccountId)?.id || '')
+            : firstCreditCard)
+
+          setDestinationAccountId((current) => userAccounts.some((account) => account.id === current
+            && account.ativo && account.id !== firstActiveBank)
+            ? current
+            : userAccounts.find((account) => account.ativo && account.id !== firstActiveBank)?.id || '')
         }
       } catch (error) {
-        console.error('Erro ao carregar registros:', error)
+        console.error('Erro ao carregar dados:', error)
         if (!cancelled) {
           setLoadError('Não foi possível carregar os registros. Tente novamente.')
         }
@@ -152,7 +273,7 @@ export default function TelaCadastroRegistros() {
       }
     }
 
-    void loadTransactions()
+    void loadData()
     return () => {
       cancelled = true
     }
@@ -162,90 +283,405 @@ export default function TelaCadastroRegistros() {
   const visibleTransactions = monthTransactions.filter((transaction) =>
     filter === 'TODOS' || transaction.tipoMovimentacao === filter,
   )
+
   const totalIncome = monthTransactions
     .filter((transaction) => transaction.tipoMovimentacao === 'RECEITA'
       && transaction.status === 'EFETIVADO' && !transaction.estornado)
     .reduce((total, transaction) => total + transaction.valor, 0)
+
   const totalExpenses = monthTransactions
     .filter((transaction) => transaction.tipoMovimentacao === 'DESPESA'
       && transaction.status === 'EFETIVADO' && !transaction.estornado)
     .reduce((total, transaction) => total + transaction.valor, 0)
-  const selectedCategories = categories.filter((category) =>
-    category.ativo !== false && (category.tipo === transactionType || category.tipo === 'AMBAS'),
+
+  const totalPendingCredit = monthTransactions
+    .filter((transaction) => transaction.tipoMovimentacao === 'DESPESA'
+      && transaction.formaPagamento === 'credit'
+      && transaction.status === 'PENDENTE' && !transaction.estornado)
+    .reduce((total, transaction) => total + transaction.valor, 0)
+
+  const activeAccounts = accounts.filter((account) => account.ativo)
+  const bankAccounts = activeAccounts.filter((account) => account.tipoConta !== 'CARTAO_CREDITO')
+  const creditCardAccounts = activeAccounts.filter((account) => account.tipoConta === 'CARTAO_CREDITO')
+
+  const cashInstitution = institutions.find((institution) =>
+    institution.nome.trim().toLocaleLowerCase('pt-BR') === CASH_INSTITUTION_NAME.toLocaleLowerCase('pt-BR'),
   )
+  const cashAccount = cashInstitution
+    ? activeAccounts.find((account) =>
+      account.instituicaoId === cashInstitution.id
+      && account.nome.trim().toLocaleLowerCase('pt-BR') === 'em caixa / dinheiro'
+      && account.tipoConta === 'OUTROS',
+    )
+    : undefined
+
+  const selectedCreditCard = creditCardAccounts.find((acc) => acc.id === creditCardAccountId) || creditCardAccounts[0]
+  const cardDueDay = selectedCreditCard?.diaVencimento || 10
+  const invoiceInfo = calcularFaturaCartao(date, cardDueDay)
+  const numInstallments = Math.max(1, parseInt(installments, 10) || 1)
+  const parsedCurrentAmount = parseAmount(amount)
+  const installmentAmount = parsedCurrentAmount ? parsedCurrentAmount / numInstallments : 0
 
   function openForm(type: TransactionType = 'DESPESA') {
     setTransactionType(type)
     setCategoryId('')
     setDescription('')
     setAmount('')
+    setObservation('')
     setDate(getToday())
-    setStatus('EFETIVADO')
+    setFormaPagamento('DINHEIRO')
+    setFormaRecebimento('PIX')
+    setInstallments('1')
+    setStatus(type === 'DESPESA' ? 'EFETIVADO' : 'EFETIVADO')
     setFormError('')
-    setAccountId(accounts[0]?.id || '')
-    setDestinationAccountId(accounts.find((account) => account.id !== accounts[0]?.id)?.id || '')
+
+    const firstBank = bankAccounts[0]?.id || ''
+    setAccountId(firstBank)
+    setCreditCardAccountId(creditCardAccounts[0]?.id || '')
+    setDestinationAccountId(bankAccounts.find((acc) => acc.id !== firstBank)?.id || '')
     setIsFormOpen(true)
+  }
+
+  function handleCategoryChange(selectedId: string) {
+    setCategoryId(selectedId)
+    const selected = categories.find((c) => c.id === selectedId)
+    if (!selected) return
+
+    // Auto-identifica como Despesa ou Receita
+    if (selected.tipo === 'DESPESA' && transactionType !== 'DESPESA') {
+      setTransactionType('DESPESA')
+      setStatus('EFETIVADO')
+    } else if (selected.tipo === 'RECEITA' && transactionType !== 'RECEITA') {
+      setTransactionType('RECEITA')
+      setStatus('EFETIVADO')
+    }
+  }
+
+  async function handlePaymentMethodChange(method: FormaPagamentoDespesa) {
+    setFormaPagamento(method)
+    if (method === 'CARTAO_CREDITO') {
+      setStatus('PENDENTE')
+    } else {
+      setStatus('EFETIVADO')
+    }
+  }
+
+  function getCashAccount(): Conta {
+    if (!cashInstitution) {
+      throw new Error(`A instituição “${CASH_INSTITUTION_NAME}” não foi encontrada. Verifique o cadastro da instituição.`)
+    }
+    if (!cashAccount) {
+      throw new Error(`A conta ativa “Em caixa / Dinheiro” do tipo Outros não foi encontrada na instituição “${CASH_INSTITUTION_NAME}”.`)
+    }
+    return cashAccount
+  }
+
+  async function addAmountToInvoice(cardId: string, monthReference: string, amountToAdd: number) {
+    if (!profile) throw new Error('Perfil não encontrado.')
+
+    const targetInvoice = invoices.find((invoice) =>
+      invoice.contaId === cardId && invoice.mesReferencia === monthReference,
+    )
+
+    if (!targetInvoice) {
+      const invoiceId = await criarFaturaCartao(db, profile.familiaId, {
+        contaId: cardId,
+        mesReferencia: monthReference,
+      })
+      await atualizarFaturaCartao(db, profile.familiaId, invoiceId, {
+        valorTotal: amountToAdd,
+        valorPago: 0,
+        status: 'ABERTA',
+      })
+      return invoiceId
+    }
+
+    const nextTotal = (targetInvoice.valorTotal || 0) + amountToAdd
+    await atualizarFaturaCartao(db, profile.familiaId, targetInvoice.id, {
+      valorTotal: nextTotal,
+      valorPago: targetInvoice.valorPago || 0,
+      status: targetInvoice.status === 'PAGA' && nextTotal > (targetInvoice.valorPago || 0)
+        ? 'ABERTA'
+        : targetInvoice.status,
+    })
+    return targetInvoice.id
+  }
+
+  async function migrateLegacyCashBalance(destinationAccount: Conta) {
+    if (!profile) throw new Error('Perfil não encontrado.')
+
+    const legacyCashAccounts = (await listarContas(db, profile.familiaId)).filter((account) =>
+      account.ativo
+      && account.id !== destinationAccount.id
+      && account.tipoConta === 'CAIXINHA'
+      && account.nome.trim().toLocaleLowerCase('pt-BR') === 'caixa',
+    )
+    if (legacyCashAccounts.length > 1) {
+      throw new Error('Há mais de uma conta antiga chamada Caixa. Verifique as contas antes de migrar o saldo.')
+    }
+
+    const legacyCashAccount = legacyCashAccounts[0]
+    if (!legacyCashAccount) return
+    if (!Number.isFinite(legacyCashAccount.saldoAtual)) {
+      throw new Error('O saldo da conta Caixa antiga é inválido.')
+    }
+    if (legacyCashAccount.saldoAtual < 0) {
+      throw new Error('A conta Caixa antiga está com saldo negativo. Regularize esse saldo antes de migrá-lo.')
+    }
+    if (legacyCashAccount.saldoAtual === 0) return
+
+    const transferCategory = categories.find((category) =>
+      category.ativo !== false && category.tipo === 'TRANSFERENCIA',
+    )
+    if (!transferCategory) {
+      throw new Error('Não foi encontrada uma categoria de transferência para migrar o saldo de Caixa.')
+    }
+
+    const transferDate = new Date()
+    transferDate.setHours(12, 0, 0, 0)
+    await cadastrarTransferencia(db, profile.familiaId, {
+      contaOrigemId: legacyCashAccount.id,
+      contaDestinoId: destinationAccount.id,
+      descricao: 'Migração do saldo da conta Caixa para Em caixa / Dinheiro',
+      valor: legacyCashAccount.saldoAtual,
+      dataTransacao: transferDate,
+      status: 'EFETIVADO',
+      criadoPorUsuarioId: profile.id,
+      criadoPorNome: profile.nome,
+      categoriaId: transferCategory.id,
+    })
+    setReloadKey((key) => key + 1)
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setFormError('')
 
-    const parsedAmount = parseAmount(amount)
-    if (parsedAmount === null) {
+    const parsed = parseAmount(amount)
+    if (parsed === null) {
       setFormError('Informe um valor maior que zero.')
       return
     }
-    if (!profile || !accountId) {
-      setFormError('Cadastre ou selecione uma conta para continuar.')
+
+    if (!profile) {
+      setFormError('Sessão expirada. Recarregue a página.')
       return
     }
-    if (transactionType === 'TRANSFERENCIA' && (!destinationAccountId || destinationAccountId === accountId)) {
-      setFormError('Selecione contas de origem e destino diferentes.')
+
+    const parsedTransactionDate = parseDateInput(date)
+    if (!parsedTransactionDate) {
+      setFormError('Informe uma data válida para o lançamento.')
       return
     }
-    const selectedCategory = selectedCategories.find((category) => category.id === categoryId)
+
+    const selectedCategory = categories.find((category) => category.id === categoryId)
     if (!selectedCategory) {
       setFormError('Selecione uma categoria.')
       return
     }
 
+    const finalDescription = description.trim() || selectedCategory.nome
+
     setIsSaving(true)
     try {
-      const dataTransacao = new Date(`${date}T12:00:00`)
+      const dataTransacao = parsedTransactionDate
+
       if (transactionType === 'TRANSFERENCIA') {
+        if (!accountId || !destinationAccountId || destinationAccountId === accountId) {
+          setFormError('Selecione contas de origem e destino diferentes.')
+          setIsSaving(false)
+          return
+        }
         await cadastrarTransferencia(db, profile.familiaId, {
           contaOrigemId: accountId,
           contaDestinoId: destinationAccountId,
-          descricao: description.trim(),
-          valor: parsedAmount,
+          descricao: finalDescription,
+          valor: parsed,
           dataTransacao,
           status,
           criadoPorUsuarioId: profile.id,
           criadoPorNome: profile.nome,
           categoriaId: selectedCategory.id,
         })
-      } else {
-        await cadastrarTransacao(db, profile.familiaId, {
-          descricao: description.trim(),
-          valor: parsedAmount,
-          tipoMovimentacao: transactionType,
-          status,
-          dataTransacao,
-          contaId: accountId,
-          categoriaId: selectedCategory.id,
-          categoriaNome: selectedCategory.nome,
-          criadoPorUsuarioId: profile.id,
-          criadoPorNome: profile.nome,
-          estornado: false,
-        })
+      } else if (transactionType === 'DESPESA') {
+        if (formaPagamento === 'DINHEIRO') {
+          const wallet = getCashAccount()
+          await migrateLegacyCashBalance(wallet)
+          await cadastrarTransacao(db, profile.familiaId, {
+            descricao: finalDescription,
+            valor: parsed,
+            tipoMovimentacao: 'DESPESA',
+            status: 'EFETIVADO',
+            dataTransacao,
+            contaId: wallet.id,
+            categoriaId: selectedCategory.id,
+            categoriaNome: selectedCategory.nome,
+            criadoPorUsuarioId: profile.id,
+            criadoPorNome: profile.nome,
+            estornado: false,
+            formaPagamento: 'normal',
+            observacao: observation.trim() || undefined,
+          })
+        } else if (formaPagamento === 'PIX' || formaPagamento === 'CARTAO_DEBITO') {
+          // Pix ou Cartão Débito -> Informar conta para Débito
+          if (!accountId) {
+            setFormError('Informe a conta para débito.')
+            setIsSaving(false)
+            return
+          }
+          await cadastrarTransacao(db, profile.familiaId, {
+            descricao: finalDescription,
+            valor: parsed,
+            tipoMovimentacao: 'DESPESA',
+            status,
+            dataTransacao,
+            contaId: accountId,
+            categoriaId: selectedCategory.id,
+            categoriaNome: selectedCategory.nome,
+            criadoPorUsuarioId: profile.id,
+            criadoPorNome: profile.nome,
+            estornado: false,
+            formaPagamento: 'normal',
+            observacao: observation.trim() || undefined,
+          })
+        } else if (formaPagamento === 'CARTAO_CREDITO') {
+          // Cartão de Crédito
+          if (!selectedCreditCard) {
+            setFormError('Nenhum cartão de crédito ativo cadastrado. Cadastre um cartão de crédito primeiro.')
+            setIsSaving(false)
+            return
+          }
+
+          const cardId = selectedCreditCard.id
+          const calculatedInvoice = calcularFaturaCartao(date, selectedCreditCard.diaVencimento || 10)
+          if (!calculatedInvoice) {
+            throw new Error('Informe uma data válida para calcular a fatura do cartão.')
+          }
+          const dueDay = selectedCreditCard.diaVencimento || 10
+
+          if (numInstallments > 1) {
+            const totalCents = Math.round(parsed * 100)
+            const normalizedTotal = totalCents / 100
+            const regularInstallmentCents = Math.round(totalCents / numInstallments)
+            const parcelamentoId = await criarParcelamento(db, profile.familiaId, {
+              descricao: finalDescription,
+              valorTotal: normalizedTotal,
+              totalParcelas: numInstallments,
+              dataInicio: dataTransacao,
+              contaId: cardId,
+              categoriaId: selectedCategory.id,
+              tipoMovimentacao: 'DESPESA',
+              ativo: true,
+              criadoPorUsuarioId: profile.id,
+            })
+
+            for (let installment = 1; installment <= numInstallments; installment += 1) {
+              const installmentCents = installment === numInstallments
+                ? totalCents - regularInstallmentCents * (numInstallments - 1)
+                : regularInstallmentCents
+              const installmentAmount = installmentCents / 100
+              const dueDate = getInstallmentDueDate(
+                calculatedInvoice.mesReferencia,
+                dueDay,
+                installment - 1,
+              )
+              const monthReference = getMonth(dueDate)
+              const existingInvoice = invoices.find((invoice) =>
+                invoice.contaId === cardId && invoice.mesReferencia === monthReference,
+              )
+
+              await cadastrarParcelaFaturaCartao(db, profile.familiaId, {
+                descricao: `${finalDescription} (${installment}/${numInstallments})`,
+                valor: installmentAmount,
+                tipoMovimentacao: 'DESPESA',
+                status: 'PENDENTE',
+                dataTransacao: dueDate,
+                contaId: cardId,
+                categoriaId: selectedCategory.id,
+                categoriaNome: selectedCategory.nome,
+                criadoPorUsuarioId: profile.id,
+                criadoPorNome: profile.nome,
+                estornado: false,
+                formaPagamento: 'credit',
+                parcelas: numInstallments,
+                parcelaAtual: installment,
+                parcelamentoId,
+                diaVencimento: dueDay,
+                observacao: observation.trim() || undefined,
+              }, monthReference, existingInvoice?.id)
+            }
+          } else {
+            const invoiceId = await addAmountToInvoice(cardId, calculatedInvoice.mesReferencia, parsed)
+            await cadastrarTransacao(db, profile.familiaId, {
+              descricao: finalDescription,
+              valor: parsed,
+              tipoMovimentacao: 'DESPESA',
+              status: 'PENDENTE',
+              dataTransacao,
+              contaId: cardId,
+              categoriaId: selectedCategory.id,
+              categoriaNome: selectedCategory.nome,
+              criadoPorUsuarioId: profile.id,
+              criadoPorNome: profile.nome,
+              estornado: false,
+              formaPagamento: 'credit',
+              parcelas: 1,
+              faturaId: invoiceId,
+              diaVencimento: dueDay,
+              observacao: observation.trim() || undefined,
+            })
+          }
+        }
+      } else if (transactionType === 'RECEITA') {
+        if (formaRecebimento === 'DINHEIRO') {
+          const wallet = getCashAccount()
+          await migrateLegacyCashBalance(wallet)
+          await cadastrarTransacao(db, profile.familiaId, {
+            descricao: finalDescription,
+            valor: parsed,
+            tipoMovimentacao: 'RECEITA',
+            status: 'EFETIVADO',
+            dataTransacao,
+            contaId: wallet.id,
+            categoriaId: selectedCategory.id,
+            categoriaNome: selectedCategory.nome,
+            criadoPorUsuarioId: profile.id,
+            criadoPorNome: profile.nome,
+            estornado: false,
+            formaPagamento: 'normal',
+            observacao: observation.trim() || undefined,
+          })
+        } else {
+          // Pix, Crédito em conta, Depósito -> Informar conta para Crédito
+          if (!accountId) {
+            setFormError('Informe a conta para crédito.')
+            setIsSaving(false)
+            return
+          }
+          await cadastrarTransacao(db, profile.familiaId, {
+            descricao: finalDescription,
+            valor: parsed,
+            tipoMovimentacao: 'RECEITA',
+            status,
+            dataTransacao,
+            contaId: accountId,
+            categoriaId: selectedCategory.id,
+            categoriaNome: selectedCategory.nome,
+            criadoPorUsuarioId: profile.id,
+            criadoPorNome: profile.nome,
+            estornado: false,
+            formaPagamento: 'normal',
+            observacao: observation.trim() || undefined,
+          })
+        }
       }
+
       closeForm()
-      setFeedback('Registro salvo.')
+      setFeedback('Lançamento salvo com sucesso.')
       setReloadKey((key) => key + 1)
     } catch (error) {
-      console.error('Erro ao salvar registro:', error)
-      setFormError('Não foi possível salvar o registro. Verifique sua conexão e tente novamente.')
+      console.error('Erro ao salvar lançamento:', error)
+      setFormError(error instanceof Error ? error.message : 'Não foi possível salvar o registro.')
     } finally {
       setIsSaving(false)
     }
@@ -259,7 +695,7 @@ export default function TelaCadastroRegistros() {
       setReloadKey((key) => key + 1)
     } catch (error) {
       console.error('Erro ao efetivar movimentação:', error)
-      setFeedback('Não foi possível efetivar a movimentação. Tente novamente.')
+      setFeedback(error instanceof Error ? error.message : 'Não foi possível efetivar a movimentação.')
     }
   }
 
@@ -270,10 +706,12 @@ export default function TelaCadastroRegistros() {
       setAccountError('Informe o nome da conta.')
       return
     }
+
     const linkedCheckingAccount = accounts.find((account) => account.id === linkedCheckingAccountId)
     const institutionId = accountType === 'CARTAO_CREDITO'
       ? linkedCheckingAccount?.instituicaoId ?? ''
       : accountInstitutionId
+
     if (accountType !== 'CARTAO_CREDITO' && institutionId && !agency.trim()) {
       setAccountError('Informe a agência da conta vinculada à instituição.')
       return
@@ -282,18 +720,21 @@ export default function TelaCadastroRegistros() {
       setAccountError('Informe o número da conta vinculada à instituição.')
       return
     }
+
     const normalizedDueDay = Number(accountDueDay)
     if (accountType === 'CARTAO_CREDITO'
       && (!Number.isInteger(normalizedDueDay) || normalizedDueDay < 1 || normalizedDueDay > 31)) {
       setAccountError('Informe um dia de vencimento entre 1 e 31.')
       return
     }
+
     const normalizedLimit = parseLimit(creditLimit)
     if ((accountType === 'CORRENTE' || accountType === 'CARTAO_CREDITO')
       && (normalizedLimit === null || normalizedLimit < 0)) {
       setAccountError('Informe um limite válido, igual ou maior que zero.')
       return
     }
+
     if (accountType === 'CARTAO_CREDITO') {
       if (!linkedCheckingAccount || !linkedCheckingAccount.ativo || linkedCheckingAccount.tipoConta !== 'CORRENTE'
         || !linkedCheckingAccount.instituicaoId) {
@@ -305,6 +746,7 @@ export default function TelaCadastroRegistros() {
         return
       }
     }
+
     const normalizedBalance = openingBalance.includes(',')
       ? openingBalance.replace(/\./g, '').replace(',', '.')
       : openingBalance
@@ -330,7 +772,8 @@ export default function TelaCadastroRegistros() {
         contaCorrenteId: accountType === 'CARTAO_CREDITO' ? linkedCheckingAccountId : null,
         diaVencimento: accountType === 'CARTAO_CREDITO' ? normalizedDueDay : null,
       })
-      setAccounts((current) => [...current, {
+
+      const newAccount: Conta = {
         id,
         nome: accountName.trim(),
         tipoConta: accountType,
@@ -344,8 +787,14 @@ export default function TelaCadastroRegistros() {
           : null,
         contaCorrenteId: accountType === 'CARTAO_CREDITO' ? linkedCheckingAccountId : null,
         diaVencimento: accountType === 'CARTAO_CREDITO' ? normalizedDueDay : null,
-      }])
-      setAccountId(id)
+      }
+
+      setAccounts((current) => [...current, newAccount])
+      if (accountType === 'CARTAO_CREDITO') {
+        setCreditCardAccountId(id)
+      } else {
+        setAccountId(id)
+      }
       setIsAccountFormOpen(false)
       setAccountName('')
       setAccountInstitutionId('')
@@ -355,7 +804,7 @@ export default function TelaCadastroRegistros() {
       setCreditLimit('0')
       setAccountDueDay('')
       setOpeningBalance('0')
-      setFeedback('Conta criada.')
+      setFeedback('Conta criada com sucesso.')
     } catch (error) {
       console.error('Erro ao criar conta:', error)
       setAccountError('Não foi possível criar a conta. Tente novamente.')
@@ -364,13 +813,18 @@ export default function TelaCadastroRegistros() {
     }
   }
 
+  // Filtragem e organização das categorias
+  const despesaCategories = categories.filter((c) => c.ativo !== false && (c.tipo === 'DESPESA' || c.tipo === 'AMBAS'))
+  const receitaCategories = categories.filter((c) => c.ativo !== false && (c.tipo === 'RECEITA' || c.tipo === 'AMBAS'))
+  const transferCategories = categories.filter((c) => c.ativo !== false && (c.tipo === 'TRANSFERENCIA' || c.tipo === 'AMBAS'))
+
   return (
     <main className="home-page records-page">
       <div className="home-shell">
         <header className="home-header records-header">
-          <Link className="home-brand" to="/menu" aria-label="FinUp - menu">
+          <div className="home-brand">
             <Logo />
-          </Link>
+          </div>
           <div className="records-heading-actions">
             <BackButton />
             <LogoutButton />
@@ -380,15 +834,15 @@ export default function TelaCadastroRegistros() {
         <section className="records-heading" aria-labelledby="records-title">
           <div>
             <p className="eyebrow">Movimentações financeiras</p>
-            <h1 id="records-title">Registros</h1>
-            <p>Acompanhe receitas e despesas da sua conta.</p>
+            <h1 id="records-title">Lançamentos</h1>
+            <p>Gerencie receitas, despesas e compras com cartão de crédito.</p>
           </div>
           <div className="records-header-actions">
             <button className="records-secondary-button" type="button" onClick={() => setIsAccountFormOpen(true)}>
               Nova conta
             </button>
-            <button className="records-create-button" type="button" onClick={() => openForm()}>
-              <span aria-hidden="true">+</span> Novo registro
+            <button className="records-create-button" type="button" onClick={() => openForm('DESPESA')}>
+              <span aria-hidden="true">+</span> Novo lançamento
             </button>
           </div>
         </section>
@@ -431,8 +885,14 @@ export default function TelaCadastroRegistros() {
             <strong className="records-income">{currencyFormatter.format(totalIncome)}</strong>
           </div>
           <div className="records-metric">
-            <span>Despesas</span>
+            <span>Despesas efetivadas</span>
             <strong className="records-expense">{currencyFormatter.format(totalExpenses)}</strong>
+          </div>
+          <div className="records-metric">
+            <span>Fatura / Cartão pendente</span>
+            <strong style={{ color: 'var(--finup-warning, #f59e0b)' }}>
+              {currencyFormatter.format(totalPendingCredit)}
+            </strong>
           </div>
           <div className="records-metric">
             <span>Saldo do período</span>
@@ -453,9 +913,9 @@ export default function TelaCadastroRegistros() {
           ) : visibleTransactions.length === 0 ? (
             <div className="records-state">
               <p className="records-empty-title">Nenhum registro neste período</p>
-              <p>Adicione uma receita ou despesa para acompanhar seu fluxo financeiro.</p>
-              <button type="button" className="records-empty-action" onClick={() => openForm()}>
-                Adicionar registro
+              <p>Adicione um lançamento para acompanhar seu fluxo financeiro.</p>
+              <button type="button" className="records-empty-action" onClick={() => openForm('DESPESA')}>
+                Adicionar lançamento
               </button>
             </div>
           ) : (
@@ -472,15 +932,24 @@ export default function TelaCadastroRegistros() {
                   const isIncome = transaction.tipoMovimentacao === 'RECEITA'
                   const isTransfer = transaction.tipoMovimentacao === 'TRANSFERENCIA'
                   const isTransferIncome = isTransfer && transaction.direcaoTransferencia === 'ENTRADA'
+                  const account = accounts.find((a) => a.id === transaction.contaId)
+
                   return (
                     <li className="records-row" key={transaction.id}>
                       <div className="records-description">
-                        <span className={isTransfer ? 'records-type-icon is-transfer' : isIncome ? 'records-type-icon is-income' : 'records-type-icon is-expense'} aria-hidden="true">
+                        <span
+                          className={isTransfer ? 'records-type-icon is-transfer' : isIncome ? 'records-type-icon is-income' : 'records-type-icon is-expense'}
+                          aria-hidden="true"
+                        >
                           {isTransfer ? '↔' : isIncome ? '↑' : '↓'}
                         </span>
                         <span>
                           <strong>{transaction.descricao}</strong>
-                          <small>{transaction.criadoPorNome} · {accounts.find((account) => account.id === transaction.contaId)?.nome}</small>
+                          <small>
+                            {transaction.criadoPorNome} · {account?.nome || 'Conta'}
+                            {transaction.formaPagamento === 'credit' && ' · 💳 Cartão de Crédito'}
+                            {transaction.observacao && ` · Obs: ${transaction.observacao}`}
+                          </small>
                         </span>
                       </div>
                       <span className="records-category">{transaction.categoriaNome}</span>
@@ -496,7 +965,12 @@ export default function TelaCadastroRegistros() {
                             : transaction.status === 'PENDENTE' ? 'Pendente' : 'Efetivado'}
                         </span>
                         {transaction.status === 'PENDENTE' && !transaction.estornado && (
-                          <button className="records-retry" type="button" onClick={() => void settleTransaction(transaction.id)}>
+                          <button
+                            className="records-retry"
+                            type="button"
+                            onClick={() => void settleTransaction(transaction.id)}
+                            title="Efetivar movimentação e debitar da conta vinculada"
+                          >
                             Efetivar
                           </button>
                         )}
@@ -513,18 +987,23 @@ export default function TelaCadastroRegistros() {
         </section>
       </div>
 
+      {/* MODAL: NOVO LANÇAMENTO */}
       {isFormOpen && (
-        <div className="records-overlay" onKeyDown={(event) => {
-          if (event.key === 'Escape' && !isSaving) closeForm()
-        }} onMouseDown={(event) => {
-          if (event.target === event.currentTarget && !isSaving) closeForm()
-        }}>
+        <div
+          className="records-overlay"
+          onKeyDown={(event) => {
+            if (event.key === 'Escape' && !isSaving) closeForm()
+          }}
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !isSaving) closeForm()
+          }}
+        >
           <section className="records-dialog" role="dialog" aria-modal="true" aria-labelledby="records-dialog-title">
             <header className="records-dialog-header">
               <div>
-                <p className="eyebrow">Novo lançamento</p>
+                <p className="eyebrow">Lançamentos</p>
                 <h2 id="records-dialog-title">
-                  {transactionType === 'RECEITA' ? 'Nova receita' : transactionType === 'DESPESA' ? 'Nova despesa' : 'Nova transferência'}
+                  {transactionType === 'RECEITA' ? 'Novo recebimento' : transactionType === 'DESPESA' ? 'Nova despesa' : 'Nova transferência'}
                 </h2>
               </div>
               <button className="records-close" type="button" aria-label="Fechar formulário" onClick={closeForm} disabled={isSaving}>
@@ -533,215 +1012,346 @@ export default function TelaCadastroRegistros() {
             </header>
 
             <form className="records-form" onSubmit={handleSubmit}>
-              <div className="records-type-switch" role="group" aria-label="Tipo de movimentação">
-                <button
-                  type="button"
-                  className={transactionType === 'RECEITA' ? 'is-income is-selected' : 'is-income'}
-                  aria-pressed={transactionType === 'RECEITA'}
-                  onClick={() => { setTransactionType('RECEITA'); setCategoryId('') }}
-                >
-                  ↑ Receita
-                </button>
+              {/* SELETOR RÁPIDO DE TIPO */}
+              <div className="records-type-switch" role="group" aria-label="Tipo de lançamento">
                 <button
                   type="button"
                   className={transactionType === 'DESPESA' ? 'is-expense is-selected' : 'is-expense'}
                   aria-pressed={transactionType === 'DESPESA'}
-                  onClick={() => { setTransactionType('DESPESA'); setCategoryId('') }}
+                  onClick={() => {
+                    setTransactionType('DESPESA')
+                    setCategoryId('')
+                    setStatus(formaPagamento === 'CARTAO_CREDITO' ? 'PENDENTE' : 'EFETIVADO')
+                  }}
                 >
                   ↓ Despesa
                 </button>
                 <button
                   type="button"
+                  className={transactionType === 'RECEITA' ? 'is-income is-selected' : 'is-income'}
+                  aria-pressed={transactionType === 'RECEITA'}
+                  onClick={() => {
+                    setTransactionType('RECEITA')
+                    setCategoryId('')
+                    setStatus('EFETIVADO')
+                  }}
+                >
+                  ↑ Recebimento
+                </button>
+                <button
+                  type="button"
                   className={transactionType === 'TRANSFERENCIA' ? 'is-selected' : ''}
                   aria-pressed={transactionType === 'TRANSFERENCIA'}
-                  onClick={() => { setTransactionType('TRANSFERENCIA'); setCategoryId('') }}
+                  onClick={() => {
+                    setTransactionType('TRANSFERENCIA')
+                    setCategoryId(transferCategories[0]?.id || '')
+                    setStatus('EFETIVADO')
+                  }}
                 >
                   ↔ Transferência
                 </button>
               </div>
 
-              <label htmlFor="record-account">
-                {transactionType === 'TRANSFERENCIA' ? 'Conta de origem' : 'Conta'}
+              {/* 1. DATA DA TRANSAÇÃO */}
+              <label htmlFor="record-date">Data da transação *</label>
+              <input
+                id="record-date"
+                type="date"
+                value={date}
+                onChange={(event) => setDate(event.target.value)}
+                required
+              />
+
+              {/* 2. CATEGORIA (com autoidentificação de Despesa / Receita) */}
+              <label htmlFor="record-category">
+                Categoria * <small style={{ color: 'var(--finup-subtle)' }}>(define Despesa / Receita automaticamente)</small>
               </label>
-              <select id="record-account" value={accountId} onChange={(event) => setAccountId(event.target.value)} required>
-                <option value="" disabled>Selecione uma conta</option>
-                {accounts.filter((account) => account.ativo).map((account) => (
-                  <option key={account.id} value={account.id}>{account.nome}</option>
-                ))}
+              <select
+                id="record-category"
+                value={categoryId}
+                onChange={(event) => handleCategoryChange(event.target.value)}
+                required
+              >
+                <option value="" disabled>Selecione uma categoria</option>
+                {transactionType === 'DESPESA' ? (
+                  despesaCategories.map((category) => (
+                    <option key={category.id} value={category.id}>{category.nome}</option>
+                  ))
+                ) : transactionType === 'RECEITA' ? (
+                  receitaCategories.map((category) => (
+                    <option key={category.id} value={category.id}>{category.nome}</option>
+                  ))
+                ) : (
+                  transferCategories.map((category) => (
+                    <option key={category.id} value={category.id}>{category.nome}</option>
+                  ))
+                )}
               </select>
 
+              {/* 3. SE DESPESA: FORMAS DE PAGAMENTO */}
+              {transactionType === 'DESPESA' && (
+                <>
+                  <label>Forma de Pagamento *</label>
+                  <div className="records-methods-grid" role="radiogroup" aria-label="Forma de Pagamento">
+                    <button
+                      type="button"
+                      className={`records-method-pill ${formaPagamento === 'DINHEIRO' ? 'is-active-expense' : ''}`}
+                      onClick={() => handlePaymentMethodChange('DINHEIRO')}
+                    >
+                      💵 Dinheiro
+                    </button>
+                    <button
+                      type="button"
+                      className={`records-method-pill ${formaPagamento === 'PIX' ? 'is-active-expense' : ''}`}
+                      onClick={() => handlePaymentMethodChange('PIX')}
+                    >
+                      ⚡ Pix
+                    </button>
+                    <button
+                      type="button"
+                      className={`records-method-pill ${formaPagamento === 'CARTAO_DEBITO' ? 'is-active-expense' : ''}`}
+                      onClick={() => handlePaymentMethodChange('CARTAO_DEBITO')}
+                    >
+                      💳 Cartão Débito
+                    </button>
+                    <button
+                      type="button"
+                      className={`records-method-pill ${formaPagamento === 'CARTAO_CREDITO' ? 'is-active-expense' : ''}`}
+                      onClick={() => handlePaymentMethodChange('CARTAO_CREDITO')}
+                    >
+                      💳 Cartão Crédito
+                    </button>
+                  </div>
+
+                  {/* DINHEIRO -> CONTA VALLET/CARTEIRA */}
+                  {formaPagamento === 'DINHEIRO' && (
+                    <div className="records-info-banner is-caixa">
+                      <span className="records-info-badge">💵 Dinheiro selecionado</span>
+                      <p>
+                        O saldo será debitado da conta <strong>Em caixa / Dinheiro</strong> da instituição <strong>{CASH_INSTITUTION_NAME}</strong>
+                        {cashAccount ? ` (saldo: ${currencyFormatter.format(cashAccount.saldoAtual)})` : '.'}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* PIX / CARTÃO DÉBITO -> INFORMAR CONTA PARA DÉBITO */}
+                  {(formaPagamento === 'PIX' || formaPagamento === 'CARTAO_DEBITO') && (
+                    <>
+                      <label htmlFor="record-debit-account">Informar conta para Débito *</label>
+                      <select
+                        id="record-debit-account"
+                        value={accountId}
+                        onChange={(event) => setAccountId(event.target.value)}
+                        required
+                      >
+                        <option value="" disabled>Selecione a conta para débito</option>
+                        {bankAccounts.map((account) => (
+                          <option key={account.id} value={account.id}>
+                            {account.nome} ({account.tipoConta}) — Saldo: {currencyFormatter.format(account.saldoAtual)}
+                          </option>
+                        ))}
+                      </select>
+                    </>
+                  )}
+
+                  {/* CARTÃO DE CRÉDITO: SELEÇÃO, PARCELAS E REGRAS DE FATURA */}
+                  {formaPagamento === 'CARTAO_CREDITO' && (
+                    <>
+                      <label htmlFor="record-credit-card">Cartão de Crédito *</label>
+                      {creditCardAccounts.length === 0 ? (
+                        <div className="records-info-banner" style={{ borderColor: 'var(--finup-danger)' }}>
+                          <p>
+                            Você não possui nenhuma conta de <strong>Cartão de Crédito</strong> cadastrada.{' '}
+                            <button
+                              type="button"
+                              className="records-empty-action"
+                              style={{ margin: '6px 0 0', display: 'inline-block' }}
+                              onClick={() => {
+                                setAccountType('CARTAO_CREDITO')
+                                setIsAccountFormOpen(true)
+                              }}
+                            >
+                              + Criar conta Cartão de Crédito
+                            </button>
+                          </p>
+                        </div>
+                      ) : (
+                        <select
+                          id="record-credit-card"
+                          value={creditCardAccountId}
+                          onChange={(event) => setCreditCardAccountId(event.target.value)}
+                          required
+                        >
+                          <option value="" disabled>Selecione o cartão de crédito</option>
+                          {creditCardAccounts.map((card) => (
+                            <option key={card.id} value={card.id}>
+                              {card.nome} (Vencimento: dia {card.diaVencimento || 10})
+                            </option>
+                          ))}
+                        </select>
+                      )}
+
+                      <label htmlFor="record-installments">Informar quantidade de parcelas *</label>
+                      <input
+                        id="record-installments"
+                        type="number"
+                        min="1"
+                        max="48"
+                        step="1"
+                        value={installments}
+                        onChange={(event) => setInstallments(event.target.value)}
+                        required
+                      />
+
+                      {/* INFORMAÇÕES DA FATURA E REGRA DE 10 DIAS ANTES DO VENCIMENTO */}
+                      {selectedCreditCard && invoiceInfo && (
+                        <div className="records-info-banner is-credit">
+                          <span className="records-info-badge">💳 Regra de Fechamento da Fatura</span>
+                          <p>
+                            O fechamento da fatura ocorre sempre <strong>10 dias antes</strong> do dia de vencimento (dia {cardDueDay}).
+                          </p>
+                          <div className="records-invoice-breakdown">
+                            <div>
+                              <span>Data de Fechamento</span>
+                              <strong>{formatDate(invoiceInfo.dataFechamento)}</strong>
+                            </div>
+                            <div>
+                              <span>Data de Vencimento</span>
+                              <strong>{formatDate(invoiceInfo.dataVencimento)}</strong>
+                            </div>
+                            <div>
+                              <span>Fatura de Destino</span>
+                              <strong style={{ color: invoiceInfo.isFaturaAtual ? 'var(--finup-primary)' : 'var(--finup-warning, #f59e0b)' }}>
+                                {invoiceInfo.descricaoFatura}
+                              </strong>
+                            </div>
+                          </div>
+                          {numInstallments > 1 && (
+                            <p style={{ marginTop: '8px', fontSize: '12px' }}>
+                              🔄 <strong>Parcelamento:</strong> O valor total será dividido em{' '}
+                              <strong>{numInstallments}x de {currencyFormatter.format(installmentAmount)}</strong>. A 1ª parcela será incluída na{' '}
+                              <strong>{invoiceInfo.descricaoFatura}</strong> e o parcelamento registrado na coleção <strong>Parcelamentos</strong>.
+                            </p>
+                          )}
+                          {numInstallments === 1 && (
+                            <p style={{ marginTop: '8px', fontSize: '12px' }}>
+                              ✅ Compra à vista no cartão incluída diretamente na <strong>{invoiceInfo.descricaoFatura}</strong>.
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </>
+              )}
+
+              {/* 4. SE RECEBIMENTO: FORMAS DE RECEBIMENTO */}
+              {transactionType === 'RECEITA' && (
+                <>
+                  <label>Forma de Recebimento *</label>
+                  <div className="records-methods-grid" role="radiogroup" aria-label="Forma de Recebimento">
+                    <button
+                      type="button"
+                      className={`records-method-pill ${formaRecebimento === 'DINHEIRO' ? 'is-active-income' : ''}`}
+                      onClick={() => setFormaRecebimento('DINHEIRO')}
+                    >
+                      💵 Dinheiro
+                    </button>
+                    <button
+                      type="button"
+                      className={`records-method-pill ${formaRecebimento === 'PIX' ? 'is-active-income' : ''}`}
+                      onClick={() => setFormaRecebimento('PIX')}
+                    >
+                      ⚡ Pix
+                    </button>
+                    <button
+                      type="button"
+                      className={`records-method-pill ${formaRecebimento === 'CREDITO_CONTA' ? 'is-active-income' : ''}`}
+                      onClick={() => setFormaRecebimento('CREDITO_CONTA')}
+                    >
+                      🏦 Crédito em conta
+                    </button>
+                    <button
+                      type="button"
+                      className={`records-method-pill ${formaRecebimento === 'DEPOSITO' ? 'is-active-income' : ''}`}
+                      onClick={() => setFormaRecebimento('DEPOSITO')}
+                    >
+                      📥 Depósito
+                    </button>
+                  </div>
+
+                  {/* DINHEIRO -> COLOCAR SALDO NA CONTA VALLET/CARTEIRA */}
+                  {formaRecebimento === 'DINHEIRO' && (
+                    <div className="records-info-banner is-caixa">
+                      <span className="records-info-badge">💵 Dinheiro selecionado</span>
+                      <p>
+                        O saldo será creditado na conta <strong>Em caixa / Dinheiro</strong> da instituição <strong>{CASH_INSTITUTION_NAME}</strong>
+                        {cashAccount ? ` (saldo: ${currencyFormatter.format(cashAccount.saldoAtual)})` : '.'}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* PIX / CRÉDITO EM CONTA / DEPÓSITO -> INFORMAR CONTA PARA CRÉDITO */}
+                  {formaRecebimento !== 'DINHEIRO' && (
+                    <>
+                      <label htmlFor="record-credit-account">Informar conta para Crédito *</label>
+                      <select
+                        id="record-credit-account"
+                        value={accountId}
+                        onChange={(event) => setAccountId(event.target.value)}
+                        required
+                      >
+                        <option value="" disabled>Selecione a conta para crédito</option>
+                        {bankAccounts.map((account) => (
+                          <option key={account.id} value={account.id}>
+                            {account.nome} ({account.tipoConta}) — Saldo: {currencyFormatter.format(account.saldoAtual)}
+                          </option>
+                        ))}
+                      </select>
+                    </>
+                  )}
+                </>
+              )}
+
+              {/* SE TRANSFERÊNCIA: ORIGEM E DESTINO */}
               {transactionType === 'TRANSFERENCIA' && (
                 <>
-                  <label htmlFor="record-destination-account">Conta de destino</label>
+                  <label htmlFor="record-account-origin">Conta de origem *</label>
                   <select
-                    id="record-destination-account"
+                    id="record-account-origin"
+                    value={accountId}
+                    onChange={(event) => setAccountId(event.target.value)}
+                    required
+                  >
+                    <option value="" disabled>Selecione a conta de origem</option>
+                    {bankAccounts.map((account) => (
+                      <option key={account.id} value={account.id}>
+                        {account.nome} — Saldo: {currencyFormatter.format(account.saldoAtual)}
+                      </option>
+                    ))}
+                  </select>
+
+                  <label htmlFor="record-account-dest">Conta de destino *</label>
+                  <select
+                    id="record-account-dest"
                     value={destinationAccountId}
                     onChange={(event) => setDestinationAccountId(event.target.value)}
                     required
                   >
-                    <option value="" disabled>Selecione uma conta</option>
-                    {accounts.filter((account) => account.ativo && account.id !== accountId).map((account) => (
-                      <option key={account.id} value={account.id}>{account.nome}</option>
+                    <option value="" disabled>Selecione a conta de destino</option>
+                    {bankAccounts.filter((account) => account.id !== accountId).map((account) => (
+                      <option key={account.id} value={account.id}>
+                        {account.nome} — Saldo: {currencyFormatter.format(account.saldoAtual)}
+                      </option>
                     ))}
                   </select>
                 </>
               )}
 
-              {isAccountFormOpen && (
-                <div className="records-overlay" onMouseDown={(event) => {
-                  if (event.target === event.currentTarget && !isSavingAccount) setIsAccountFormOpen(false)
-                }}>
-                  <section className="records-dialog" role="dialog" aria-modal="true" aria-labelledby="account-dialog-title">
-                    <header className="records-dialog-header">
-                      <div>
-                        <p className="eyebrow">Contas da família</p>
-                        <h2 id="account-dialog-title">Nova conta</h2>
-                      </div>
-                      <button className="records-close" type="button" aria-label="Fechar formulário" onClick={() => setIsAccountFormOpen(false)} disabled={isSavingAccount}>
-                        ×
-                      </button>
-                    </header>
-                    <form className="records-form" onSubmit={handleCreateAccount}>
-                      <label htmlFor="account-name">Nome</label>
-                      <input id="account-name" value={accountName} onChange={(event) => setAccountName(event.target.value)} maxLength={80} required />
-                      <label htmlFor="account-type">Tipo</label>
-                      <select id="account-type" value={accountType} onChange={(event) => {
-                        const nextType = event.target.value as Conta['tipoConta']
-                        setAccountType(nextType)
-                        setLinkedCheckingAccountId('')
-                        if (nextType === 'CARTAO_CREDITO') {
-                          setAccountInstitutionId('')
-                          setAgency('')
-                          setAccountNumber('')
-                        }
-                      }}>
-                        <option value="CORRENTE">Conta corrente</option>
-                        <option value="POUPANCA">Poupança</option>
-                        <option value="CARTAO_CREDITO">Cartão de crédito</option>
-                        <option value="CAIXINHA">Caixinha</option>
-                        <option value="INVESTIMENTO">Conta investimento</option>
-                      </select>
-                      {accountType === 'CARTAO_CREDITO' ? (
-                        <>
-                          <label htmlFor="account-checking">Conta corrente vinculada</label>
-                          <select
-                            id="account-checking"
-                            value={linkedCheckingAccountId}
-                            onChange={(event) => {
-                              const checkingAccount = accounts.find((account) => account.id === event.target.value)
-                              setLinkedCheckingAccountId(event.target.value)
-                              setAccountInstitutionId(checkingAccount?.instituicaoId ?? '')
-                            }}
-                            required
-                          >
-                            <option value="">Selecione uma conta corrente</option>
-                            {accounts.filter((account) => account.ativo
-                              && account.tipoConta === 'CORRENTE'
-                              && Boolean(account.instituicaoId)).map((account) => (
-                              <option key={account.id} value={account.id}>{account.nome}</option>
-                            ))}
-                          </select>
-                          <p className="manager-form-note">
-                            Instituição: {institutions.find((item) => item.id === accountInstitutionId)?.nome ?? 'definida pela conta corrente'}
-                          </p>
-                        </>
-                      ) : (
-                        <>
-                          <label htmlFor="account-institution">Instituição bancária</label>
-                          <select
-                            id="account-institution"
-                            value={accountInstitutionId}
-                            onChange={(event) => setAccountInstitutionId(event.target.value)}
-                          >
-                            <option value="">Sem instituição</option>
-                            {institutions.filter((institution) => institution.ativo).map((institution) => (
-                              <option key={institution.id} value={institution.id}>{institution.nome}</option>
-                            ))}
-                          </select>
-                          <label htmlFor="account-agency">Agência{accountInstitutionId ? ' *' : ''}</label>
-                          <input
-                            id="account-agency"
-                            value={agency}
-                            onChange={(event) => setAgency(event.target.value)}
-                            maxLength={20}
-                            required={Boolean(accountInstitutionId)}
-                          />
-                          <label htmlFor="account-number">Número da conta{accountInstitutionId ? ' *' : ''}</label>
-                          <input
-                            id="account-number"
-                            value={accountNumber}
-                            onChange={(event) => setAccountNumber(event.target.value)}
-                            maxLength={30}
-                            required={Boolean(accountInstitutionId)}
-                          />
-                        </>
-                      )}
-                      {(accountType === 'CORRENTE' || accountType === 'CARTAO_CREDITO') && (
-                        <>
-                          <label htmlFor="account-limit">
-                            {accountType === 'CARTAO_CREDITO' ? 'Limite total de crédito do cartão' : 'Limite de crédito / cheque especial'}
-                          </label>
-                          <input
-                            id="account-limit"
-                            type="text"
-                            inputMode="decimal"
-                            value={creditLimit}
-                            onChange={(event) => setCreditLimit(event.target.value)}
-                            required
-                          />
-                        </>
-                      )}
-                      {accountType === 'CARTAO_CREDITO' && (
-                        <>
-                          <label htmlFor="account-due-day">Dia de vencimento</label>
-                          <input
-                            id="account-due-day"
-                            type="number"
-                            min="1"
-                            max="31"
-                            step="1"
-                            value={accountDueDay}
-                            onChange={(event) => setAccountDueDay(event.target.value)}
-                            required
-                          />
-                          <p className="manager-form-note">Os cartões plásticos vinculados a esta conta compartilham este único limite.</p>
-                        </>
-                      )}
-                      <label htmlFor="account-opening-balance">Saldo inicial</label>
-                      <input
-                        id="account-opening-balance"
-                        type="text"
-                        inputMode="decimal"
-                        value={openingBalance}
-                        onChange={(event) => setOpeningBalance(event.target.value)}
-                        required
-                      />
-                      {accountError && <p className="records-form-error" role="alert">{accountError}</p>}
-                      <footer className="records-form-actions">
-                        <button className="records-cancel" type="button" onClick={() => setIsAccountFormOpen(false)} disabled={isSavingAccount}>Cancelar</button>
-                        <button className="records-save" type="submit" disabled={isSavingAccount}>
-                          {isSavingAccount ? 'Salvando...' : 'Criar conta'}
-                        </button>
-                      </footer>
-                    </form>
-                  </section>
-                </div>
-              )}
-
-              <label htmlFor="record-description">Descrição</label>
-              <input
-                id="record-description"
-                autoFocus
-                value={description}
-                onChange={(event) => setDescription(event.target.value)}
-                placeholder={transactionType === 'RECEITA' ? 'Ex.: Salário' : transactionType === 'DESPESA' ? 'Ex.: Mercado' : 'Ex.: Transferência entre contas'}
-                maxLength={120}
-                required
-              />
-
+              {/* DESCRIÇÃO E VALOR */}
               <div className="records-form-grid">
                 <div>
-                  <label htmlFor="record-amount">Valor</label>
+                  <label htmlFor="record-amount">Valor *</label>
                   <div className="records-money-input">
                     <span>R$</span>
                     <input
@@ -756,24 +1366,39 @@ export default function TelaCadastroRegistros() {
                   </div>
                 </div>
                 <div>
-                  <label htmlFor="record-date">Data</label>
-                  <input id="record-date" type="date" value={date} onChange={(event) => setDate(event.target.value)} required />
+                  <label htmlFor="record-status">Status</label>
+                  <select
+                    id="record-status"
+                    value={status}
+                    onChange={(event) => setStatus(event.target.value as 'EFETIVADO' | 'PENDENTE')}
+                    disabled={transactionType === 'DESPESA' && formaPagamento === 'CARTAO_CREDITO'}
+                  >
+                    <option value="EFETIVADO">Efetivado</option>
+                    <option value="PENDENTE">Pendente</option>
+                  </select>
                 </div>
               </div>
 
-              <label htmlFor="record-category">Categoria</label>
-              <select id="record-category" value={categoryId} onChange={(event) => setCategoryId(event.target.value)} required>
-                <option value="" disabled>Selecione uma categoria</option>
-                {selectedCategories.map((category) => (
-                  <option key={category.id} value={category.id}>{category.nome}</option>
-                ))}
-              </select>
+              <label htmlFor="record-description">Descrição *</label>
+              <input
+                id="record-description"
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+                placeholder={transactionType === 'RECEITA' ? 'Ex.: Salário, Venda' : transactionType === 'DESPESA' ? 'Ex.: Supermercado, Almoço' : 'Ex.: Transferência'}
+                maxLength={120}
+                required
+              />
 
-              <label htmlFor="record-status">Status</label>
-              <select id="record-status" value={status} onChange={(event) => setStatus(event.target.value as 'EFETIVADO' | 'PENDENTE')}>
-                <option value="EFETIVADO">Efetivado</option>
-                <option value="PENDENTE">Pendente</option>
-              </select>
+              {/* OBSERVAÇÃO */}
+              <label htmlFor="record-observation">Observação</label>
+              <textarea
+                id="record-observation"
+                value={observation}
+                onChange={(event) => setObservation(event.target.value)}
+                placeholder="Observações adicionais (opcional)"
+                rows={2}
+                maxLength={500}
+              />
 
               {formError && <p className="records-form-error" role="alert">{formError}</p>}
 
@@ -782,7 +1407,182 @@ export default function TelaCadastroRegistros() {
                   Cancelar
                 </button>
                 <button className="records-save" type="submit" disabled={isSaving}>
-                  {isSaving ? 'Salvando...' : 'Salvar registro'}
+                  {isSaving ? 'Salvando...' : 'Salvar lançamento'}
+                </button>
+              </footer>
+            </form>
+          </section>
+        </div>
+      )}
+
+      {/* MODAL: NOVA CONTA (Sub-modal) */}
+      {isAccountFormOpen && (
+        <div
+          className="records-overlay"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !isSavingAccount) setIsAccountFormOpen(false)
+          }}
+        >
+          <section className="records-dialog" role="dialog" aria-modal="true" aria-labelledby="account-dialog-title">
+            <header className="records-dialog-header">
+              <div>
+                <p className="eyebrow">Contas da família</p>
+                <h2 id="account-dialog-title">Nova conta</h2>
+              </div>
+              <button
+                className="records-close"
+                type="button"
+                aria-label="Fechar formulário"
+                onClick={() => setIsAccountFormOpen(false)}
+                disabled={isSavingAccount}
+              >
+                ×
+              </button>
+            </header>
+            <form className="records-form" onSubmit={handleCreateAccount}>
+              <label htmlFor="account-name">Nome da conta *</label>
+              <input
+                id="account-name"
+                value={accountName}
+                onChange={(event) => setAccountName(event.target.value)}
+                maxLength={80}
+                placeholder="Ex.: Nubank, Carteira, Caixa..."
+                required
+              />
+
+              <label htmlFor="account-type">Tipo de conta *</label>
+              <select
+                id="account-type"
+                value={accountType}
+                onChange={(event) => {
+                  const nextType = event.target.value as Conta['tipoConta']
+                  setAccountType(nextType)
+                  setLinkedCheckingAccountId('')
+                  if (nextType === 'CARTAO_CREDITO') {
+                    setAccountInstitutionId('')
+                    setAgency('')
+                    setAccountNumber('')
+                  }
+                }}
+              >
+                <option value="CORRENTE">Conta corrente</option>
+                <option value="POUPANCA">Poupança</option>
+                <option value="CARTAO_CREDITO">Cartão de crédito</option>
+                <option value="CAIXINHA">Caixinha / Caixa</option>
+                <option value="INVESTIMENTO">Conta investimento</option>
+                <option value="OUTROS">Outros</option>
+              </select>
+
+              {accountType === 'CARTAO_CREDITO' ? (
+                <>
+                  <label htmlFor="account-checking">Conta corrente vinculada *</label>
+                  <select
+                    id="account-checking"
+                    value={linkedCheckingAccountId}
+                    onChange={(event) => {
+                      const checkingAccount = accounts.find((account) => account.id === event.target.value)
+                      setLinkedCheckingAccountId(event.target.value)
+                      setAccountInstitutionId(checkingAccount?.instituicaoId ?? '')
+                    }}
+                    required
+                  >
+                    <option value="">Selecione uma conta corrente</option>
+                    {accounts.filter((account) => account.ativo
+                      && account.tipoConta === 'CORRENTE'
+                      && Boolean(account.instituicaoId)).map((account) => (
+                      <option key={account.id} value={account.id}>{account.nome}</option>
+                    ))}
+                  </select>
+                  <p className="manager-form-note">
+                    Instituição: {institutions.find((item) => item.id === accountInstitutionId)?.nome ?? 'definida pela conta corrente'}
+                  </p>
+
+                  <label htmlFor="account-due-day">Dia de vencimento da fatura *</label>
+                  <input
+                    id="account-due-day"
+                    type="number"
+                    min="1"
+                    max="31"
+                    step="1"
+                    value={accountDueDay}
+                    onChange={(event) => setAccountDueDay(event.target.value)}
+                    placeholder="Ex.: 10, 15, 20..."
+                    required
+                  />
+                  <p className="manager-form-note">
+                    O fechamento ocorrerá sempre 10 dias antes deste dia de vencimento.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <label htmlFor="account-institution">Instituição bancária</label>
+                  <select
+                    id="account-institution"
+                    value={accountInstitutionId}
+                    onChange={(event) => setAccountInstitutionId(event.target.value)}
+                  >
+                    <option value="">Sem instituição</option>
+                    {institutions.filter((institution) => institution.ativo).map((institution) => (
+                      <option key={institution.id} value={institution.id}>{institution.nome}</option>
+                    ))}
+                  </select>
+                  <label htmlFor="account-agency">Agência{accountInstitutionId ? ' *' : ''}</label>
+                  <input
+                    id="account-agency"
+                    value={agency}
+                    onChange={(event) => setAgency(event.target.value)}
+                    maxLength={20}
+                    required={Boolean(accountInstitutionId)}
+                  />
+                  <label htmlFor="account-number">Número da conta{accountInstitutionId ? ' *' : ''}</label>
+                  <input
+                    id="account-number"
+                    value={accountNumber}
+                    onChange={(event) => setAccountNumber(event.target.value)}
+                    maxLength={30}
+                    required={Boolean(accountInstitutionId)}
+                  />
+                </>
+              )}
+
+              {(accountType === 'CORRENTE' || accountType === 'CARTAO_CREDITO') && (
+                <>
+                  <label htmlFor="account-limit">
+                    {accountType === 'CARTAO_CREDITO' ? 'Limite total de crédito do cartão *' : 'Limite de crédito / cheque especial'}
+                  </label>
+                  <input
+                    id="account-limit"
+                    type="text"
+                    inputMode="decimal"
+                    value={creditLimit}
+                    onChange={(event) => setCreditLimit(event.target.value)}
+                    required
+                  />
+                </>
+              )}
+
+              <label htmlFor="account-opening-balance">Saldo inicial</label>
+              <input
+                id="account-opening-balance"
+                type="text"
+                inputMode="decimal"
+                value={openingBalance}
+                onChange={(event) => setOpeningBalance(event.target.value)}
+                required
+              />
+
+              {accountError && <p className="records-form-error" role="alert">{accountError}</p>}
+              <footer className="records-form-actions">
+                <button
+                  className="records-cancel"
+                  type="button"
+                  onClick={() => setIsAccountFormOpen(false)}
+                  disabled={isSavingAccount}
+                >
+                  Cancelar
+                </button>
+                <button className="records-save" type="submit" disabled={isSavingAccount}>
+                  {isSavingAccount ? 'Salvando...' : 'Criar conta'}
                 </button>
               </footer>
             </form>

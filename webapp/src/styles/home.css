@@ -1,4 +1,7 @@
+/* webapp/src/styles/home.css */
+/* Arquivo CSS para a página inicial. */
 /* Dashboard styles. */
+/* =========================================*/
 
 .home-page {
   min-height: 100vh;
@@ -14,6 +17,8 @@
 .home-account,
 .home-summary-row { display: flex; align-items: center; }
 .home-header { flex-wrap: wrap; justify-content: space-between; gap: 16px 24px; padding-bottom: 24px; border-bottom: 1px solid var(--finup-border); }
+.home-brand { color: inherit; text-decoration: none; }
+.home-brand:visited { color: inherit; }
 .home-brand .logo-component { justify-items: start; }
 .home-brand .logo-name { font-size: 30px; }
 .home-account { gap: 12px; }
@@ -164,3 +169,125 @@
 .records-save:disabled,
 .records-cancel:disabled,
 .records-close:disabled { cursor: wait; opacity: 0.6; }
+
+.records-methods-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 8px;
+  margin: 4px 0 8px;
+}
+
+.records-method-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 48px;
+  padding: 8px 10px;
+  border: 1px solid var(--finup-border);
+  border-radius: 8px;
+  background: var(--finup-surface);
+  color: var(--finup-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 160ms ease;
+}
+
+.records-method-pill:hover {
+  border-color: var(--finup-primary);
+  background: var(--finup-surface-raised);
+  color: var(--finup-foreground);
+}
+
+.records-method-pill.is-active-income {
+  border-color: var(--finup-primary);
+  background: rgba(74, 222, 128, 0.12);
+  color: var(--finup-primary);
+}
+
+.records-method-pill.is-active-expense {
+  border-color: var(--finup-danger);
+  background: rgba(255, 107, 107, 0.12);
+  color: var(--finup-danger);
+}
+
+.records-info-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid var(--finup-border);
+  border-radius: 8px;
+  background: rgba(148, 163, 184, 0.08);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--finup-foreground);
+}
+
+.records-info-banner.is-caixa {
+  border-color: rgba(74, 222, 128, 0.35);
+  background: rgba(74, 222, 128, 0.08);
+}
+
+.records-info-banner.is-credit {
+  border-color: rgba(96, 165, 250, 0.35);
+  background: rgba(96, 165, 250, 0.08);
+}
+
+.records-info-banner p {
+  margin: 0;
+}
+
+.records-info-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.records-invoice-breakdown {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.15);
+  font-size: 12px;
+}
+
+.records-invoice-breakdown div {
+  display: flex;
+  flex-direction: column;
+}
+
+.records-invoice-breakdown span {
+  color: var(--finup-subtle);
+  font-size: 11px;
+}
+
+.records-invoice-breakdown strong {
+  color: var(--finup-foreground);
+}
+
+.records-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid var(--finup-border);
+  border-radius: 8px;
+  background: var(--finup-surface);
+  color: var(--finup-foreground);
+  font: inherit;
+  font-size: 14px;
+  resize: vertical;
+}
+
+.records-form textarea:focus {
+  outline: 2px solid rgba(74, 222, 128, 0.55);
+  outline-offset: 1px;
+}
+

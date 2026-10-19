@@ -53,7 +53,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-
   text: {
     color: "#FFFFFF",
     fontSize: 15,

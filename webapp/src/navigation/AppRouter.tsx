@@ -1,4 +1,4 @@
-// src/navigation/AppRouter.tsx
+// webapp/src/navigation/AppRouter.tsx
 // Rotas do aplicativo webapp
 // Ajustes conforme o webapp vai sendo desenvolvido
 // =============================================================================
@@ -9,9 +9,9 @@ import TelaAceitarConvite from '../views/TelaAceitarConvite'
 import TelaConvites from '../views/TelaConvites'
 import TelaCadastroRegistros from '../views/TelaCadastroRegistros'
 import TelaLogin from '../views/TelaLogin'
-import TelaInicial from '../views/TelaInicial'
 import TelaMenu from '../views/TelaMenu'
 import TelaGerenciamento from '../views/TelaGerenciamento'
+import TelaVisaoGeral from '../views/TelaVisaoGeral'
 import ProtectedRoute from './ProtectedRoute'
 
 export default function AppRouter() {
@@ -20,7 +20,8 @@ export default function AppRouter() {
       <Routes>
         <Route path="/" element={<TelaLogin />} />
         <Route path="/menu" element={<ProtectedRoute><TelaMenu /></ProtectedRoute>} />
-        <Route path="/inicio" element={<ProtectedRoute><TelaInicial /></ProtectedRoute>} />
+        <Route path="/inicio" element={<Navigate to="/menu" replace />} />
+        <Route path="/visao-geral" element={<ProtectedRoute><TelaVisaoGeral /></ProtectedRoute>} />
         <Route path="/gerenciamento" element={<ProtectedRoute><TelaGerenciamento /></ProtectedRoute>} />
         <Route path="/registros" element={<ProtectedRoute><TelaCadastroRegistros /></ProtectedRoute>} />
         <Route path="/cadastro" element={<TelaCadastroUsuario />} />

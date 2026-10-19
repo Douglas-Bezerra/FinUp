@@ -1,4 +1,4 @@
-// src/components/ManagerResourcePanel.tsx
+// webapp/src/views/ManagerResourcePanel.tsx
 // Arquivo para gerenciar recursos financeiros
 // ============================================
 

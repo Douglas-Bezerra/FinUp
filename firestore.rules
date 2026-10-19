@@ -88,6 +88,7 @@ service cloud.firestore {
         )
         && getAfter(movementPath).data.status == 'EFETIVADO'
         && after.ultimaMovimentacaoId == transactionId
+        && after.saldoAtual >= 0
         && (
           (movement.tipoMovimentacao == 'RECEITA'
             && after.saldoAtual == before + movement.valor)
@@ -114,6 +115,8 @@ service cloud.firestore {
         )
         && originAfter.ultimaMovimentacaoId == transfer.transacaoOrigemId
         && destinationAfter.ultimaMovimentacaoId == transfer.transacaoDestinoId
+        && originAfter.saldoAtual >= 0
+        && destinationAfter.saldoAtual >= 0
         && originAfter.saldoAtual == originBefore - transfer.valor
         && destinationAfter.saldoAtual == destinationBefore + transfer.valor
         && transfer.status == 'EFETIVADO';
@@ -139,7 +142,17 @@ service cloud.firestore {
         && (movement.status == 'PENDENTE' || validTransferBalances(familyId, movement.transferenciaId, transfer));
     }
 
-    function validMovementShape(movement) {
+    function isDeterministicInstallment(familyId, transactionId, movement) {
+      let parcelamentoId = movement.get('parcelamentoId', null);
+      let faturaId = movement.get('faturaId', null);
+      return parcelamentoId is string
+        && faturaId is string
+        && transactionId.matches('^parcelamento-' + parcelamentoId + '-[0-9]+$')
+        && existsAfter(familyResourcePath(familyId, 'parcelamentos', parcelamentoId))
+        && existsAfter(familyResourcePath(familyId, 'faturas_cartao', faturaId));
+    }
+
+    function validMovementShape(familyId, transactionId, movement) {
       return movement.keys().hasAll([
           'descricao', 'valor', 'tipoMovimentacao', 'status', 'dataTransacao',
           'contaId', 'categoriaId', 'categoriaNome', 'criadoPorUsuarioId',
@@ -170,11 +183,15 @@ service cloud.firestore {
         && (!('cartaoPlasticoId' in movement)
           || exists(familyResourcePath(familyId, 'cartoes_plasticos', movement.cartaoPlasticoId)))
         && (!('parcelamentoId' in movement)
-          || exists(familyResourcePath(familyId, 'parcelamentos', movement.parcelamentoId)))
+          || (movement.parcelamentoId is string
+            && (isDeterministicInstallment(familyId, transactionId, movement)
+              || exists(familyResourcePath(familyId, 'parcelamentos', movement.parcelamentoId)))))
         && (!('recorrenciaId' in movement)
           || exists(familyResourcePath(familyId, 'recorrencias', movement.recorrenciaId)))
         && (!('faturaId' in movement)
-          || exists(familyResourcePath(familyId, 'faturas_cartao', movement.faturaId)))
+          || (movement.faturaId is string
+            && (isDeterministicInstallment(familyId, transactionId, movement)
+              || exists(familyResourcePath(familyId, 'faturas_cartao', movement.faturaId)))))
         && (!('parcelaAtual' in movement)
           || (movement.parcelaAtual is int && movement.parcelaAtual > 0))
         && (!('observacao' in movement) || movement.observacao is string)
@@ -195,7 +212,7 @@ service cloud.firestore {
 
     function validNewTransaction(familyId, transactionId, movement) {
       let path = accountPath(familyId, movement.contaId);
-      return validMovementShape(movement)
+      return validMovementShape(familyId, transactionId, movement)
         && (movement.tipoMovimentacao == 'TRANSFERENCIA'
           ? validTransferLeg(familyId, transactionId, movement)
           : exists(path)
@@ -257,6 +274,7 @@ service cloud.firestore {
       return exists(path)
         && existsAfter(path)
         && after.saldoAtual == before.saldoAtual + delta
+        && after.saldoAtual >= 0
         && (delta == 0 || after.ultimaMovimentacaoId == movementId);
     }
 
@@ -520,7 +538,7 @@ service cloud.firestore {
             'contaCorrenteId'
           ])
           && request.resource.data.nome is string
-          && request.resource.data.tipoConta in ['CORRENTE', 'POUPANCA', 'CARTAO_CREDITO', 'CAIXINHA', 'INVESTIMENTO']
+          && request.resource.data.tipoConta in ['CORRENTE', 'POUPANCA', 'CARTAO_CREDITO', 'CAIXINHA', 'INVESTIMENTO', 'OUTROS']
           && request.resource.data.saldoAtual is number
           && request.resource.data.ativo == true
           && request.resource.data.criadaPorUsuarioId == request.auth.uid
@@ -566,7 +584,7 @@ service cloud.firestore {
                   'diaVencimento'
                 ])
               && request.resource.data.nome is string
-              && request.resource.data.tipoConta in ['CORRENTE', 'POUPANCA', 'CARTAO_CREDITO', 'CAIXINHA', 'INVESTIMENTO']
+              && request.resource.data.tipoConta in ['CORRENTE', 'POUPANCA', 'CARTAO_CREDITO', 'CAIXINHA', 'INVESTIMENTO', 'OUTROS']
               && request.resource.data.ativo is bool
               && (request.resource.data.get('usuarioId', null) == null
                 || get(userPath(request.resource.data.usuarioId)).data.familiaId == familyId)

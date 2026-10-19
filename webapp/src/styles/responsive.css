@@ -1,8 +1,8 @@
-/* src/styles/responsive.css */
+/* webapp/src/styles/responsive.css */
 /* Arquivo de estilos para o aplicativo webapp, para dispositivos móveis. */
-/* ============================================================================= */
+/* ====================================================================== */
 
-/* Responsive layout rules. */
+/* Regras de layout responsive para dispositivos móveis. */
 
 @keyframes appear {
   from { opacity: 0; transform: translateY(12px); }

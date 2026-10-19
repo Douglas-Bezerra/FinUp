@@ -1,3 +1,8 @@
+/* webapp/src/index.css */
+/* Estilos globais para aplicação web. */
+/* ==================================== */
+
+/* Fonte padrão para o aplicativo. */
 :root {
   font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
   color: var(--finup-foreground);
@@ -8,6 +13,8 @@
   -webkit-font-smoothing: antialiased;
 }
 
+/* body define a largura mínima do documento, para evitar que o conteúdo fique
+   muito pequeno quando o dispositivo é menor que o mínimo. */
 body {
   margin: 0;
   min-width: 320px;

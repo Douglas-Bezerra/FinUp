@@ -1,4 +1,4 @@
-// src/views/TelaConvites.tsx
+// webapp/src/views/TelaConvites.tsx
 // Tela de convites para usuarios secundários do aplicativo web
 // =============================================================================
 
@@ -8,6 +8,7 @@ import { criarConvite, obterUsuario } from '../../../shared/services/finupServic
 import { auth, db } from '../firebase'
 import BackButton from '../components/BackButton'
 import LogoutButton from '../components/LogoutButton'
+import Logo from '../components/Logo'
 import '../App.css'
 
 function createInviteToken() {
@@ -84,12 +85,15 @@ export default function TelaConvites() {
     <main className="login-page cadastro-page">
       <section className="login-panel standalone-panel" aria-labelledby="convites-title">
         <div className="login-card">
+          <div className="brand">
+            <Logo />
+          </div>
           <div className="standalone-toolbar">
             <BackButton />
             <LogoutButton />
           </div>
           <div className="form-heading">
-            <p className="eyebrow">Acesso compartilhado</p>
+            <p className="eyebrow"></p>
             <h2 id="convites-title">Convidar usuário secundário</h2>
             <p className="welcome">O convite ficará válido por 7 dias e só poderá ser aceito pelo e-mail informado.</p>
           </div>
@@ -110,11 +114,29 @@ export default function TelaConvites() {
             </button>
           </form>
 
-          {feedback && <p className="feedback" role="status">{feedback}</p>}
-          {inviteLink && (
-            <button className="secondary-button" type="button" onClick={copyInviteLink}>
-              Copiar link do convite
-            </button>
+          {feedback && (
+            <div className="invite-feedback-container">
+              <p
+                className={`feedback invite-feedback ${inviteLink ? 'success' : 'error'}`}
+                role="status"
+              >
+                {feedback}
+              </p>
+              {inviteLink && (
+                <div className="invite-link-wrapper">
+                  <input
+                    type="text"
+                    readOnly
+                    value={inviteLink}
+                    className="invite-link-input"
+                    onFocus={(event) => event.target.select()}
+                  />
+                  <button className="secondary-button" type="button" onClick={copyInviteLink}>
+                    Copiar link do convite
+                  </button>
+                </div>
+              )}
+            </div>
           )}
         </div>
       </section>

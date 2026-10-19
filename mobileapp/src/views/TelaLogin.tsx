@@ -60,6 +60,11 @@ export default function TelaLogin() {
     try {
       setLoading(true);
       await signInWithEmailAndPassword(auth, email.trim(), password);
+
+      // Limpa as credenciais após o login bem-sucedido
+      setEmail("");
+      setPassword("");
+
       navigation.navigate("Inicio");
     } catch (error: any) {
       if (
@@ -238,7 +243,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "700",
   },
-
   passwordFooter: {
     flexDirection: "row",
     alignItems: "center",

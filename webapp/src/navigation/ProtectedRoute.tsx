@@ -1,3 +1,7 @@
+// webapp/src/navigation/ProtectedRoute.tsx
+// Rota protegida para acesso a telas privadas
+// ============================================
+
 import { onAuthStateChanged, type User } from 'firebase/auth'
 import { useEffect, useState, type ReactNode } from 'react'
 import { Navigate } from 'react-router-dom'

@@ -1,6 +1,6 @@
-// src/views/TelaLogin.tsx
-// Tela de login do aplicativo web
-// =============================================================================
+// webapp/src/views/TelaLogin.tsx
+// Tela de login do aplicativo web, no webapp.
+// ===========================================
 
 import { useState, type FormEvent } from "react";
 import {

@@ -1,3 +1,7 @@
+/* webapp/src/styles/manager.css */
+/* Arquivo de estilos para a tela de gerenciamento. */
+/* ================================================ */
+
 .manager-heading { align-items: center; }
 .manager-link-button { text-decoration: none; }
 .manager-resource-heading { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin: 4px 0 18px; }
