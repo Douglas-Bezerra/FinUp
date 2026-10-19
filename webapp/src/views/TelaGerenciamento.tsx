@@ -356,8 +356,8 @@ export default function TelaGerenciamento() {
         <section className="records-heading manager-heading" aria-labelledby="manager-title">
           <div>
             <p className="eyebrow">Sua vida financeira, com clareza</p>
-            <h1 id="manager-title">Visão geral e gerenciamento</h1>
-            <p>Gerencie os cadastros financeiros e lançamentos da sua família.</p>
+            <h1 id="manager-title">Gerenciamento</h1>
+            <p>Gerencie contas, instituições, categorias e recursos financeiros da sua família.</p>
           </div>
           {tab === 'categorias' && (
             <button className="records-create-button" type="button" onClick={() => openCategoryForm()}>

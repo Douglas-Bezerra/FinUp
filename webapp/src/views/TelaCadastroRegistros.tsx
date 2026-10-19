@@ -72,6 +72,23 @@ function getMonth(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
 }
 
+function parseDateInput(value: string): Date | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
+  if (!match) return null
+
+  const [, yearValue, monthValue, dayValue] = match
+  const year = Number(yearValue)
+  const month = Number(monthValue)
+  const day = Number(dayValue)
+  if (year < 1 || month < 1 || month > 12 || day < 1 || day > 31) return null
+
+  const date = new Date(0)
+  date.setFullYear(year, month - 1, day)
+  date.setHours(12, 0, 0, 0)
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null
+  return date
+}
+
 interface InfoFaturaCalculada {
   mesReferencia: string
   dataFechamento: Date
@@ -80,12 +97,11 @@ interface InfoFaturaCalculada {
   descricaoFatura: string
 }
 
-function calcularFaturaCartao(dataTransacaoStr: string, diaVencimento: number): InfoFaturaCalculada {
-  const [anoStr, mesStr, diaStr] = dataTransacaoStr.split('-')
-  const ano = parseInt(anoStr, 10)
-  const mes = parseInt(mesStr, 10) - 1
-  const dia = parseInt(diaStr, 10)
-  const dCompra = new Date(ano, mes, dia, 12, 0, 0)
+function calcularFaturaCartao(dataTransacaoStr: string, diaVencimento: number): InfoFaturaCalculada | null {
+  const dCompra = parseDateInput(dataTransacaoStr)
+  if (!dCompra || !Number.isInteger(diaVencimento) || diaVencimento < 1 || diaVencimento > 31) return null
+  const ano = dCompra.getFullYear()
+  const mes = dCompra.getMonth()
 
   // O fechamento sempre é 10 dias antes do vencimento
   const vencimentoMesAtual = new Date(ano, mes, diaVencimento, 23, 59, 59, 999)
@@ -369,6 +385,12 @@ export default function TelaCadastroRegistros() {
       return
     }
 
+    const parsedTransactionDate = parseDateInput(date)
+    if (!parsedTransactionDate) {
+      setFormError('Informe uma data válida para o lançamento.')
+      return
+    }
+
     const selectedCategory = categories.find((category) => category.id === categoryId)
     if (!selectedCategory) {
       setFormError('Selecione uma categoria.')
@@ -379,7 +401,7 @@ export default function TelaCadastroRegistros() {
 
     setIsSaving(true)
     try {
-      const dataTransacao = new Date(`${date}T12:00:00`)
+      const dataTransacao = parsedTransactionDate
 
       if (transactionType === 'TRANSFERENCIA') {
         if (!accountId || !destinationAccountId || destinationAccountId === accountId) {
@@ -449,6 +471,9 @@ export default function TelaCadastroRegistros() {
 
           const cardId = selectedCreditCard.id
           const calculatedInvoice = calcularFaturaCartao(date, selectedCreditCard.diaVencimento || 10)
+          if (!calculatedInvoice) {
+            throw new Error('Informe uma data válida para calcular a fatura do cartão.')
+          }
           const valorParcela = numInstallments > 1
             ? Number((parsed / numInstallments).toFixed(2))
             : parsed
@@ -1110,7 +1135,7 @@ export default function TelaCadastroRegistros() {
                       />
 
                       {/* INFORMAÇÕES DA FATURA E REGRA DE 10 DIAS ANTES DO VENCIMENTO */}
-                      {selectedCreditCard && (
+                      {selectedCreditCard && invoiceInfo && (
                         <div className="records-info-banner is-credit">
                           <span className="records-info-badge">💳 Regra de Fechamento da Fatura</span>
                           <p>

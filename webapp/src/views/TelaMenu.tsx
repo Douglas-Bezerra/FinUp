@@ -98,9 +98,14 @@ export default function TelaMenu() {
         </section>
 
         <nav className="menu-options" aria-label="Opções principais">
+          <Link className="menu-option-button" to="/visao-geral" state={{ backTo: '/menu' }}>
+            <span className="menu-option-icon" aria-hidden="true">▤</span>
+            <span className="menu-option-label">Visão Geral</span>
+            <span className="menu-option-arrow" aria-hidden="true">›</span>
+          </Link>
           <Link className="menu-option-button" to="/gerenciamento" state={{ backTo: '/menu' }}>
             <span className="menu-option-icon" aria-hidden="true">⌂</span>
-            <span className="menu-option-label">Visão geral e gerenciamento</span>
+            <span className="menu-option-label">Gerenciamento</span>
             <span className="menu-option-arrow" aria-hidden="true">›</span>
           </Link>
           <Link className="menu-option-button" to="/registros" state={{ backTo: '/menu' }}>

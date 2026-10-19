@@ -11,6 +11,7 @@ import TelaCadastroRegistros from '../views/TelaCadastroRegistros'
 import TelaLogin from '../views/TelaLogin'
 import TelaMenu from '../views/TelaMenu'
 import TelaGerenciamento from '../views/TelaGerenciamento'
+import TelaVisaoGeral from '../views/TelaVisaoGeral'
 import ProtectedRoute from './ProtectedRoute'
 
 export default function AppRouter() {
@@ -20,6 +21,7 @@ export default function AppRouter() {
         <Route path="/" element={<TelaLogin />} />
         <Route path="/menu" element={<ProtectedRoute><TelaMenu /></ProtectedRoute>} />
         <Route path="/inicio" element={<Navigate to="/menu" replace />} />
+        <Route path="/visao-geral" element={<ProtectedRoute><TelaVisaoGeral /></ProtectedRoute>} />
         <Route path="/gerenciamento" element={<ProtectedRoute><TelaGerenciamento /></ProtectedRoute>} />
         <Route path="/registros" element={<ProtectedRoute><TelaCadastroRegistros /></ProtectedRoute>} />
         <Route path="/cadastro" element={<TelaCadastroUsuario />} />
