@@ -15,10 +15,16 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
-import {
-    ExpoSpeechRecognitionModule,
-    useSpeechRecognitionEvent,
-} from "expo-speech-recognition";
+let ExpoSpeechRecognitionModule: any = null;
+let useSpeechRecognitionEvent: (event: string, listener: (...args: any[]) => void) => void = () => {};
+
+try {
+    const SpeechModule = require("expo-speech-recognition");
+    ExpoSpeechRecognitionModule = SpeechModule.ExpoSpeechRecognitionModule;
+    useSpeechRecognitionEvent = SpeechModule.useSpeechRecognitionEvent;
+} catch {
+    console.log("[Bufunfa] Modo Expo Go: reconhecimento de voz desativado (requer build nativo).");
+}
 
 import { colors } from "../styles/colors";
 import GradientText from "../components/GradientText"
@@ -146,6 +152,14 @@ export default function TelaAssistente() {
     });
 
     const handleToggleListening = async () => {
+        if (!ExpoSpeechRecognitionModule) {
+            Alert.alert(
+                "Aviso (Expo Go)",
+                "O microfone requer a versão instalada no celular (build nativo/apk). No Expo Go, você pode testar o Bufunfa digitando no campo de texto ou clicando nas perguntas prontas!"
+            );
+            return;
+        }
+
         if (isListening) {
             try {
                 ExpoSpeechRecognitionModule.stop();
@@ -208,7 +222,7 @@ export default function TelaAssistente() {
     function send(text: string) {
         if (!text.trim() || typing) return;
 
-        if (isListening) {
+        if (isListening && ExpoSpeechRecognitionModule) {
             try {
                 ExpoSpeechRecognitionModule.stop();
             } catch {}
