@@ -3,9 +3,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
+  cadastrarParcelaFaturaCartao,
   listarContas,
   listarFaturasCartao,
   listarInstituicoesBancarias,
+  listarParcelamentos,
   obterExtrato,
   obterUsuario,
 } from '../../../shared/services/finupService'
@@ -47,6 +49,13 @@ function getAccountCategory(account: Conta): AccountCategory {
 
 function getMonthReference(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+}
+
+function getInstallmentDueDate(monthReference: string, dueDay: number, monthOffset: number) {
+  const [year, month] = monthReference.split('-').map(Number)
+  const targetMonth = new Date(year, month - 1 + monthOffset, 1, 12)
+  const lastDay = new Date(targetMonth.getFullYear(), targetMonth.getMonth() + 1, 0).getDate()
+  return new Date(targetMonth.getFullYear(), targetMonth.getMonth(), Math.min(dueDay, lastDay), 12)
 }
 
 function getInvoiceDueDate(invoice: FaturaCartao, dueDay: number) {
@@ -324,12 +333,73 @@ export default function TelaVisaoGeral() {
         const user = await obterUsuario(db, currentUser.uid)
         if (!user) throw new Error('Não encontramos seu perfil financeiro.')
 
-        const [userAccounts, bankInstitutions, userTransactions, userInvoices] = await Promise.all([
+        const [userAccounts, bankInstitutions, initialTransactions, initialInvoices, installmentPlans] = await Promise.all([
           listarContas(db, user.familiaId),
           listarInstituicoesBancarias(db),
           obterExtrato(db, user.familiaId),
           listarFaturasCartao(db, user.familiaId),
+          listarParcelamentos(db, user.familiaId),
         ])
+        if (cancelled) return
+
+        const accountById = new Map(userAccounts.map((account) => [account.id, account]))
+        let backfilledInstallments = false
+        for (const plan of installmentPlans) {
+          const card = accountById.get(plan.contaId)
+          const planTransactions = initialTransactions.filter((transaction) => transaction.parcelamentoId === plan.id)
+          const firstInstallment = planTransactions.find((transaction) => transaction.parcelaAtual === 1)
+          if (!plan.ativo || plan.tipoMovimentacao !== 'DESPESA' || card?.tipoConta !== 'CARTAO_CREDITO'
+            || !firstInstallment || firstInstallment.estornado) {
+            continue
+          }
+
+          const firstInvoice = initialInvoices.find((invoice) => invoice.id === firstInstallment.faturaId)
+          const firstMonth = firstInvoice?.mesReferencia ?? getMonthReference(firstInstallment.dataTransacao)
+          const dueDay = firstInstallment.diaVencimento ?? card.diaVencimento ?? 10
+          const totalCents = Math.round(plan.valorTotal * 100)
+          const regularInstallmentCents = Math.round(totalCents / plan.totalParcelas)
+
+          for (let installment = 2; installment <= plan.totalParcelas; installment += 1) {
+            if (planTransactions.some((transaction) => transaction.parcelaAtual === installment)) continue
+
+            const installmentCents = installment === plan.totalParcelas
+              ? totalCents - regularInstallmentCents * (plan.totalParcelas - 1)
+              : regularInstallmentCents
+            const dueDate = getInstallmentDueDate(firstMonth, dueDay, installment - 1)
+            const monthReference = getMonthReference(dueDate)
+            const existingInvoice = initialInvoices.find((invoice) =>
+              invoice.contaId === card.id && invoice.mesReferencia === monthReference,
+            )
+            await cadastrarParcelaFaturaCartao(db, user.familiaId, {
+              descricao: `${plan.descricao} (${installment}/${plan.totalParcelas})`,
+              valor: installmentCents / 100,
+              tipoMovimentacao: 'DESPESA',
+              status: 'PENDENTE',
+              dataTransacao: dueDate,
+              contaId: card.id,
+              categoriaId: firstInstallment.categoriaId,
+              categoriaNome: firstInstallment.categoriaNome,
+              criadoPorUsuarioId: currentUser.uid,
+              criadoPorNome: user.nome,
+              estornado: false,
+              cartaoPlasticoId: plan.cartaoPlasticoId ?? firstInstallment.cartaoPlasticoId,
+              formaPagamento: 'credit',
+              parcelas: plan.totalParcelas,
+              parcelaAtual: installment,
+              parcelamentoId: plan.id,
+              diaVencimento: dueDay,
+              observacao: firstInstallment.observacao,
+            }, monthReference, existingInvoice?.id)
+            backfilledInstallments = true
+          }
+        }
+
+        const [userTransactions, userInvoices] = backfilledInstallments
+          ? await Promise.all([
+            obterExtrato(db, user.familiaId),
+            listarFaturasCartao(db, user.familiaId),
+          ])
+          : [initialTransactions, initialInvoices]
         if (cancelled) return
         setProfile(user)
         setAccounts(userAccounts)

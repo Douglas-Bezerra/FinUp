@@ -6,6 +6,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
   atualizarFaturaCartao,
+  cadastrarParcelaFaturaCartao,
   cadastrarTransacao,
   cadastrarTransferencia,
   criarConta,
@@ -36,6 +37,7 @@ const currencyFormatter = new Intl.NumberFormat('pt-BR', {
   style: 'currency',
   currency: 'BRL',
 })
+const CASH_INSTITUTION_NAME = 'Wallet/Carteira'
 
 function getToday() {
   const date = new Date()
@@ -70,6 +72,18 @@ function formatDate(value: Date) {
 
 function getMonth(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+}
+
+function getInstallmentDueDate(monthReference: string, dueDay: number, monthOffset: number) {
+  const [year, month] = monthReference.split('-').map(Number)
+  const targetMonth = new Date(year, month - 1 + monthOffset, 1, 12)
+  const lastDay = new Date(targetMonth.getFullYear(), targetMonth.getMonth() + 1, 0).getDate()
+  return new Date(
+    targetMonth.getFullYear(),
+    targetMonth.getMonth(),
+    Math.min(dueDay, lastDay),
+    12,
+  )
 }
 
 function parseDateInput(value: string): Date | null {
@@ -290,12 +304,16 @@ export default function TelaCadastroRegistros() {
   const bankAccounts = activeAccounts.filter((account) => account.tipoConta !== 'CARTAO_CREDITO')
   const creditCardAccounts = activeAccounts.filter((account) => account.tipoConta === 'CARTAO_CREDITO')
 
-  const contaCaixa = activeAccounts.find((acc) =>
-    acc.tipoConta === 'CAIXINHA' ||
-    acc.nome.trim().toLowerCase() === 'caixa' ||
-    acc.nome.trim().toLowerCase().startsWith('caixa') ||
-    acc.nome.trim().toLowerCase().includes('carteira'),
+  const cashInstitution = institutions.find((institution) =>
+    institution.nome.trim().toLocaleLowerCase('pt-BR') === CASH_INSTITUTION_NAME.toLocaleLowerCase('pt-BR'),
   )
+  const cashAccount = cashInstitution
+    ? activeAccounts.find((account) =>
+      account.instituicaoId === cashInstitution.id
+      && account.nome.trim().toLocaleLowerCase('pt-BR') === 'em caixa / dinheiro'
+      && account.tipoConta === 'OUTROS',
+    )
+    : undefined
 
   const selectedCreditCard = creditCardAccounts.find((acc) => acc.id === creditCardAccountId) || creditCardAccounts[0]
   const cardDueDay = selectedCreditCard?.diaVencimento || 10
@@ -348,26 +366,91 @@ export default function TelaCadastroRegistros() {
     }
   }
 
-  async function ensureContaCaixa(): Promise<Conta> {
-    if (contaCaixa) return contaCaixa
+  function getCashAccount(): Conta {
+    if (!cashInstitution) {
+      throw new Error(`A instituição “${CASH_INSTITUTION_NAME}” não foi encontrada. Verifique o cadastro da instituição.`)
+    }
+    if (!cashAccount) {
+      throw new Error(`A conta ativa “Em caixa / Dinheiro” do tipo Outros não foi encontrada na instituição “${CASH_INSTITUTION_NAME}”.`)
+    }
+    return cashAccount
+  }
+
+  async function addAmountToInvoice(cardId: string, monthReference: string, amountToAdd: number) {
     if (!profile) throw new Error('Perfil não encontrado.')
 
-    const id = await criarConta(db, profile.familiaId, profile.id, {
-      nome: 'Caixa',
-      tipoConta: 'CAIXINHA',
-      saldoAtual: 0,
-      ativo: true,
-    })
+    const targetInvoice = invoices.find((invoice) =>
+      invoice.contaId === cardId && invoice.mesReferencia === monthReference,
+    )
 
-    const novaConta: Conta = {
-      id,
-      nome: 'Caixa',
-      tipoConta: 'CAIXINHA',
-      saldoAtual: 0,
-      ativo: true,
+    if (!targetInvoice) {
+      const invoiceId = await criarFaturaCartao(db, profile.familiaId, {
+        contaId: cardId,
+        mesReferencia: monthReference,
+      })
+      await atualizarFaturaCartao(db, profile.familiaId, invoiceId, {
+        valorTotal: amountToAdd,
+        valorPago: 0,
+        status: 'ABERTA',
+      })
+      return invoiceId
     }
-    setAccounts((prev) => [...prev, novaConta])
-    return novaConta
+
+    const nextTotal = (targetInvoice.valorTotal || 0) + amountToAdd
+    await atualizarFaturaCartao(db, profile.familiaId, targetInvoice.id, {
+      valorTotal: nextTotal,
+      valorPago: targetInvoice.valorPago || 0,
+      status: targetInvoice.status === 'PAGA' && nextTotal > (targetInvoice.valorPago || 0)
+        ? 'ABERTA'
+        : targetInvoice.status,
+    })
+    return targetInvoice.id
+  }
+
+  async function migrateLegacyCashBalance(destinationAccount: Conta) {
+    if (!profile) throw new Error('Perfil não encontrado.')
+
+    const legacyCashAccounts = (await listarContas(db, profile.familiaId)).filter((account) =>
+      account.ativo
+      && account.id !== destinationAccount.id
+      && account.tipoConta === 'CAIXINHA'
+      && account.nome.trim().toLocaleLowerCase('pt-BR') === 'caixa',
+    )
+    if (legacyCashAccounts.length > 1) {
+      throw new Error('Há mais de uma conta antiga chamada Caixa. Verifique as contas antes de migrar o saldo.')
+    }
+
+    const legacyCashAccount = legacyCashAccounts[0]
+    if (!legacyCashAccount) return
+    if (!Number.isFinite(legacyCashAccount.saldoAtual)) {
+      throw new Error('O saldo da conta Caixa antiga é inválido.')
+    }
+    if (legacyCashAccount.saldoAtual < 0) {
+      throw new Error('A conta Caixa antiga está com saldo negativo. Regularize esse saldo antes de migrá-lo.')
+    }
+    if (legacyCashAccount.saldoAtual === 0) return
+
+    const transferCategory = categories.find((category) =>
+      category.ativo !== false && category.tipo === 'TRANSFERENCIA',
+    )
+    if (!transferCategory) {
+      throw new Error('Não foi encontrada uma categoria de transferência para migrar o saldo de Caixa.')
+    }
+
+    const transferDate = new Date()
+    transferDate.setHours(12, 0, 0, 0)
+    await cadastrarTransferencia(db, profile.familiaId, {
+      contaOrigemId: legacyCashAccount.id,
+      contaDestinoId: destinationAccount.id,
+      descricao: 'Migração do saldo da conta Caixa para Em caixa / Dinheiro',
+      valor: legacyCashAccount.saldoAtual,
+      dataTransacao: transferDate,
+      status: 'EFETIVADO',
+      criadoPorUsuarioId: profile.id,
+      criadoPorNome: profile.nome,
+      categoriaId: transferCategory.id,
+    })
+    setReloadKey((key) => key + 1)
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -422,15 +505,15 @@ export default function TelaCadastroRegistros() {
         })
       } else if (transactionType === 'DESPESA') {
         if (formaPagamento === 'DINHEIRO') {
-          // Dinheiro -> tirar saldo da conta Caixa
-          const caixa = await ensureContaCaixa()
+          const wallet = getCashAccount()
+          await migrateLegacyCashBalance(wallet)
           await cadastrarTransacao(db, profile.familiaId, {
             descricao: finalDescription,
             valor: parsed,
             tipoMovimentacao: 'DESPESA',
             status: 'EFETIVADO',
             dataTransacao,
-            contaId: caixa.id,
+            contaId: wallet.id,
             categoriaId: selectedCategory.id,
             categoriaNome: selectedCategory.nome,
             criadoPorUsuarioId: profile.id,
@@ -474,43 +557,15 @@ export default function TelaCadastroRegistros() {
           if (!calculatedInvoice) {
             throw new Error('Informe uma data válida para calcular a fatura do cartão.')
           }
-          const valorParcela = numInstallments > 1
-            ? Number((parsed / numInstallments).toFixed(2))
-            : parsed
-
-          // Localiza ou cria a fatura de cartão correspondente
-          let targetInvoice = invoices.find((inv) =>
-            inv.contaId === cardId && inv.mesReferencia === calculatedInvoice.mesReferencia,
-          )
-
-          let faturaId = targetInvoice?.id
-
-          if (!targetInvoice) {
-            faturaId = await criarFaturaCartao(db, profile.familiaId, {
-              contaId: cardId,
-              mesReferencia: calculatedInvoice.mesReferencia,
-            })
-            await atualizarFaturaCartao(db, profile.familiaId, faturaId, {
-              valorTotal: valorParcela,
-              valorPago: 0,
-              status: 'ABERTA',
-            })
-          } else {
-            const novoTotal = (targetInvoice.valorTotal || 0) + valorParcela
-            await atualizarFaturaCartao(db, profile.familiaId, targetInvoice.id, {
-              valorTotal: novoTotal,
-              valorPago: targetInvoice.valorPago || 0,
-              status: targetInvoice.status === 'PAGA' && novoTotal > (targetInvoice.valorPago || 0)
-                ? 'ABERTA'
-                : targetInvoice.status,
-            })
-          }
+          const dueDay = selectedCreditCard.diaVencimento || 10
 
           if (numInstallments > 1) {
-            // Mais de 1 parcela: Atualiza a coleção Parcelamentos
+            const totalCents = Math.round(parsed * 100)
+            const normalizedTotal = totalCents / 100
+            const regularInstallmentCents = Math.round(totalCents / numInstallments)
             const parcelamentoId = await criarParcelamento(db, profile.familiaId, {
               descricao: finalDescription,
-              valorTotal: parsed,
+              valorTotal: normalizedTotal,
               totalParcelas: numInstallments,
               dataInicio: dataTransacao,
               contaId: cardId,
@@ -520,29 +575,43 @@ export default function TelaCadastroRegistros() {
               criadoPorUsuarioId: profile.id,
             })
 
-            // Inclui a primeira parcela na fatura atual ou próxima fatura
-            await cadastrarTransacao(db, profile.familiaId, {
-              descricao: `${finalDescription} (1/${numInstallments})`,
-              valor: valorParcela,
-              tipoMovimentacao: 'DESPESA',
-              status: 'PENDENTE',
-              dataTransacao,
-              contaId: cardId,
-              categoriaId: selectedCategory.id,
-              categoriaNome: selectedCategory.nome,
-              criadoPorUsuarioId: profile.id,
-              criadoPorNome: profile.nome,
-              estornado: false,
-              formaPagamento: 'credit',
-              parcelas: numInstallments,
-              parcelaAtual: 1,
-              parcelamentoId,
-              faturaId,
-              diaVencimento: selectedCreditCard.diaVencimento || 10,
-              observacao: observation.trim() || undefined,
-            })
+            for (let installment = 1; installment <= numInstallments; installment += 1) {
+              const installmentCents = installment === numInstallments
+                ? totalCents - regularInstallmentCents * (numInstallments - 1)
+                : regularInstallmentCents
+              const installmentAmount = installmentCents / 100
+              const dueDate = getInstallmentDueDate(
+                calculatedInvoice.mesReferencia,
+                dueDay,
+                installment - 1,
+              )
+              const monthReference = getMonth(dueDate)
+              const existingInvoice = invoices.find((invoice) =>
+                invoice.contaId === cardId && invoice.mesReferencia === monthReference,
+              )
+
+              await cadastrarParcelaFaturaCartao(db, profile.familiaId, {
+                descricao: `${finalDescription} (${installment}/${numInstallments})`,
+                valor: installmentAmount,
+                tipoMovimentacao: 'DESPESA',
+                status: 'PENDENTE',
+                dataTransacao: dueDate,
+                contaId: cardId,
+                categoriaId: selectedCategory.id,
+                categoriaNome: selectedCategory.nome,
+                criadoPorUsuarioId: profile.id,
+                criadoPorNome: profile.nome,
+                estornado: false,
+                formaPagamento: 'credit',
+                parcelas: numInstallments,
+                parcelaAtual: installment,
+                parcelamentoId,
+                diaVencimento: dueDay,
+                observacao: observation.trim() || undefined,
+              }, monthReference, existingInvoice?.id)
+            }
           } else {
-            // Apenas 1 parcela
+            const invoiceId = await addAmountToInvoice(cardId, calculatedInvoice.mesReferencia, parsed)
             await cadastrarTransacao(db, profile.familiaId, {
               descricao: finalDescription,
               valor: parsed,
@@ -557,23 +626,23 @@ export default function TelaCadastroRegistros() {
               estornado: false,
               formaPagamento: 'credit',
               parcelas: 1,
-              faturaId,
-              diaVencimento: selectedCreditCard.diaVencimento || 10,
+              faturaId: invoiceId,
+              diaVencimento: dueDay,
               observacao: observation.trim() || undefined,
             })
           }
         }
       } else if (transactionType === 'RECEITA') {
         if (formaRecebimento === 'DINHEIRO') {
-          // Dinheiro -> Colocar saldo na Conta Caixa
-          const caixa = await ensureContaCaixa()
+          const wallet = getCashAccount()
+          await migrateLegacyCashBalance(wallet)
           await cadastrarTransacao(db, profile.familiaId, {
             descricao: finalDescription,
             valor: parsed,
             tipoMovimentacao: 'RECEITA',
             status: 'EFETIVADO',
             dataTransacao,
-            contaId: caixa.id,
+            contaId: wallet.id,
             categoriaId: selectedCategory.id,
             categoriaNome: selectedCategory.nome,
             criadoPorUsuarioId: profile.id,
@@ -626,7 +695,7 @@ export default function TelaCadastroRegistros() {
       setReloadKey((key) => key + 1)
     } catch (error) {
       console.error('Erro ao efetivar movimentação:', error)
-      setFeedback('Não foi possível efetivar a movimentação. Tente novamente.')
+      setFeedback(error instanceof Error ? error.message : 'Não foi possível efetivar a movimentação.')
     }
   }
 
@@ -1054,13 +1123,13 @@ export default function TelaCadastroRegistros() {
                     </button>
                   </div>
 
-                  {/* DINHEIRO -> CONTA CAIXA */}
+                  {/* DINHEIRO -> CONTA VALLET/CARTEIRA */}
                   {formaPagamento === 'DINHEIRO' && (
                     <div className="records-info-banner is-caixa">
                       <span className="records-info-badge">💵 Dinheiro selecionado</span>
                       <p>
-                        O saldo será debitado automaticamente da <strong>Conta Caixa</strong>{' '}
-                        {contaCaixa ? `(${contaCaixa.nome} - Saldo: ${currencyFormatter.format(contaCaixa.saldoAtual)})` : '(uma conta Caixa será criada automaticamente)'}.
+                        O saldo será debitado da conta <strong>Em caixa / Dinheiro</strong> da instituição <strong>{CASH_INSTITUTION_NAME}</strong>
+                        {cashAccount ? ` (saldo: ${currencyFormatter.format(cashAccount.saldoAtual)})` : '.'}
                       </p>
                     </div>
                   )}
@@ -1211,13 +1280,13 @@ export default function TelaCadastroRegistros() {
                     </button>
                   </div>
 
-                  {/* DINHEIRO -> COLOCAR SALDO NA CONTA CAIXA */}
+                  {/* DINHEIRO -> COLOCAR SALDO NA CONTA VALLET/CARTEIRA */}
                   {formaRecebimento === 'DINHEIRO' && (
                     <div className="records-info-banner is-caixa">
                       <span className="records-info-badge">💵 Dinheiro selecionado</span>
                       <p>
-                        O saldo será creditado automaticamente na <strong>Conta Caixa</strong>{' '}
-                        {contaCaixa ? `(${contaCaixa.nome} - Saldo: ${currencyFormatter.format(contaCaixa.saldoAtual)})` : '(uma conta Caixa será criada automaticamente)'}.
+                        O saldo será creditado na conta <strong>Em caixa / Dinheiro</strong> da instituição <strong>{CASH_INSTITUTION_NAME}</strong>
+                        {cashAccount ? ` (saldo: ${currencyFormatter.format(cashAccount.saldoAtual)})` : '.'}
                       </p>
                     </div>
                   )}

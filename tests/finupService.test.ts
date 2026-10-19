@@ -13,6 +13,7 @@ import {
 } from '@firebase/rules-unit-testing'
 import { deleteDoc, doc, getDoc, setDoc, Timestamp, updateDoc, type Firestore } from 'firebase/firestore'
 import {
+  cadastrarParcelaFaturaCartao,
   cadastrarTransacao,
   cadastrarTransferencia,
   arquivarConta,
@@ -84,6 +85,22 @@ test('profile registration, pending entries and transfers update Firestore atomi
   assert.equal(initialAccounts.length, 1)
   assert.equal(initialAccounts[0].saldoAtual, 0)
   await assert.rejects(
+    cadastrarTransacao(principalDb, 'principal-1', {
+      descricao: 'Despesa sem saldo',
+      valor: 1,
+      tipoMovimentacao: 'DESPESA',
+      status: 'EFETIVADO',
+      dataTransacao: new Date('2026-09-29T12:00:00.000Z'),
+      contaId: initialAccounts[0].id,
+      categoriaId: '20000000-0000-4000-8000-000000000001',
+      categoriaNome: 'Alimentação',
+      criadoPorUsuarioId: 'principal-1',
+      criadoPorNome: 'Pessoa Principal',
+      estornado: false,
+    }),
+    /saldo suficiente/,
+  )
+  await assert.rejects(
     updateDoc(doc(principalDb, 'familias', 'principal-1', 'contas', initialAccounts[0].id), {
       saldoAtual: 500,
     }),
@@ -122,6 +139,26 @@ test('profile registration, pending entries and transfers update Firestore atomi
   await efetivarTransacaoPendente(principalDb, 'principal-1', pendingExpenseId, 'principal-1')
   accounts = await listarContas(principalDb, 'principal-1')
   assert.equal(accounts[0].saldoAtual, 25)
+
+  const overdrawnPendingExpenseId = await cadastrarTransacao(principalDb, 'principal-1', {
+    descricao: 'Despesa pendente acima do saldo',
+    valor: 30,
+    tipoMovimentacao: 'DESPESA',
+    status: 'PENDENTE',
+    dataTransacao: new Date('2026-10-02T12:00:00.000Z'),
+    contaId: initialAccounts[0].id,
+    categoriaId: '20000000-0000-4000-8000-000000000001',
+    categoriaNome: 'Alimentação',
+    criadoPorUsuarioId: 'principal-1',
+    criadoPorNome: 'Pessoa Principal',
+    estornado: false,
+  })
+  await assert.rejects(
+    efetivarTransacaoPendente(principalDb, 'principal-1', overdrawnPendingExpenseId, 'principal-1'),
+    /saldo suficiente/,
+  )
+  accounts = await listarContas(principalDb, 'principal-1')
+  assert.equal(accounts.find((item) => item.id === initialAccounts[0].id)?.saldoAtual, 25)
 
   const destinationAccountId = await criarConta(principalDb, 'principal-1', 'principal-1', {
     nome: 'Poupança',
@@ -183,6 +220,55 @@ test('profile registration, pending entries and transfers update Firestore atomi
     }),
     /saldo suficiente/,
   )
+})
+
+test('card installments create their invoice atomically and are idempotent', async () => {
+  const db = getTestFirestore(environment.authenticatedContext('installment-owner', {
+    email: 'installment-owner@finup.test',
+  }))
+  await criarUsuarioPrincipal(db, 'installment-owner', 'installment-owner@finup.test', 'Pessoa Parcelamento')
+  const [account] = await listarContas(db, 'installment-owner')
+  const installmentId = await criarParcelamento(db, 'installment-owner', {
+    descricao: 'Compra parcelada',
+    valorTotal: 300,
+    totalParcelas: 3,
+    dataInicio: new Date('2026-10-01T12:00:00.000Z'),
+    contaId: account.id,
+    categoriaId: '20000000-0000-4000-8000-000000000001',
+    tipoMovimentacao: 'DESPESA',
+    ativo: true,
+    criadoPorUsuarioId: 'installment-owner',
+  })
+  const installment = {
+    descricao: 'Compra parcelada (2/3)',
+    valor: 100,
+    tipoMovimentacao: 'DESPESA' as const,
+    status: 'PENDENTE' as const,
+    dataTransacao: new Date('2026-11-21T12:00:00.000Z'),
+    contaId: account.id,
+    categoriaId: '20000000-0000-4000-8000-000000000001',
+    categoriaNome: 'Alimentação',
+    criadoPorUsuarioId: 'installment-owner',
+    criadoPorNome: 'Pessoa Parcelamento',
+    estornado: false,
+    formaPagamento: 'credit' as const,
+    parcelas: 3,
+    parcelaAtual: 2,
+    parcelamentoId: installmentId,
+    diaVencimento: 21,
+  }
+
+  const firstResult = await cadastrarParcelaFaturaCartao(db, 'installment-owner', installment, '2026-11')
+  const retryResult = await cadastrarParcelaFaturaCartao(db, 'installment-owner', installment, '2026-11')
+
+  assert.deepEqual(retryResult, firstResult)
+  const invoice = await getDoc(doc(db, 'familias', 'installment-owner', 'faturas_cartao', firstResult.faturaId))
+  assert.equal(invoice.data()?.valorTotal, 100)
+  const transaction = await getDoc(doc(db, 'familias', 'installment-owner', 'transacoes', firstResult.transacaoId))
+  assert.equal(transaction.data()?.faturaId, firstResult.faturaId)
+  assert.equal((await obterExtrato(db, 'installment-owner')).filter((entry) =>
+    entry.parcelamentoId === installmentId && entry.parcelaAtual === 2,
+  ).length, 1)
 })
 
 test('invite acceptance creates a secondary profile and denies cross-family reads', async () => {

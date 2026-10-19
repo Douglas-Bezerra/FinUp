@@ -718,6 +718,9 @@ export async function cadastrarTransacao(
     if (transacao.status === 'EFETIVADO') {
       const balance = Number(accountSnapshot.data().saldoAtual)
       if (!Number.isFinite(balance)) throw new Error('O saldo atual da conta é inválido.')
+      if (transacao.tipoMovimentacao === 'DESPESA' && balance < transacao.valor) {
+        throw new Error('A conta não possui saldo suficiente para efetivar esta despesa.')
+      }
       transaction.update(accountRef, {
         saldoAtual: balance + balanceDelta(transacao.tipoMovimentacao, transacao.valor),
         ultimaMovimentacaoId: transactionRef.id,
@@ -744,6 +747,114 @@ export async function cadastrarTransacao(
   })
 
   return transactionRef.id
+}
+
+export async function cadastrarParcelaFaturaCartao(
+  db: Firestore,
+  familiaId: string,
+  transacao: Omit<Transacao, 'id' | 'contaId'> & { contaId: string },
+  mesReferencia: string,
+  faturaExistenteId?: string,
+): Promise<{ transacaoId: string; faturaId: string }> {
+  assertPositiveAmount(transacao.valor)
+  assertMonth(mesReferencia)
+  if (transacao.tipoMovimentacao !== 'DESPESA' || transacao.status !== 'PENDENTE'
+    || !transacao.parcelamentoId || !Number.isInteger(transacao.parcelaAtual)
+    || (transacao.parcelaAtual ?? 0) < 1 || transacao.estornado) {
+    throw new Error('Os dados da parcela pendente do cartão são inválidos.')
+  }
+
+  const installmentId = `parcelamento-${transacao.parcelamentoId}-${transacao.parcelaAtual}`
+  const transactionRef = familyDocument(db, familiaId, 'transacoes', installmentId)
+  const invoiceId = faturaExistenteId ?? `parcelamento-${transacao.contaId}-${mesReferencia}`
+  const invoiceRef = familyDocument(db, familiaId, 'faturas_cartao', invoiceId)
+  const accountRef = familyDocument(db, familiaId, 'contas', transacao.contaId)
+  const installmentPlanRef = familyDocument(db, familiaId, 'parcelamentos', transacao.parcelamentoId)
+  const logRef = familyDocument(db, familiaId, 'logs_atividades', `criar-${installmentId}`)
+  const now = Timestamp.now()
+
+  await runTransaction(db, async (transaction) => {
+    const invoiceSnapshot = await transaction.get(invoiceRef)
+    if (!invoiceSnapshot.exists()) {
+      transaction.set(invoiceRef, {
+        contaId: transacao.contaId,
+        mesReferencia,
+        valorTotal: 0,
+        valorPago: 0,
+        status: 'ABERTA',
+        dataCriacao: now,
+      })
+    }
+  })
+
+  await runTransaction(db, async (transaction) => {
+    const [existingTransaction, accountSnapshot, invoiceSnapshot, installmentPlanSnapshot] = await Promise.all([
+      transaction.get(transactionRef),
+      transaction.get(accountRef),
+      transaction.get(invoiceRef),
+      transaction.get(installmentPlanRef),
+    ])
+    if (existingTransaction.exists()) {
+      const existingData = existingTransaction.data()
+      if (existingData.parcelamentoId !== transacao.parcelamentoId
+        || existingData.parcelaAtual !== transacao.parcelaAtual) {
+        throw new Error('Já existe um lançamento com os dados desta parcela.')
+      }
+      return
+    }
+    if (!accountSnapshot.exists()) throw new Error('A conta do cartão não existe.')
+    if (!installmentPlanSnapshot.exists()) throw new Error('O parcelamento desta parcela não existe.')
+    const installmentPlan = installmentPlanSnapshot.data()
+    if (installmentPlan.contaId !== transacao.contaId
+      || installmentPlan.tipoMovimentacao !== 'DESPESA'
+      || (transacao.parcelaAtual ?? 0) > Number(installmentPlan.totalParcelas)) {
+      throw new Error('A parcela não corresponde ao parcelamento informado.')
+    }
+
+    const invoiceData = invoiceSnapshot.exists() ? invoiceSnapshot.data() : null
+    if (invoiceData
+      && (invoiceData.contaId !== transacao.contaId || invoiceData.mesReferencia !== mesReferencia)) {
+      throw new Error('A fatura selecionada não corresponde ao cartão e mês da parcela.')
+    }
+
+    const nextTotal = (invoiceData ? Number(invoiceData.valorTotal) : 0) + transacao.valor
+    const paidAmount = invoiceData ? Number(invoiceData.valorPago) : 0
+    if (!Number.isFinite(nextTotal) || !Number.isFinite(paidAmount)) {
+      throw new Error('Os valores da fatura são inválidos.')
+    }
+    const status = invoiceData
+      ? invoiceData.status === 'PAGA' && nextTotal > paidAmount ? 'ABERTA' : invoiceData.status
+      : 'ABERTA'
+
+    if (invoiceData) {
+      transaction.update(invoiceRef, {
+        valorTotal: nextTotal,
+        valorPago: paidAmount,
+        status,
+      })
+    }
+
+    const transactionData = Object.fromEntries(
+      Object.entries({
+        ...transacao,
+        faturaId: invoiceId,
+        dataTransacao: Timestamp.fromDate(transacao.dataTransacao),
+        dataCriacao: now,
+        dataAtualizacao: now,
+      }).filter(([, value]) => value !== undefined),
+    )
+    transaction.set(transactionRef, transactionData)
+    transaction.set(logRef, {
+      transacaoId: installmentId,
+      usuarioId: transacao.criadoPorUsuarioId,
+      acao: 'CRIAR',
+      dataAcao: now,
+      descricaoSnapshot: transacao.descricao,
+      valoresNovos: { valor: transacao.valor, status: transacao.status },
+    })
+  })
+
+  return { transacaoId: installmentId, faturaId: invoiceId }
 }
 
 export async function cadastrarTransferencia(
@@ -931,6 +1042,9 @@ export async function efetivarTransacaoPendente(
       const amount = Number(data.valor)
       if (!Number.isFinite(balance) || !Number.isFinite(amount) || amount <= 0) {
         throw new Error('O valor ou o saldo da movimentação é inválido.')
+      }
+      if (data.tipoMovimentacao === 'DESPESA' && balance < amount) {
+        throw new Error('A conta não possui saldo suficiente para efetivar esta despesa.')
       }
       transaction.update(accountRef, {
         saldoAtual: balance + balanceDelta(data.tipoMovimentacao as TipoMovimentacao, amount),
