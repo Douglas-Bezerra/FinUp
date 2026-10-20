@@ -15,6 +15,15 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+// =========================================================================================
+// ATENÇÃO / IMPORTANTE: NÃO ALTERAR ESTE BLOCO PARA IMPORT ESTÁTICO!
+// O módulo "expo-speech-recognition" contém código nativo e NÃO existe dentro do Expo Go padrão.
+// O carregamento dinâmico via try/catch abaixo é OBRIGATÓRIO para garantir compatibilidade:
+//  - No Expo Go: o app NÃO quebra/trava; o chat continua 100% testável por texto e botões.
+//  - No APK / Build Nativo (npx expo run:android): o módulo é carregado e a voz funciona 100%.
+// Se você trocar por "import { ... } from 'expo-speech-recognition'", o Expo Go dará erro fatal
+// de "Cannot find native module 'ExpoSpeechRecognition'" ao iniciar o aplicativo.
+// =========================================================================================
 let ExpoSpeechRecognitionModule: any = null;
 let useSpeechRecognitionEvent: (event: string, listener: (...args: any[]) => void) => void = () => {};
 
