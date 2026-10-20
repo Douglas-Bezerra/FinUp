@@ -50,7 +50,7 @@ const INITIAL: Msg[] = [
     {
         id: 1,
         role: "bot",
-        text: "Olá! 👋 Sou o Finn, seu assistente financeiro pessoal. Posso te ajudar com análise de gastos, dicas de investimento, metas financeiras e muito mais. Como posso te ajudar hoje?",
+        text: "Olá! 👋 Sou o Bufunfa, seu assistente financeiro pessoal. Posso te ajudar com análise de gastos, dicas de investimento, metas financeiras e muito mais. Como posso te ajudar hoje?",
         time: "09:41",
     },
 ];
