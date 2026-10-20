@@ -266,7 +266,7 @@ const styles = StyleSheet.create({
   content: {
     flexGrow: 1,
     paddingHorizontal: 24,
-    paddingTop: 50,
+    paddingTop: 30,
     paddingBottom: 32,
   },
   logoArea: {
