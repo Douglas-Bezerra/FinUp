@@ -22,6 +22,7 @@ export default function TelaInicial() {
     const [loadError, setLoadError] = useState("");
 
     const [transacoes, setTransacoes] = useState<Transacao[]>([]);
+    const [larguraGrafico, setLarguraGrafico] = useState(0);
 
     useEffect(() => {
         let cancelled = false;
@@ -346,6 +347,9 @@ export default function TelaInicial() {
                     horizontal
                     showsHorizontalScrollIndicator={false}
                     nestedScrollEnabled
+                    onLayout={(event) =>
+                        setLarguraGrafico(event.nativeEvent.layout.width)
+                    }
                     contentContainerStyle={styles.chartScrollContent}
                 >
                     {fluxoMensal.map((item) => {
@@ -373,7 +377,12 @@ export default function TelaInicial() {
                         return (
                             <View
                                 key={item.nome}
-                                style={styles.chartMonthColumn}
+                                style={[
+                                    styles.chartMonthColumn,
+                                    larguraGrafico > 0 && {
+                                        width: larguraGrafico / 6,
+                                    },
+                                ]}
                             >
                                 <Text
                                     numberOfLines={1}
@@ -596,7 +605,6 @@ const styles = StyleSheet.create({
     chartScrollContent: {
         flexDirection: "row",
         alignItems: "flex-end",
-        gap: 7,
         paddingTop: 4,
     },
     chartMonthColumn: {
