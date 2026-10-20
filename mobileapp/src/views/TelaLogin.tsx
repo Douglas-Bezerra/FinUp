@@ -11,7 +11,10 @@ import {
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
-import { signInWithEmailAndPassword } from "firebase/auth";
+import {
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
+} from "firebase/auth";
 import { auth } from "../firebase";
 
 import { colors } from "../styles/colors";
@@ -34,8 +37,53 @@ export default function TelaLogin() {
   const [password, setPassword] = useState("");
 
   const [loading, setLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
+  const [resetFeedback, setResetFeedback] = useState<{
+    type: "error" | "success";
+    message: string;
+  } | null>(null);
+
+  async function handlePasswordReset() {
+    const normalizedEmail = email.trim();
+    setResetFeedback(null);
+
+    if (!normalizedEmail) {
+      setResetFeedback({
+        type: "error",
+        message: "Informe seu e-mail para recuperar a senha.",
+      });
+      return;
+    }
+
+    try {
+      setResetLoading(true);
+      await sendPasswordResetEmail(auth, normalizedEmail);
+      setResetFeedback({
+        type: "success",
+        message: "Enviamos um link para redefinir sua senha.",
+      });
+    } catch (error: unknown) {
+      const errorCode =
+        typeof error === "object" &&
+          error !== null &&
+          "code" in error &&
+          typeof error.code === "string"
+          ? error.code
+          : "";
+
+      setResetFeedback({
+        type: "error",
+        message:
+          errorCode === "auth/invalid-email"
+            ? "Digite um e-mail válido."
+            : "Não foi possível enviar o link de recuperação.",
+      });
+    } finally {
+      setResetLoading(false);
+    }
+  }
 
   async function handleLogin() {
     setEmailError("");
@@ -119,6 +167,7 @@ export default function TelaLogin() {
               if (text.trim()) {
                 setEmailError("");
               }
+              setResetFeedback(null);
             }}
             placeholder="seu@email.com"
             keyboardType="email-address"
@@ -154,16 +203,32 @@ export default function TelaLogin() {
 
             <Pressable
               style={styles.forgotButton}
-              onPress={() => {
-                // Implementar recuperação de senha
+              onPress={handlePasswordReset}
+              disabled={resetLoading}
+              accessibilityState={{
+                disabled: resetLoading,
+                busy: resetLoading,
               }}
             >
               <GradientText style={styles.forgotText}>
-                Esqueci minha senha
+                {resetLoading ? "Enviando..." : "Esqueci minha senha"}
               </GradientText>
             </Pressable>
           </View>
 
+          {resetFeedback ? (
+            <Text
+              style={[
+                styles.resetFeedback,
+                resetFeedback.type === "success"
+                  ? styles.resetSuccessText
+                  : styles.errorText,
+              ]}
+              accessibilityLiveRegion="polite"
+            >
+              {resetFeedback.message}
+            </Text>
+          ) : null}
 
           {/* Entrar */}
           <GradientButton
@@ -201,7 +266,7 @@ const styles = StyleSheet.create({
   content: {
     flexGrow: 1,
     paddingHorizontal: 24,
-    paddingTop: 50,
+    paddingTop: 30,
     paddingBottom: 32,
   },
   logoArea: {
@@ -249,7 +314,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     width: "100%",
     marginTop: -10,
-    marginBottom: 30,
+    marginBottom: 55,
   },
   passwordErrorPlaceholder: {
     flex: 1,
@@ -271,5 +336,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: -8,
     marginBottom: 30,
+  },
+  resetFeedback: {
+    fontSize: 12,
+    marginTop: -22,
+    marginBottom: 16,
+  },
+  resetSuccessText: {
+    color: colors.foreground,
   },
 });
