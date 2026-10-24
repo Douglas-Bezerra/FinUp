@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "79049016759",
+    "project_id": "finup-app6",
+    "storage_bucket": "finup-app6.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:79049016759:android:07b55f1d1d6fb507f91432",
+        "android_client_info": {
+          "package_name": "com.dsm6.finup"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCjLL1wJKyAUhuEcaLEccWQGCvo_qUEKhA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
