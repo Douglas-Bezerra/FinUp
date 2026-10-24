@@ -1,5 +1,6 @@
 // webapp/tests/e2e/login.spec.ts
-// Teste de login e redirecionamento de rotas 
+// Teste de login e redirecionamento de rotas
+// qual o comando para gerar o apk do mobileapp? npm run build:android
 //===========================================
 
 import { expect, test } from '@playwright/test'
