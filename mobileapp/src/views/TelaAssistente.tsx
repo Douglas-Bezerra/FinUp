@@ -35,6 +35,18 @@ try {
     console.log("[Bufunfa] Modo Expo Go: reconhecimento de voz desativado (requer build nativo).");
 }
 
+import { auth, db } from "../firebase";
+import {
+    carregarContextoBufunfa,
+    ContextoFinanceiroBufunfa,
+    formatarMoeda,
+    gerarRespostaSaudeFinanceira,
+    gerarRespostaOndeCortarGastos,
+    gerarRespostaSaldo,
+    gerarRespostaGastos,
+    gerarRespostaReceitas,
+} from "../services/bufunfa/bufunfaService";
+
 import { colors } from "../styles/colors";
 import GradientText from "../components/GradientText"
 import { LinearGradient } from "expo-linear-gradient";
@@ -58,8 +70,8 @@ const INITIAL: Msg[] = [
 const QUICK = [
     "Como está minha saúde financeira?",
     "Onde posso cortar gastos?",
-    "Melhores investimentos agora",
-    "Quanto guardar por mês?",
+    "Qual é o meu saldo atual?",
+    "Quanto gastei este mês?",
 ];
 
 const RESPONSES: Record<string, string> = {
@@ -83,6 +95,7 @@ export default function TelaAssistente() {
     const [typing, setTyping] = useState(false);
     const [isListening, setIsListening] = useState(false);
     const [permissionDenied, setPermissionDenied] = useState(false);
+    const [contexto, setContexto] = useState<ContextoFinanceiroBufunfa | null>(null);
 
     const scrollRef = useRef<ScrollView>(null);
     const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -92,6 +105,36 @@ export default function TelaAssistente() {
             scrollRef.current?.scrollToEnd({ animated: true });
         }, 100);
     }, [messages, typing]);
+
+    // Carregar contexto financeiro real do usuário logado via Firestore
+    useEffect(() => {
+        let isMounted = true;
+        async function carregarDados() {
+            try {
+                const currentUser = auth.currentUser;
+                if (!currentUser) return;
+                const dados = await carregarContextoBufunfa(db, currentUser);
+                if (isMounted) {
+                    setContexto(dados);
+                    const primeiroNome = dados.nomeUsuario ? dados.nomeUsuario.split(/\s+/)[0] : "";
+                    setMessages([
+                        {
+                            id: 1,
+                            role: "bot",
+                            text: `Olá${primeiroNome ? `, ${primeiroNome}` : ""}! 👋 Sou o Bufunfa, seu assistente financeiro pessoal. Estou conectado aos seus dados em tempo real. Como posso te ajudar hoje?`,
+                            time: now(),
+                        },
+                    ]);
+                }
+            } catch (err) {
+                console.error("Erro ao carregar contexto financeiro do Bufunfa:", err);
+            }
+        }
+        void carregarDados();
+        return () => {
+            isMounted = false;
+        };
+    }, []);
 
     // Verificar se a permissão foi concedida após voltar das Configurações
     useEffect(() => {
@@ -250,9 +293,28 @@ export default function TelaAssistente() {
         setTyping(true);
 
         setTimeout(() => {
-            const reply =
-                RESPONSES[text.trim()] ||
-                "Entendido! 📝 Analisando suas finanças...\n\nPara uma resposta mais precisa, posso verificar seu histórico de transações. O que mais você gostaria de saber sobre suas finanças?";
+            let reply = "";
+            const pergunta = text.trim().toLowerCase();
+
+            if (contexto) {
+                if (pergunta.includes("saúde") || pergunta.includes("saude")) {
+                    reply = gerarRespostaSaudeFinanceira(contexto);
+                } else if (pergunta.includes("cortar") || pergunta.includes("economizar") || pergunta.includes("economia")) {
+                    reply = gerarRespostaOndeCortarGastos(contexto);
+                } else if (pergunta.includes("saldo") || pergunta.includes("quanto tenho") || pergunta.includes("conta")) {
+                    reply = gerarRespostaSaldo(contexto);
+                } else if (pergunta.includes("gastei") || pergunta.includes("gasto") || pergunta.includes("despesa")) {
+                    reply = gerarRespostaGastos(contexto);
+                } else if (pergunta.includes("ganhei") || pergunta.includes("receita") || pergunta.includes("entrada") || pergunta.includes("salário")) {
+                    reply = gerarRespostaReceitas(contexto);
+                } else {
+                    reply = RESPONSES[text.trim()] ||
+                        `Entendido! 📝 Analisei suas finanças atuais (Saldo total: ${formatarMoeda(contexto.saldoTotal)}, Despesas no mês: ${formatarMoeda(contexto.despesasMes)}).\n\nVocê pode me perguntar:\n• "Qual é o meu saldo atual?"\n• "Como está minha saúde financeira?"\n• "Onde posso cortar gastos?"\n• "Quanto gastei este mês?" 💡`;
+                }
+            } else {
+                reply = RESPONSES[text.trim()] ||
+                    "Entendido! 📝 Estou conectando aos seus dados financeiros... Tente me perguntar sobre saldo, despesas ou onde economizar!";
+            }
 
             setTyping(false);
 
@@ -265,7 +327,7 @@ export default function TelaAssistente() {
                     time: now(),
                 },
             ]);
-        }, 1200);
+        }, 1000);
     }
 
     return (
