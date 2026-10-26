@@ -735,17 +735,17 @@ const styles = StyleSheet.create({
   },
   incomeValue: {
     color: colors.primary,
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "700",
   },
   expenseValue: {
     color: colors.danger,
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "700",
   },
   creditValue: {
     color: colors.warning,
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "700",
   },
   transactions: {
