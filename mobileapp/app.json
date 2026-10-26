@@ -10,7 +10,9 @@
       "supportsTablet": true
     },
     "plugins": [
-      "expo-speech-recognition"
+      "expo-speech-recognition",
+      "expo-status-bar",
+      "expo-font"
     ],
     "android": {
       "adaptiveIcon": {
