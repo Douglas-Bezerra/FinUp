@@ -2,7 +2,7 @@
 // Arquivo principal do sistema FinUp que efetua o lançamento de transações.
 // ==========================================================================
 
-import { Alert, StyleSheet, Text, View, Pressable, Modal } from "react-native";
+import { Alert, StyleSheet, Text, View, Pressable, Modal, ScrollView } from "react-native";
 import { useState, useEffect } from "react";
 
 import { colors } from "../styles/colors";
@@ -291,7 +291,10 @@ export default function TelaCadastroRegistros() {
         </View>
       </View>
 
-      <View style={styles.transactions}>
+      <ScrollView
+        style={styles.transactionScroll}
+        contentContainerStyle={styles.transactions}
+      >
         {isLoading ? (
           <Text style={styles.transactionMeta}>Carregando registros...</Text>
         ) : erroCarregamento ? (
@@ -336,7 +339,7 @@ export default function TelaCadastroRegistros() {
             </Text>
           </View>
         ))}
-      </View>
+      </ScrollView>
 
       <Modal
         visible={novoAberto}
@@ -750,6 +753,9 @@ const styles = StyleSheet.create({
   },
   transactions: {
     gap: 8,
+  },
+  transactionScroll: {
+    flex: 1,
   },
   transactionItem: {
     flexDirection: "row",
