@@ -62,12 +62,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 12,
   },
-
+  
   logoBoxInner: {
     width: "100%",
     height: "100%",
     borderRadius: 23,
-    backgroundColor: colors.secondary,
+    backgroundColor: colors.background,
     alignItems: "center",
   },
 
