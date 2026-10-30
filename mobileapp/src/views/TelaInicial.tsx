@@ -262,13 +262,16 @@ export default function TelaInicial() {
                     <Text style={styles.actionLabel}>Despesa</Text>
                 </Pressable>
 
-                <View style={styles.quickAction}>
+                <Pressable
+                    style={styles.quickAction}
+                    onPress={() => navigation.navigate("Caixinha")}
+                >
                     <View style={[styles.actionIcon, { backgroundColor: "rgba(96, 165, 250, 0.12)" }]}>
                         <Text style={[styles.actionIconText, { color: colors.info }]}>$</Text>
                     </View>
 
                     <Text style={styles.actionLabel}>Caixinha</Text>
-                </View>
+                </Pressable>
 
                 <Pressable
                     style={styles.quickAction}

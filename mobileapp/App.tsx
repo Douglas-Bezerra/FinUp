@@ -10,6 +10,7 @@ import TelaCadastro from "./src/views/TelaCadastro";
 import TelaInicial from "./src/views/TelaInicial";
 import TelaCadastroReceitas from "./src/views/TelaCadastroRegistros"
 import TelaAssistente from "./src/views/TelaAssistente";
+import TelaCaixinha from "./src/views/TelaCaixinha";
 
 {/* Criando a pilha de navegação */ }
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -46,6 +47,11 @@ export default function App() {
         <Stack.Screen
           name="Assistente"
           component={TelaAssistente}
+        />
+
+        <Stack.Screen
+          name="Caixinha"
+          component={TelaCaixinha}
         />
 
       </Stack.Navigator>
