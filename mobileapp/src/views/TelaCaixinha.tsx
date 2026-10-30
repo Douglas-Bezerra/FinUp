@@ -49,17 +49,25 @@ export default function TelaCaixinha() {
         </Pressable>
       </View>
 
+
+
       {tab === "box" ? (
         <>
+
+          <View style={styles.infoCard}>
+            <Ionicons name="bulb-outline" size={20} color={colors.info} />
+            <Text style={styles.infoText}>
+              Sua caixinha é uma <Text style={styles.infoStrong}>reserva separada</Text>
+              {" "}das suas receitas e despesas. Os valores serão exibidos aqui
+              quando a integração financeira for implementada.
+            </Text>
+          </View>
+
           <View style={styles.balanceCard}>
-            <View style={styles.cardDecoration} />
             <View style={styles.balanceTop}>
               <View>
                 <Text style={styles.balanceLabel}>SALDO RESERVADO</Text>
                 <Text style={styles.balanceValue}>R$ 0,00</Text>
-              </View>
-              <View style={styles.bankIcon}>
-                <Ionicons name="business-outline" size={25} color={colors.info} />
               </View>
             </View>
 
@@ -84,14 +92,7 @@ export default function TelaCaixinha() {
             </View>
           </View>
 
-          <View style={styles.infoCard}>
-            <Ionicons name="bulb-outline" size={20} color={colors.info} />
-            <Text style={styles.infoText}>
-              Sua caixinha é uma <Text style={styles.infoStrong}>reserva separada</Text>
-              {" "}das suas receitas e despesas. Os valores serão exibidos aqui
-              quando a integração financeira for implementada.
-            </Text>
-          </View>
+
 
           <View style={styles.quickActions}>
             <Pressable
@@ -159,7 +160,7 @@ export default function TelaCaixinha() {
                       isSelected && (isDeposit ? styles.selectedDepositText : styles.selectedWithdrawText),
                     ]}
                   >
-                    {isDeposit ? "↓  Depositar" : "↑  Retirar"}
+                    {isDeposit ? "Depositar" : "Retirar"}
                   </Text>
                 </Pressable>
               );
@@ -248,7 +249,7 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingTop: 36,
     paddingBottom: 36,
   },
   header: {
@@ -285,22 +286,12 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   balanceCard: {
-    backgroundColor: "#0B1F2E",
     borderColor: "rgba(96, 165, 250, 0.25)",
     borderWidth: 1,
     borderRadius: 22,
     padding: 20,
     marginBottom: 14,
     overflow: "hidden",
-  },
-  cardDecoration: {
-    position: "absolute",
-    top: -66,
-    right: -54,
-    width: 170,
-    height: 170,
-    borderRadius: 85,
-    backgroundColor: "rgba(96, 165, 250, 0.06)",
   },
   balanceTop: {
     flexDirection: "row",
@@ -320,16 +311,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     marginTop: 5,
     fontVariant: ["tabular-nums"],
-  },
-  bankIcon: {
-    width: 48,
-    height: 48,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(96, 165, 250, 0.12)",
-    borderColor: "rgba(96, 165, 250, 0.25)",
-    borderWidth: 1,
-    borderRadius: 16,
   },
   progressHeader: {
     flexDirection: "row",
