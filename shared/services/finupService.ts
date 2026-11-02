@@ -682,6 +682,96 @@ export async function atualizarFaturaCartao(
   await updateDoc(familyDocument(db, familiaId, 'faturas_cartao', faturaId), fatura)
 }
 
+export async function pagarFaturaCartao(
+  db: Firestore,
+  familiaId: string,
+  usuarioId: string,
+  usuarioNome: string,
+  faturaId: string,
+  contaOrigemId: string,
+  descricao: string,
+): Promise<void> {
+  const invoiceRef = familyDocument(db, familiaId, 'faturas_cartao', faturaId)
+  const sourceAccountRef = familyDocument(db, familiaId, 'contas', contaOrigemId)
+  const transactionRef = doc(familyCollection(db, familiaId, 'transacoes'))
+  const logRef = doc(familyCollection(db, familiaId, 'logs_atividades'))
+  const now = Timestamp.now()
+
+  await runTransaction(db, async (transaction) => {
+    const [invoiceSnapshot, sourceSnapshot] = await Promise.all([
+      transaction.get(invoiceRef),
+      transaction.get(sourceAccountRef),
+    ])
+    if (!invoiceSnapshot.exists()) throw new Error('A fatura selecionada não existe.')
+    if (!sourceSnapshot.exists()) throw new Error('A conta de origem não existe.')
+
+    const invoice = invoiceSnapshot.data() as {
+      contaId: string
+      valorTotal: number
+      valorPago: number
+      status: FaturaCartao['status']
+    }
+    const sourceAccount = sourceSnapshot.data() as Conta
+    if (!sourceAccount.ativo) throw new Error('A conta selecionada está inativa.')
+    if (sourceAccount.tipoConta === 'CARTAO_CREDITO') {
+      throw new Error('Selecione uma conta corrente, poupança, caixinha ou dinheiro.')
+    }
+    if (invoice.status === 'PAGA') throw new Error('Esta fatura já está paga.')
+
+    const amount = Number(invoice.valorTotal) - Number(invoice.valorPago ?? 0)
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new Error('Não há saldo pendente nesta fatura.')
+    }
+    const sourceBalance = Number(sourceAccount.saldoAtual)
+    if (!Number.isFinite(sourceBalance) || sourceBalance < amount) {
+      throw new Error('O saldo da conta selecionada é insuficiente para efetivar o pagamento.')
+    }
+
+    const cardAccountSnapshot = await transaction.get(
+      familyDocument(db, familiaId, 'contas', invoice.contaId),
+    )
+    if (!cardAccountSnapshot.exists() || cardAccountSnapshot.data().tipoConta !== 'CARTAO_CREDITO') {
+      throw new Error('O cartão associado à fatura não foi encontrado.')
+    }
+
+    transaction.update(sourceAccountRef, {
+      saldoAtual: sourceBalance - amount,
+      ultimaMovimentacaoId: transactionRef.id,
+    })
+    transaction.update(invoiceRef, {
+      valorPago: invoice.valorTotal,
+      status: 'PAGA',
+    })
+    transaction.set(transactionRef, {
+      descricao: descricao.trim() || 'Pagamento de fatura de cartão',
+      valor: amount,
+      tipoMovimentacao: 'DESPESA',
+      status: 'EFETIVADO',
+      dataTransacao: now,
+      contaId: contaOrigemId,
+      categoriaId: 'pagamento-fatura-cartao',
+      categoriaNome: 'Pagamento de cartão',
+      criadoPorUsuarioId: usuarioId,
+      criadoPorNome: usuarioNome,
+      atualizadoPorUsuarioId: usuarioId,
+      dataCriacao: now,
+      dataAtualizacao: now,
+      estornado: false,
+      formaPagamento: 'normal',
+      faturaId,
+    })
+    transaction.set(logRef, {
+      transacaoId: transactionRef.id,
+      usuarioId: usuarioId,
+      acao: 'PAGAR_FATURA',
+      dataAcao: now,
+      descricaoSnapshot: descricao.trim() || 'Pagamento de fatura de cartão',
+      valoresAntigos: { valorPago: invoice.valorPago, status: invoice.status },
+      valoresNovos: { valorPago: invoice.valorTotal, status: 'PAGA' },
+    })
+  })
+}
+
 export async function listarLogsAtividade(db: Firestore, familiaId: string): Promise<LogAtividade[]> {
   const snapshot = await getDocs(query(familyCollection(db, familiaId, 'logs_atividades'), orderBy('dataAcao', 'desc')))
   return snapshot.docs.map((log) => mapDatedDocument<LogAtividade>(log.id, log.data(), ['dataAcao']))

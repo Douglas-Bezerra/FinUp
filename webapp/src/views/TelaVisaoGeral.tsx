@@ -1,4 +1,6 @@
+// webapp/src/views/TelaVisaoGeral.tsx
 // Visão geral das contas e movimentações financeiras.
+// =====================================================
 
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -10,6 +12,7 @@ import {
   listarParcelamentos,
   obterExtrato,
   obterUsuario,
+  pagarFaturaCartao,
 } from '../../../shared/services/finupService'
 import type { Conta, FaturaCartao, InstituicaoBancaria, Transacao, Usuario } from '../../../shared/types/finup'
 import BackButton from '../components/BackButton'
@@ -19,8 +22,9 @@ import { auth, db } from '../firebase'
 import '../App.css'
 import '../styles/overview.css'
 
-type AccountCategory = 'CORRENTE' | 'POUPANCA' | 'CARTAO_CREDITO' | 'OUTRAS'
+type AccountCategory = Conta['tipoConta']
 type InvoiceView = 'current' | 'future'
+type OverviewView = 'accounts' | 'categories'
 
 type InstitutionGroup = {
   id: string
@@ -29,22 +33,27 @@ type InstitutionGroup = {
   accounts: Conta[]
 }
 
-const accountCategories: { id: AccountCategory; label: string }[] = [
-  { id: 'CORRENTE', label: 'Conta corrente' },
-  { id: 'POUPANCA', label: 'Conta poupança' },
-  { id: 'CARTAO_CREDITO', label: 'Cartão' },
-  { id: 'OUTRAS', label: 'Outras contas' },
-]
+const accountCategoryLabels: Record<AccountCategory, string> = {
+  CORRENTE: 'Conta corrente',
+  POUPANCA: 'Poupança',
+  CARTAO_CREDITO: 'Cartão de crédito',
+  CAIXINHA: 'Caixinha',
+  INVESTIMENTO: 'Conta investimento',
+  OUTROS: 'Outros',
+}
 
 const currencyFormatter = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
 const dateFormatter = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
 const shortDateFormatter = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })
 const monthFormatter = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' })
+const shortMonthFormatter = new Intl.DateTimeFormat('pt-BR', { month: 'short' })
+const categoryChartColors = [
+  '#4ade80', '#60a5fa', '#f59e0b', '#a78bfa', '#f472b6',
+  '#fb7185', '#22d3ee', '#818cf8', '#facc15', '#34d399',
+]
 
 function getAccountCategory(account: Conta): AccountCategory {
-  return account.tipoConta === 'CORRENTE' || account.tipoConta === 'POUPANCA' || account.tipoConta === 'CARTAO_CREDITO'
-    ? account.tipoConta
-    : 'OUTRAS'
+  return account.tipoConta
 }
 
 function getMonthReference(date: Date) {
@@ -64,9 +73,38 @@ function getInvoiceDueDate(invoice: FaturaCartao, dueDay: number) {
   return new Date(year, month - 1, Math.min(dueDay, lastDay), 12)
 }
 
+function getInvoiceDueWarning(invoice: FaturaCartao | null, card: Conta | null) {
+  if (!invoice || !card || invoice.status === 'PAGA') return null
+  const dueDate = getInvoiceDueDate(invoice, card.diaVencimento ?? 10)
+  const today = new Date()
+  const todayAtMidday = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12)
+  const days = Math.round((dueDate.getTime() - todayAtMidday.getTime()) / 86400000)
+  if (days < 0) return { tone: 'overdue', days, message: `Pagamento em atraso há ${Math.abs(days)} dia${Math.abs(days) === 1 ? '' : 's'}.` }
+  if (days === 0) return { tone: 'due', days, message: 'O pagamento vence hoje.' }
+  if (days <= 3) return { tone: 'soon', days, message: `O pagamento vence em ${days} dia${days === 1 ? '' : 's'}.` }
+  return null
+}
+
 function formatInvoiceMonth(monthReference: string) {
   const [year, month] = monthReference.split('-').map(Number)
   return monthFormatter.format(new Date(year, month - 1, 1, 12))
+}
+
+function formatFutureInvoiceMonth(monthReference: string) {
+  const [year, month] = monthReference.split('-').map(Number)
+  const monthName = shortMonthFormatter
+    .format(new Date(year, month - 1, 1, 12))
+    .replace('.', '')
+  return `${monthName}/${year}`
+}
+
+function formatMonthReference(monthReference: string) {
+  const [year, month] = monthReference.split('-').map(Number)
+  return monthFormatter.format(new Date(year, month - 1, 1, 12))
+}
+
+function getTransactionMonth(transaction: Transacao) {
+  return getMonthReference(transaction.dataTransacao)
 }
 
 function formatMovementValue(transaction: Transacao) {
@@ -85,19 +123,154 @@ function getCurrentInvoice(invoices: FaturaCartao[]) {
 
 type InstitutionAccountsProps = {
   group: InstitutionGroup
+  accounts: Conta[]
+  profile: Usuario
   transactions: Transacao[]
   invoices: FaturaCartao[]
+  onPaymentConfirmed: () => void
 }
 
-function InstitutionAccounts({ group, transactions, invoices }: InstitutionAccountsProps) {
+function CategoryOverview({ transactions }: { transactions: Transacao[] }) {
+  const expenseTransactions = transactions.filter((transaction) =>
+    transaction.tipoMovimentacao === 'DESPESA'
+    && !transaction.estornado,
+  )
+  const availableMonths = Array.from(new Set([
+    getMonthReference(new Date()),
+    ...expenseTransactions.map(getTransactionMonth),
+  ]))
+    .sort((first, second) => second.localeCompare(first))
+  const [selectedMonth, setSelectedMonth] = useState(availableMonths[0] ?? getMonthReference(new Date()))
+  const [selectedCategory, setSelectedCategory] = useState('')
+
+  const monthTransactions = expenseTransactions.filter((transaction) =>
+    getTransactionMonth(transaction) === selectedMonth,
+  )
+  const categoryTotals = monthTransactions.reduce((totals, transaction) => {
+    const categoryName = transaction.categoriaNome || 'Sem categoria'
+    totals.set(categoryName, (totals.get(categoryName) ?? 0) + transaction.valor)
+    return totals
+  }, new Map<string, number>())
+  const categoryEntries = Array.from(categoryTotals.entries())
+    .sort((first, second) => second[1] - first[1])
+  const total = categoryEntries.reduce((sum, [, value]) => sum + value, 0)
+  let gradientOffset = 0
+  const gradientParts = categoryEntries.map(([, value], index) => {
+    const start = gradientOffset
+    gradientOffset += total > 0 ? (value / total) * 100 : 0
+    return `${categoryChartColors[index % categoryChartColors.length]} ${start}% ${gradientOffset}%`
+  })
+  const activeCategory = categoryEntries.some(([name]) => name === selectedCategory)
+    ? selectedCategory
+    : ''
+
+  return (
+    <div className="overview-category-analysis">
+      <div className="overview-month-tabs" role="tablist" aria-label="Meses dos lançamentos por categoria">
+        {availableMonths.map((monthReference) => (
+          <button
+            key={monthReference}
+            className={selectedMonth === monthReference ? 'overview-invoice-tab is-active' : 'overview-invoice-tab'}
+            type="button"
+            role="tab"
+            aria-selected={selectedMonth === monthReference}
+            onClick={() => {
+              setSelectedMonth(monthReference)
+              setSelectedCategory('')
+            }}
+          >
+            {formatMonthReference(monthReference)}
+          </button>
+        ))}
+      </div>
+
+      <div className="overview-category-tabs overview-category-analysis-tabs" role="tablist" aria-label={`Categorias de ${formatMonthReference(selectedMonth)}`}>
+        <button
+          className={activeCategory === '' ? 'overview-category-tab is-active' : 'overview-category-tab'}
+          type="button"
+          role="tab"
+          aria-selected={activeCategory === ''}
+          onClick={() => setSelectedCategory('')}
+        >
+          Todas
+        </button>
+        {categoryEntries.map(([categoryName]) => (
+          <button
+            key={categoryName}
+            className={activeCategory === categoryName ? 'overview-category-tab is-active' : 'overview-category-tab'}
+            type="button"
+            role="tab"
+            aria-selected={activeCategory === categoryName}
+            onClick={() => setSelectedCategory(categoryName)}
+          >
+            {categoryName}
+          </button>
+        ))}
+      </div>
+
+      {activeCategory === '' ? (
+        categoryEntries.length > 0 ? (
+          <div className="overview-category-chart-panel">
+            <div
+              className="overview-category-pie"
+              style={{ background: gradientParts.length > 0 ? `conic-gradient(${gradientParts.join(', ')})` : 'var(--finup-border)' }}
+              role="img"
+              aria-label={`Gráfico de despesas por categoria em ${formatMonthReference(selectedMonth)}, total de ${currencyFormatter.format(total)}`}
+            >
+              <div className="overview-category-pie-center">
+                <span>Total</span>
+                <strong>{currencyFormatter.format(total)}</strong>
+              </div>
+            </div>
+            <ul className="overview-category-chart-list">
+              {categoryEntries.map(([categoryName, value], index) => (
+                <li key={categoryName}>
+                  <span
+                    className="overview-category-chart-color"
+                    style={{ backgroundColor: categoryChartColors[index % categoryChartColors.length] }}
+                    aria-hidden="true"
+                  />
+                  <button type="button" onClick={() => setSelectedCategory(categoryName)}>
+                    <span>{categoryName}</span>
+                    <strong>{currencyFormatter.format(value)}</strong>
+                    <small>{total > 0 ? ((value / total) * 100).toFixed(1).replace('.', ',') : '0'}%</small>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <p className="overview-empty">Nenhuma despesa encontrada para este mês.</p>
+        )
+      ) : (
+        <MovementList transactions={monthTransactions.filter((transaction) =>
+          (transaction.categoriaNome || 'Sem categoria') === activeCategory,
+        )} />
+      )}
+    </div>
+  )
+}
+
+function InstitutionAccounts({ group, accounts, profile, transactions, invoices, onPaymentConfirmed }: InstitutionAccountsProps) {
+  const accountCategories = Array.from(new Set(group.accounts.map(getAccountCategory)))
+    .map((id) => ({ id, label: accountCategoryLabels[id] }))
+    .sort((first, second) => first.label.localeCompare(second.label, 'pt-BR'))
   const initialCategory = accountCategories.find(({ id }) =>
     group.accounts.some((account) => getAccountCategory(account) === id),
   )?.id ?? 'CORRENTE'
-  const [activeCategory, setActiveCategory] = useState<AccountCategory>(initialCategory)
+  const [selectedCategory, setSelectedCategory] = useState<AccountCategory>(initialCategory)
+  const activeCategory = accountCategories.some(({ id }) => id === selectedCategory)
+    ? selectedCategory
+    : accountCategories[0]?.id ?? initialCategory
   const [selectedAccountId, setSelectedAccountId] = useState(
     group.accounts.find((account) => getAccountCategory(account) === initialCategory)?.id ?? '',
   )
   const [invoiceView, setInvoiceView] = useState<InvoiceView>('current')
+  const [selectedFutureInvoiceId, setSelectedFutureInvoiceId] = useState('')
+  const [paymentInvoice, setPaymentInvoice] = useState<FaturaCartao | null>(null)
+  const [paymentSourceId, setPaymentSourceId] = useState('')
+  const [paymentError, setPaymentError] = useState('')
+  const [isPaying, setIsPaying] = useState(false)
 
   const categoryAccounts = group.accounts.filter((account) => getAccountCategory(account) === activeCategory)
   const selectedAccount = categoryAccounts.find((account) => account.id === selectedAccountId) ?? categoryAccounts[0]
@@ -115,11 +288,54 @@ function InstitutionAccounts({ group, transactions, invoices }: InstitutionAccou
   const futureInvoices = accountInvoices.filter((invoice) =>
     invoice.mesReferencia > (currentInvoice?.mesReferencia ?? getMonthReference(new Date())),
   )
+  const selectedFutureInvoice = futureInvoices.find((invoice) => invoice.id === selectedFutureInvoiceId)
+    ?? futureInvoices[0]
+    ?? null
+  const fundingAccounts = accounts.filter((account) =>
+    account.ativo && ['CORRENTE', 'POUPANCA', 'CAIXINHA', 'OUTROS'].includes(account.tipoConta),
+  )
+  const invoiceDueWarning = getInvoiceDueWarning(currentInvoice, selectedAccount ?? null)
 
   function selectCategory(category: AccountCategory) {
-    setActiveCategory(category)
+    setSelectedCategory(category)
     setSelectedAccountId(group.accounts.find((account) => getAccountCategory(account) === category)?.id ?? '')
     setInvoiceView('current')
+    setSelectedFutureInvoiceId('')
+  }
+
+  function openPaymentConfirmation(invoice: FaturaCartao) {
+    const linkedSource = fundingAccounts.find((account) => account.id === selectedAccount?.contaCorrenteId)
+      ?? fundingAccounts.find((account) => account.tipoConta === 'CORRENTE')
+      ?? fundingAccounts[0]
+    setPaymentInvoice(invoice)
+    setPaymentSourceId(linkedSource?.id ?? '')
+    setPaymentError('')
+  }
+
+  async function confirmInvoicePayment() {
+    if (!paymentInvoice || !paymentSourceId) {
+      setPaymentError('Selecione de qual conta sairá o pagamento.')
+      return
+    }
+    setIsPaying(true)
+    setPaymentError('')
+    try {
+      await pagarFaturaCartao(
+        db,
+        profile.familiaId,
+        profile.id,
+        profile.nome,
+        paymentInvoice.id,
+        paymentSourceId,
+        `Pagamento da fatura ${paymentInvoice.mesReferencia}`,
+      )
+      setPaymentInvoice(null)
+      onPaymentConfirmed()
+    } catch (error) {
+      setPaymentError(error instanceof Error ? error.message : 'Não foi possível efetivar o pagamento da fatura.')
+    } finally {
+      setIsPaying(false)
+    }
   }
 
   return (
@@ -164,7 +380,8 @@ function InstitutionAccounts({ group, transactions, invoices }: InstitutionAccou
                   onClick={() => {
                     setSelectedAccountId(account.id)
                     setInvoiceView('current')
-                  }}
+                setSelectedFutureInvoiceId('')
+              }}
                 >
                   <span>{account.nome}</span>
                   <strong>{currencyFormatter.format(account.saldoAtual)}</strong>
@@ -228,6 +445,21 @@ function InstitutionAccounts({ group, transactions, invoices }: InstitutionAccou
                       {invoiceView === 'current' ? (
                         currentInvoice ? (
                           <>
+                            {invoiceDueWarning && (
+                              <div className={`overview-payment-warning is-${invoiceDueWarning.tone}`} role="alert">
+                                <div>
+                                  <strong>Pagamento do cartão</strong>
+                                  <span>{invoiceDueWarning.message} Vencimento em {dateFormatter.format(getInvoiceDueDate(currentInvoice, selectedAccount.diaVencimento ?? 10))}.</span>
+                                </div>
+                                <button
+                                  type="button"
+                                  className="overview-pay-button"
+                                  onClick={() => openPaymentConfirmation(currentInvoice)}
+                                >
+                                  Efetivar pagamento
+                                </button>
+                              </div>
+                            )}
                             <div className="overview-invoice-summary">
                               <div>
                                 <span>{formatInvoiceMonth(currentInvoice.mesReferencia)}</span>
@@ -247,26 +479,53 @@ function InstitutionAccounts({ group, transactions, invoices }: InstitutionAccou
                           <p className="overview-empty">Nenhuma fatura atual cadastrada para este cartão.</p>
                         )
                       ) : futureInvoices.length > 0 ? (
-                        <div className="overview-future-invoices">
-                          {futureInvoices.map((invoice) => (
-                            <section className="overview-future-invoice" key={invoice.id}>
+                        <>
+                          <div
+                            className="overview-future-invoice-tabs"
+                            role="tablist"
+                            aria-label={`Meses das faturas futuras de ${selectedAccount.nome}`}
+                          >
+                            {futureInvoices.map((invoice) => (
+                              <button
+                                key={invoice.id}
+                                id={`overview-future-invoice-${invoice.id}`}
+                                className={selectedFutureInvoice?.id === invoice.id
+                                  ? 'overview-invoice-tab is-active'
+                                  : 'overview-invoice-tab'}
+                                type="button"
+                                role="tab"
+                                aria-selected={selectedFutureInvoice?.id === invoice.id}
+                                aria-controls={`overview-future-invoice-panel-${selectedAccount.id}`}
+                                onClick={() => setSelectedFutureInvoiceId(invoice.id)}
+                              >
+                                {formatFutureInvoiceMonth(invoice.mesReferencia)}
+                              </button>
+                            ))}
+                          </div>
+                          {selectedFutureInvoice && (
+                            <section
+                              className="overview-future-invoice"
+                              id={`overview-future-invoice-panel-${selectedAccount.id}`}
+                              role="tabpanel"
+                              aria-labelledby={`overview-future-invoice-${selectedFutureInvoice.id}`}
+                            >
                               <div className="overview-invoice-summary">
                                 <div>
-                                  <span>{formatInvoiceMonth(invoice.mesReferencia)}</span>
-                                  <strong>{currencyFormatter.format(invoice.valorTotal)}</strong>
+                                  <span>{formatInvoiceMonth(selectedFutureInvoice.mesReferencia)}</span>
+                                  <strong>{currencyFormatter.format(selectedFutureInvoice.valorTotal)}</strong>
                                 </div>
                                 <div>
                                   <span>Vencimento</span>
-                                  <strong>{dateFormatter.format(getInvoiceDueDate(invoice, selectedAccount.diaVencimento ?? 10))}</strong>
+                                  <strong>{dateFormatter.format(getInvoiceDueDate(selectedFutureInvoice, selectedAccount.diaVencimento ?? 10))}</strong>
                                 </div>
-                                <span className={`overview-invoice-status is-${invoice.status.toLowerCase()}`}>
-                                  {invoice.status === 'PAGA' ? 'Paga' : invoice.status === 'FECHADA' ? 'Fechada' : 'Aberta'}
+                                <span className={`overview-invoice-status is-${selectedFutureInvoice.status.toLowerCase()}`}>
+                                  {selectedFutureInvoice.status === 'PAGA' ? 'Paga' : selectedFutureInvoice.status === 'FECHADA' ? 'Fechada' : 'Aberta'}
                                 </span>
                               </div>
-                              <MovementList transactions={accountTransactions.filter((item) => item.faturaId === invoice.id)} />
+                              <MovementList transactions={accountTransactions.filter((item) => item.faturaId === selectedFutureInvoice.id)} />
                             </section>
-                          ))}
-                        </div>
+                          )}
+                        </>
                       ) : (
                         <p className="overview-empty">Nenhuma fatura futura cadastrada para este cartão.</p>
                       )}
@@ -277,6 +536,57 @@ function InstitutionAccounts({ group, transactions, invoices }: InstitutionAccou
                     <h4 className="overview-statement-title">Extrato de movimentações</h4>
                     <MovementList transactions={accountTransactions} />
                   </>
+                )}
+                {paymentInvoice && (
+                  <div className="overview-payment-overlay" role="presentation" onMouseDown={(event) => {
+                    if (event.target === event.currentTarget && !isPaying) setPaymentInvoice(null)
+                  }}>
+                    <section className="overview-payment-modal" role="dialog" aria-modal="true" aria-labelledby="overview-payment-title">
+                      <h3 id="overview-payment-title">Efetivar pagamento da fatura</h3>
+                      <p>
+                        Fatura de {formatInvoiceMonth(paymentInvoice.mesReferencia)} do cartão {selectedAccount.nome}.
+                      </p>
+                      <div className="overview-payment-total">
+                        <span>Valor a pagar</span>
+                        <strong>{currencyFormatter.format(paymentInvoice.valorTotal - paymentInvoice.valorPago)}</strong>
+                      </div>
+                      <label htmlFor="overview-payment-source">Conta ou dinheiro de origem</label>
+                      <select
+                        id="overview-payment-source"
+                        value={paymentSourceId}
+                        onChange={(event) => setPaymentSourceId(event.target.value)}
+                        disabled={isPaying}
+                      >
+                        <option value="">Selecione a origem dos recursos</option>
+                        {fundingAccounts.map((account) => (
+                          <option key={account.id} value={account.id}>
+                            {account.tipoConta === 'OUTROS' ? `Dinheiro - ${account.nome}` : `${accountCategoryLabels[account.tipoConta]} - ${account.nome}`}
+                            {' · '}
+                            {currencyFormatter.format(account.saldoAtual)}
+                          </option>
+                        ))}
+                      </select>
+                      {paymentError && <p className="overview-payment-error" role="alert">{paymentError}</p>}
+                      <div className="overview-payment-actions">
+                        <button
+                          type="button"
+                          className="overview-payment-cancel"
+                          onClick={() => setPaymentInvoice(null)}
+                          disabled={isPaying}
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          type="button"
+                          className="overview-pay-button"
+                          onClick={confirmInvoicePayment}
+                          disabled={isPaying}
+                        >
+                          {isPaying ? 'Efetivando...' : 'Confirmar pagamento'}
+                        </button>
+                      </div>
+                    </section>
+                  </div>
                 )}
               </section>
             )}
@@ -320,6 +630,7 @@ export default function TelaVisaoGeral() {
   const [loadError, setLoadError] = useState('')
   const [reloadKey, setReloadKey] = useState(0)
   const [selectedInstitutionId, setSelectedInstitutionId] = useState('')
+  const [overviewView, setOverviewView] = useState<OverviewView>('accounts')
 
   useEffect(() => {
     let cancelled = false
@@ -510,38 +821,77 @@ export default function TelaVisaoGeral() {
           </div>
         ) : (
           <>
-            <div className="overview-institution-tabs" role="tablist" aria-label="Instituições financeiras">
-              {institutionGroups.map((group) => (
-                <button
-                  key={group.id}
-                  id={`overview-institution-tab-${group.id}`}
-                  className={selectedInstitution?.id === group.id ? 'overview-institution-tab is-active' : 'overview-institution-tab'}
-                  type="button"
-                  role="tab"
-                  aria-selected={selectedInstitution?.id === group.id}
-                  aria-controls="overview-institution-panel"
-                  onClick={() => setSelectedInstitutionId(group.id)}
-                >
-                  {group.corHex && <span className="overview-institution-color" style={{ backgroundColor: group.corHex }} aria-hidden="true" />}
-                  {group.name}
-                </button>
-              ))}
-            </div>
-            {selectedInstitution && (
-              <section
-                className="overview-institution-panel"
-                id="overview-institution-panel"
-                role="tabpanel"
-                aria-labelledby={`overview-institution-tab-${selectedInstitution.id}`}
+            <div className="overview-view-tabs" role="tablist" aria-label="Visualizações da visão geral">
+              <button
+                id="overview-view-accounts"
+                className={overviewView === 'accounts' ? 'overview-invoice-tab is-active' : 'overview-invoice-tab'}
+                type="button"
+                role="tab"
+                aria-selected={overviewView === 'accounts'}
+                aria-controls="overview-view-panel"
+                onClick={() => setOverviewView('accounts')}
               >
-                <InstitutionAccounts
-                  key={selectedInstitution.id}
-                  group={selectedInstitution}
-                  transactions={transactions}
-                  invoices={invoices}
-                />
-              </section>
-            )}
+                Contas
+              </button>
+              <button
+                id="overview-view-categories"
+                className={overviewView === 'categories' ? 'overview-invoice-tab is-active' : 'overview-invoice-tab'}
+                type="button"
+                role="tab"
+                aria-selected={overviewView === 'categories'}
+                aria-controls="overview-view-panel"
+                onClick={() => setOverviewView('categories')}
+              >
+                Lançamentos por categoria
+              </button>
+            </div>
+            <div
+              id="overview-view-panel"
+              role="tabpanel"
+              aria-labelledby={overviewView === 'accounts' ? 'overview-view-accounts' : 'overview-view-categories'}
+            >
+              {overviewView === 'categories' ? (
+                <CategoryOverview transactions={transactions} />
+              ) : (
+                <>
+                  <div className="overview-institution-tabs" role="tablist" aria-label="Instituições financeiras">
+                    {institutionGroups.map((group) => (
+                      <button
+                        key={group.id}
+                        id={`overview-institution-tab-${group.id}`}
+                        className={selectedInstitution?.id === group.id ? 'overview-institution-tab is-active' : 'overview-institution-tab'}
+                        type="button"
+                        role="tab"
+                        aria-selected={selectedInstitution?.id === group.id}
+                        aria-controls="overview-institution-panel"
+                        onClick={() => setSelectedInstitutionId(group.id)}
+                      >
+                        {group.corHex && <span className="overview-institution-color" style={{ backgroundColor: group.corHex }} aria-hidden="true" />}
+                        {group.name}
+                      </button>
+                    ))}
+                  </div>
+                  {selectedInstitution && (
+                    <section
+                      className="overview-institution-panel"
+                      id="overview-institution-panel"
+                      role="tabpanel"
+                      aria-labelledby={`overview-institution-tab-${selectedInstitution.id}`}
+                    >
+                      <InstitutionAccounts
+                        key={selectedInstitution.id}
+                        group={selectedInstitution}
+                        accounts={accounts}
+                        profile={profile}
+                        transactions={transactions}
+                        invoices={invoices}
+                        onPaymentConfirmed={() => setReloadKey((key) => key + 1)}
+                      />
+                    </section>
+                  )}
+                </>
+              )}
+            </div>
           </>
         )}
       </div>
