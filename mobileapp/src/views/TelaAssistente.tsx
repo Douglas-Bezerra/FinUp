@@ -715,7 +715,7 @@ const styles = StyleSheet.create({
         gap: 8,
         paddingHorizontal: 16,
         paddingTop: 10,
-        paddingBottom: Platform.OS === "ios" ? 28 : 16,
+        paddingBottom: Platform.OS === "ios" ? 28 : 30,
         borderTopWidth: 1,
         borderTopColor: colors.border,
         backgroundColor: colors.background,
@@ -753,7 +753,6 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         alignItems: "center",
         justifyContent: "center",
-        marginBottom: 25,
     },
     sendButtonActive: {
         backgroundColor: colors.foreground,

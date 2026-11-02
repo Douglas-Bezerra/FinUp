@@ -17,6 +17,7 @@ export default function TelaInicial() {
         useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const [nomeUsuario, setNomeUsuario] = useState("");
     const [saldoTotal, setSaldoTotal] = useState(0);
+    const [saldoCaixinha, setSaldoCaixinha] = useState(0);
     const [receitas, setReceitas] = useState(0);
     const [despesas, setDespesas] = useState(0);
     const [loadError, setLoadError] = useState("");
@@ -40,7 +41,12 @@ export default function TelaInicial() {
             if (!estaAtivo()) return;
             setTransacoes(transactions);
             setNomeUsuario(profile.nome);
-            setSaldoTotal(accounts.reduce((total, account) => total + account.saldoAtual, 0));
+            setSaldoTotal(accounts
+                .filter((account) => account.tipoConta !== "CAIXINHA")
+                .reduce((total, account) => total + account.saldoAtual, 0));
+            setSaldoCaixinha(accounts
+                .filter((account) => account.tipoConta === "CAIXINHA")
+                .reduce((total, account) => total + account.saldoAtual, 0));
             const currentMonth = new Date().toISOString().slice(0, 7);
             setReceitas(transactions
                 .filter((item) => item.tipoMovimentacao === "RECEITA" && item.status === "EFETIVADO" && !item.estornado
@@ -324,7 +330,7 @@ export default function TelaInicial() {
 
                     <View>
                         <Text style={styles.summaryLabel}>Caixinha</Text>
-                        <Text style={styles.savings}>{currency(0)}</Text>
+                        <Text style={styles.savings}>{currency(saldoCaixinha)}</Text>
                     </View>
                 </View>
             </View>
@@ -530,17 +536,17 @@ const styles = StyleSheet.create({
     },
     income: {
         color: colors.primary,
-        fontSize: 18,
+        fontSize: 15,
         fontWeight: "600",
     },
     expense: {
         color: "#FF6B6B",
-        fontSize: 18,
+        fontSize: 15,
         fontWeight: "600",
     },
     savings: {
         color: colors.info,
-        fontSize: 18,
+        fontSize: 15,
         fontWeight: "600",
     },
     divider: {
