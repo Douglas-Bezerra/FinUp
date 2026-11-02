@@ -113,6 +113,9 @@ export default function TelaCadastroRegistros() {
       && item.dataTransacao.getFullYear() === currentDate.getFullYear()
       && item.dataTransacao.getMonth() === currentDate.getMonth())
     .reduce((total, item) => total + item.valor, 0);
+  const transacoesVisiveis = transacoes.filter((transacao) =>
+    transacao.tipoMovimentacao === "RECEITA" || transacao.tipoMovimentacao === "DESPESA",
+  );
 
   const salvarTransacao = async () => {
     let valido = true;
@@ -299,13 +302,11 @@ export default function TelaCadastroRegistros() {
           <Text style={styles.transactionMeta}>Carregando registros...</Text>
         ) : erroCarregamento ? (
           <Text style={styles.errorText}>{erroCarregamento}</Text>
-        ) : transacoes.length === 0 ? (
+        ) : transacoesVisiveis.length === 0 ? (
           <Text style={styles.transactionMeta}>Nenhuma movimentação registrada.</Text>
-        ) : transacoes.map((transacao) => (
+        ) : transacoesVisiveis.map((transacao) => (
           <View key={transacao.id} style={styles.transactionItem}>
-            <View style={styles.transactionIcon}>
-              <Text>💰</Text>
-            </View>
+            
 
             <View style={styles.transactionInfo}>
               <Text style={styles.transactionDescription}>
@@ -328,12 +329,12 @@ export default function TelaCadastroRegistros() {
             <Text
               style={[
                 styles.transactionValue,
-                transacao.tipoMovimentacao === "RECEITA" || (transacao.tipoMovimentacao === "TRANSFERENCIA" && transacao.direcaoTransferencia === "ENTRADA")
+                transacao.tipoMovimentacao === "RECEITA"
                   ? styles.incomeTransaction
                   : styles.expenseTransaction,
               ]}
             >
-              {transacao.tipoMovimentacao === "RECEITA" || (transacao.tipoMovimentacao === "TRANSFERENCIA" && transacao.direcaoTransferencia === "ENTRADA") ? "+" : "-"}R$ {transacao.valor.toLocaleString("pt-BR", {
+              {transacao.tipoMovimentacao === "RECEITA" ? "+" : "-"}R$ {transacao.valor.toLocaleString("pt-BR", {
                 minimumFractionDigits: 2,
               })}
             </Text>
@@ -763,15 +764,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
     borderRadius: 14,
     padding: 14,
-  },
-  transactionIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: "rgba(74, 222, 128, 0.1)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 12,
   },
   transactionInfo: {
     flex: 1,

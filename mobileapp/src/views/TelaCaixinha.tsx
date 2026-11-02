@@ -354,13 +354,6 @@ export default function TelaCaixinha() {
               const isDeposit = transaction.direcaoTransferencia === "ENTRADA";
               return (
                 <View key={transaction.id} style={styles.historyItem}>
-                  <View style={[styles.historyIcon, isDeposit ? styles.depositIcon : styles.withdrawIcon]}>
-                    <Ionicons
-                      name={isDeposit ? "arrow-down" : "arrow-up"}
-                      size={18}
-                      color={isDeposit ? colors.primary : colors.danger}
-                    />
-                  </View>
                   <View style={styles.historyCopy}>
                     <Text style={styles.historyTitle}>{transaction.descricao}</Text>
                     <Text style={styles.historyDate}>
