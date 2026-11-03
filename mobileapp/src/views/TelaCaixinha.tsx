@@ -220,8 +220,7 @@ export default function TelaCaixinha() {
     >
       <View style={styles.header}>
         <View style={styles.headerText}>
-          <Text style={styles.eyebrow}>RESERVA PESSOAL</Text>
-          <Text style={styles.title}>Minha Caixinha</Text>
+          <Text style={styles.title}>Caixinha</Text>
         </View>
         <Pressable
           accessibilityRole="button"
@@ -576,13 +575,6 @@ const styles = StyleSheet.create({
   },
   headerText: {
     flex: 1,
-  },
-  eyebrow: {
-    color: colors.mutedForeground,
-    fontSize: 11,
-    fontWeight: "600",
-    letterSpacing: 1,
-    marginBottom: 4,
   },
   title: {
     color: colors.foreground,

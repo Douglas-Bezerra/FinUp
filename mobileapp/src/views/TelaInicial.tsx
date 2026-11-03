@@ -663,7 +663,7 @@ const styles = StyleSheet.create({
         marginTop: 8,
     },
     monthActive: {
-        backgroundColor: colors.primary,
+        backgroundColor: colors.foreground + "5A", // 10% opacity
     },
     monthText: {
         color: colors.mutedForeground,

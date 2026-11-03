@@ -97,7 +97,7 @@ service cloud.firestore {
         );
     }
 
-    function validTransferBalances(familyId, transferId, transfer) {
+    function validExistingTransferBalances(familyId, transferId, transfer) {
       let movementPath = transferPath(familyId, transferId);
       let originPath = accountPath(familyId, transfer.contaOrigemId);
       let destinationPath = accountPath(familyId, transfer.contaDestinoId);
@@ -120,6 +120,33 @@ service cloud.firestore {
         && originAfter.saldoAtual == originBefore - transfer.valor
         && destinationAfter.saldoAtual == destinationBefore + transfer.valor
         && transfer.status == 'EFETIVADO';
+    }
+
+    function validNewCaixinhaFundingBalances(familyId, transfer) {
+      let originPath = accountPath(familyId, transfer.contaOrigemId);
+      let destinationPath = accountPath(familyId, transfer.contaDestinoId);
+      let originBefore = get(originPath).data.saldoAtual;
+      let originAfter = getAfter(originPath).data;
+      let destinationAfter = getAfter(destinationPath).data;
+      return transfer.contaOrigemId == 'principal'
+        && transfer.status == 'EFETIVADO'
+        && exists(originPath)
+        && !exists(destinationPath)
+        && existsAfter(destinationPath)
+        && getAfter(destinationPath).data.tipoConta == 'CAIXINHA'
+        && originBefore is number
+        && originAfter.saldoAtual == originBefore - transfer.valor
+        && originAfter.saldoAtual >= 0
+        && originAfter.ultimaMovimentacaoId == transfer.transacaoOrigemId
+        && destinationAfter.saldoAtual == transfer.valor
+        && destinationAfter.ultimaMovimentacaoId == transfer.transacaoDestinoId;
+    }
+
+    function validTransferBalances(familyId, transferId, transfer) {
+      let destinationPath = accountPath(familyId, transfer.contaDestinoId);
+      return exists(destinationPath)
+        ? validExistingTransferBalances(familyId, transferId, transfer)
+        : validNewCaixinhaFundingBalances(familyId, transfer);
     }
 
     function validTransferLeg(familyId, transactionId, movement) {
@@ -451,6 +478,29 @@ service cloud.firestore {
         && destinationTransaction.estornado == transfer.get('estornado', false);
     }
 
+    function validCaixinhaCreationFunding(familyId, accountId, accountData) {
+      let destinationMovementId = accountData.get('ultimaMovimentacaoId', null);
+      let movementPath = transactionPath(familyId, destinationMovementId);
+      let movement = getAfter(movementPath).data;
+      let transferId = movement.get('transferenciaId', null);
+      let transferDocumentPath = transferPath(familyId, transferId);
+      let transfer = getAfter(transferDocumentPath).data;
+      return accountData.tipoConta == 'CAIXINHA'
+        && accountData.saldoAtual > 0
+        && destinationMovementId is string
+        && existsAfter(movementPath)
+        && movement.tipoMovimentacao == 'TRANSFERENCIA'
+        && movement.direcaoTransferencia == 'ENTRADA'
+        && movement.contaId == accountId
+        && movement.valor == accountData.saldoAtual
+        && existsAfter(transferDocumentPath)
+        && transfer.contaOrigemId == 'principal'
+        && transfer.contaDestinoId == accountId
+        && transfer.transacaoDestinoId == destinationMovementId
+        && validTransferDocument(familyId, transferId, transfer)
+        && validNewCaixinhaFundingBalances(familyId, transfer);
+    }
+
     match /usuarios/{userId} {
       allow read: if signedIn() && request.auth.uid == userId;
       allow create: if signedIn()
@@ -535,11 +585,17 @@ service cloud.firestore {
             'nome', 'tipoConta', 'saldoAtual', 'limiteTotal', 'diaFechamento',
             'diaVencimento', 'ativo', 'criadaPorUsuarioId', 'dataCriacao',
             'usuarioId', 'instituicaoId', 'agencia', 'numeroConta',
-            'contaCorrenteId'
+            'contaCorrenteId', 'ultimaMovimentacaoId'
           ])
           && request.resource.data.nome is string
           && request.resource.data.tipoConta in ['CORRENTE', 'POUPANCA', 'CARTAO_CREDITO', 'CAIXINHA', 'INVESTIMENTO', 'OUTROS']
           && request.resource.data.saldoAtual is number
+          && (request.resource.data.tipoConta != 'CAIXINHA' || request.resource.data.saldoAtual >= 0)
+          && (request.resource.data.tipoConta != 'CAIXINHA'
+            || request.resource.data.saldoAtual == 0
+            || validCaixinhaCreationFunding(familyId, accountId, request.resource.data))
+          && (!('ultimaMovimentacaoId' in request.resource.data)
+            || validCaixinhaCreationFunding(familyId, accountId, request.resource.data))
           && request.resource.data.ativo == true
           && request.resource.data.criadaPorUsuarioId == request.auth.uid
           && request.resource.data.dataCriacao is timestamp

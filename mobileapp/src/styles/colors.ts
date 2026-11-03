@@ -1,4 +1,4 @@
-/*Arquivo para definição de cores do App */
+/*Arquivo para definição de cores do mobileapp */
 
 export const colors = {
   background: "#000000",

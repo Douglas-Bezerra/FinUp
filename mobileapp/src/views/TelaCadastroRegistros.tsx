@@ -205,6 +205,26 @@ export default function TelaCadastroRegistros() {
       Alert.alert("Saldo inválido", "Informe um saldo inicial válido.");
       return;
     }
+    if (tipoConta === "CAIXINHA") {
+      const principal = contas.find((account) =>
+        account.id === "principal" && account.tipoConta === "CORRENTE" && account.ativo,
+      );
+      if (balance < 0) {
+        Alert.alert("Saldo inválido", "O saldo inicial da Caixinha deve ser igual ou maior que zero.");
+        return;
+      }
+      if (!principal && balance > 0) {
+        Alert.alert("Conta principal não encontrada", "Não foi possível financiar a Caixinha pela conta principal.");
+        return;
+      }
+      if (principal && balance > principal.saldoAtual) {
+        Alert.alert(
+          "Saldo insuficiente",
+          `O saldo inicial da Caixinha não pode ser maior que o saldo disponível na conta principal (${principal.saldoAtual.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}).`,
+        );
+        return;
+      }
+    }
     setIsSavingAccount(true);
     try {
       const id = await criarConta(db, usuario.familiaId, usuario.id, {
@@ -213,13 +233,20 @@ export default function TelaCadastroRegistros() {
         saldoAtual: balance,
         ativo: true,
       });
-      setContas((current) => [...current, {
-        id,
-        nome: nomeConta.trim(),
-        tipoConta,
-        saldoAtual: balance,
-        ativo: true,
-      }]);
+      setContas((current) => [
+        ...current.map((account) =>
+          tipoConta === "CAIXINHA" && balance > 0 && account.id === "principal"
+            ? { ...account, saldoAtual: account.saldoAtual - balance }
+            : account,
+        ),
+        {
+          id,
+          nome: nomeConta.trim(),
+          tipoConta,
+          saldoAtual: balance,
+          ativo: true,
+        },
+      ]);
       setContaId(id);
       setContaAberta(false);
       setNomeConta("");
@@ -672,6 +699,14 @@ export default function TelaCadastroRegistros() {
                 placeholder="0,00"
                 keyboardType="numeric"
               />
+              {tipoConta === "CAIXINHA" ? (
+                <Text style={styles.accountBalanceHint}>
+                  O saldo inicial será transferido da conta principal
+                  {contas.find((account) => account.id === "principal")
+                    ? ` (${contas.find((account) => account.id === "principal")?.saldoAtual.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} disponível).`
+                    : "."}
+                </Text>
+              ) : null}
               <GradientButton
                 title={isSavingAccount ? "Salvando..." : "Criar conta"}
                 onPress={() => void salvarConta()}
@@ -858,6 +893,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "600",
     marginBottom: 8,
+  },
+  accountBalanceHint: {
+    color: colors.mutedForeground,
+    fontSize: 11,
+    lineHeight: 16,
+    marginTop: -10,
+    marginBottom: 12,
   },
   categoryList: {
     flexDirection: "row",
