@@ -116,9 +116,30 @@ function formatMovementValue(transaction: Transacao) {
 
 function getCurrentInvoice(invoices: FaturaCartao[]) {
   const currentMonth = getMonthReference(new Date())
-  return invoices.find((invoice) => invoice.status !== 'PAGA')
-    ?? invoices.find((invoice) => invoice.mesReferencia === currentMonth)
+  return invoices.find((invoice) => invoice.mesReferencia === currentMonth)
+    ?? invoices.find((invoice) => invoice.status !== 'PAGA')
     ?? null
+}
+
+function getInvoiceBalance(invoice: FaturaCartao) {
+  return Math.max(invoice.valorTotal - (invoice.valorPago ?? 0), 0)
+}
+
+function getAccountInvoiceBalance(account: Conta, invoices: FaturaCartao[]) {
+  if (account.tipoConta !== 'CARTAO_CREDITO') return account.saldoAtual
+  const currentMonth = getMonthReference(new Date())
+  const currentInvoice = invoices.find((invoice) =>
+    invoice.contaId === account.id && invoice.mesReferencia === currentMonth,
+  )
+  return currentInvoice ? getInvoiceBalance(currentInvoice) : 0
+}
+
+function getAvailableCreditLimit(account: Conta, invoices: FaturaCartao[]) {
+  const totalLimit = account.limiteTotal ?? 0
+  const usedLimit = invoices
+    .filter((invoice) => invoice.contaId === account.id && invoice.status !== 'PAGA')
+    .reduce((total, invoice) => total + getInvoiceBalance(invoice), 0)
+  return Math.max(totalLimit - usedLimit, 0)
 }
 
 type InstitutionAccountsProps = {
@@ -286,7 +307,7 @@ function InstitutionAccounts({ group, accounts, profile, transactions, invoices,
     : []
   const currentInvoice = getCurrentInvoice(accountInvoices)
   const futureInvoices = accountInvoices.filter((invoice) =>
-    invoice.mesReferencia > (currentInvoice?.mesReferencia ?? getMonthReference(new Date())),
+    invoice.mesReferencia > getMonthReference(new Date()),
   )
   const selectedFutureInvoice = futureInvoices.find((invoice) => invoice.id === selectedFutureInvoiceId)
     ?? futureInvoices[0]
@@ -384,7 +405,12 @@ function InstitutionAccounts({ group, accounts, profile, transactions, invoices,
               }}
                 >
                   <span>{account.nome}</span>
-                  <strong>{currencyFormatter.format(account.saldoAtual)}</strong>
+                  <strong>
+                    {account.tipoConta === 'CARTAO_CREDITO' && <small>Fatura atual</small>}
+                    {currencyFormatter.format(account.tipoConta === 'CARTAO_CREDITO'
+                      ? getAccountInvoiceBalance(account, invoices)
+                      : account.saldoAtual)}
+                  </strong>
                 </button>
               ))}
             </div>
@@ -399,7 +425,24 @@ function InstitutionAccounts({ group, accounts, profile, transactions, invoices,
                 <div className="overview-account-heading">
                   <div>
                     <h3>{selectedAccount.nome}</h3>
-                    <p>Saldo atual: <strong>{currencyFormatter.format(selectedAccount.saldoAtual)}</strong></p>
+                    {selectedAccount.tipoConta === 'CARTAO_CREDITO' ? (
+                      <div className="overview-credit-summary">
+                        <div>
+                          <span>Saldo da fatura atual</span>
+                          <strong>{currencyFormatter.format(getAccountInvoiceBalance(selectedAccount, invoices))}</strong>
+                        </div>
+                        <div>
+                          <span>Limite total</span>
+                          <strong>{currencyFormatter.format(selectedAccount.limiteTotal ?? 0)}</strong>
+                        </div>
+                        <div>
+                          <span>Limite disponível</span>
+                          <strong>{currencyFormatter.format(getAvailableCreditLimit(selectedAccount, invoices))}</strong>
+                        </div>
+                      </div>
+                    ) : (
+                      <p>Saldo atual: <strong>{currencyFormatter.format(selectedAccount.saldoAtual)}</strong></p>
+                    )}
                   </div>
                   {selectedAccount.tipoConta !== 'CARTAO_CREDITO' && (
                     <Link className="overview-record-link" to="/registros" state={{ backTo: '/visao-geral' }}>
@@ -462,8 +505,8 @@ function InstitutionAccounts({ group, accounts, profile, transactions, invoices,
                             )}
                             <div className="overview-invoice-summary">
                               <div>
-                                <span>{formatInvoiceMonth(currentInvoice.mesReferencia)}</span>
-                                <strong>{currencyFormatter.format(currentInvoice.valorTotal)}</strong>
+                                <span>Saldo · {formatInvoiceMonth(currentInvoice.mesReferencia)}</span>
+                                <strong>{currencyFormatter.format(getInvoiceBalance(currentInvoice))}</strong>
                               </div>
                               <div>
                                 <span>Vencimento</span>
@@ -511,8 +554,8 @@ function InstitutionAccounts({ group, accounts, profile, transactions, invoices,
                             >
                               <div className="overview-invoice-summary">
                                 <div>
-                                  <span>{formatInvoiceMonth(selectedFutureInvoice.mesReferencia)}</span>
-                                  <strong>{currencyFormatter.format(selectedFutureInvoice.valorTotal)}</strong>
+                                  <span>Saldo · {formatInvoiceMonth(selectedFutureInvoice.mesReferencia)}</span>
+                                  <strong>{currencyFormatter.format(getInvoiceBalance(selectedFutureInvoice))}</strong>
                                 </div>
                                 <div>
                                   <span>Vencimento</span>

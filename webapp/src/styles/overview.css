@@ -34,6 +34,7 @@
 .overview-account-tab { display: grid; flex: 0 0 auto; gap: 6px; min-width: 170px; padding: 12px 14px; border: 1px solid var(--finup-border); border-radius: 10px; background: var(--finup-background); color: var(--finup-muted); cursor: pointer; font: inherit; text-align: left; }
 .overview-account-tab span { font-size: 12px; }
 .overview-account-tab strong { color: var(--finup-foreground); font-size: 14px; }
+.overview-account-tab strong small { display: block; margin-bottom: 2px; color: var(--finup-muted); font-size: 10px; font-weight: 600; }
 .overview-account-tab:hover,
 .overview-account-tab.is-active { border-color: var(--finup-primary); }
 .overview-account-panel { padding: 18px; border: 1px solid var(--finup-border); border-radius: 10px; background: var(--finup-background); }
@@ -41,6 +42,10 @@
 .overview-account-heading h3 { margin: 0; color: var(--finup-foreground); font-size: 16px; }
 .overview-account-heading p { margin: 6px 0 0; color: var(--finup-muted); font-size: 13px; }
 .overview-account-heading p strong { color: var(--finup-foreground); }
+.overview-credit-summary { display: flex; flex-wrap: wrap; gap: 10px 18px; margin-top: 8px; }
+.overview-credit-summary > div { display: grid; gap: 4px; min-width: 130px; }
+.overview-credit-summary span { color: var(--finup-muted); font-size: 11px; }
+.overview-credit-summary strong { color: var(--finup-foreground); font-size: 14px; }
 .overview-record-link { flex: 0 0 auto; padding: 9px 12px; border: 1px solid var(--finup-border); border-radius: 8px; color: var(--finup-muted); font-size: 12px; text-decoration: none; }
 .overview-record-link:hover { border-color: var(--finup-primary); color: var(--finup-primary); }
 .overview-statement-title { margin: 0 0 10px; color: var(--finup-foreground); font-size: 14px; }
