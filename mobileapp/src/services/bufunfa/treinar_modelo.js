@@ -280,3 +280,4 @@ Para validar a generalização em ambiente real, o projeto adota o seguinte prot
 }
 
 treinar();
+

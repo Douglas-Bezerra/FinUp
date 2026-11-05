@@ -4,6 +4,7 @@ export type IntencaoBufunfa =
     | "COMPARAR_MES_ANTERIOR"
     | "ONDE_GASTEI_MAIS"
     | "ONDE_GASTEI_MENOS"
+    | "ONDE_GASTEI_MAIS_E_MENOS"
     | "GASTO_CATEGORIA"
     | "CONSULTAR_SALDO"
     | "CONSULTAR_GASTOS"
@@ -12,10 +13,13 @@ export type IntencaoBufunfa =
     | "CORTAR_GASTOS"
     | "DESCONHECIDO";
 
+export type PeriodoConsulta = "ATUAL" | "ANTERIOR";
+
 export interface ResultadoClassificacao {
     intent: IntencaoBufunfa;
     confidence: number;
     categoriaSugerida?: string;
+    periodo: PeriodoConsulta;
 }
 
 const CATEGORIAS_SINONIMOS: Record<string, string[]> = {
@@ -59,6 +63,24 @@ function extrairTokens(texto: string): string[] {
 }
 
 /**
+ * Detecta se a pergunta é direcionada ao mês passado/anterior.
+ */
+export function extrairPeriodo(texto: string): PeriodoConsulta {
+    const limpo = normalizar(texto);
+    if (
+        limpo.includes("mes passado") ||
+        limpo.includes("mes anterior") ||
+        limpo.includes("no passado") ||
+        limpo.includes("do passado") ||
+        limpo.includes("anterior") ||
+        limpo.includes("passado")
+    ) {
+        return "ANTERIOR";
+    }
+    return "ATUAL";
+}
+
+/**
  * Extrai categoria do texto se houver correspondência com palavras-chave financeiras.
  */
 export function extrairCategoria(texto: string): string | undefined {
@@ -77,14 +99,53 @@ export function extrairCategoria(texto: string): string | undefined {
 }
 
 /**
- * Classifica a mensagem do usuário usando o modelo Naive Bayes pré-treinado.
+ * Classifica a mensagem do usuário usando o modelo Naive Bayes pré-treinado e regras de contexto.
  */
-export function classificarMensagem(texto: string): ResultadoClassificacao {
+export function classificarMensagem(
+    texto: string,
+    ultimoResultado?: ResultadoClassificacao | null
+): ResultadoClassificacao {
+    const limpo = normalizar(texto);
     const tokens = extrairTokens(texto);
+    const periodo = extrairPeriodo(texto);
+
+    // Tratar follow-ups curtos de conversa (ex: "no mês passado", "e no mês passado?", "e no anterior?")
+    const frasesFollowUpPassado = [
+        "no mes passado",
+        "mes passado",
+        "e no mes passado",
+        "e mes passado",
+        "no anterior",
+        "mes anterior",
+        "e no anterior",
+        "e no mes anterior",
+        "do mes passado",
+    ];
+
+    if (frasesFollowUpPassado.includes(limpo) && ultimoResultado) {
+        return {
+            intent: ultimoResultado.intent,
+            confidence: 0.95,
+            categoriaSugerida: ultimoResultado.categoriaSugerida,
+            periodo: "ANTERIOR",
+        };
+    }
 
     // Se o texto estiver vazio ou muito curto
     if (tokens.length === 0) {
-        return { intent: "DESCONHECIDO", confidence: 0 };
+        return { intent: "DESCONHECIDO", confidence: 0, periodo };
+    }
+
+    // Detectar pergunta composta de extremos (MAIS E MENOS juntos)
+    const temMais = limpo.includes("mais") || limpo.includes("maior") || limpo.includes("pesou");
+    const temMenos = limpo.includes("menos") || limpo.includes("menor") || limpo.includes("barato");
+
+    if (temMais && temMenos && !limpo.includes("compara") && !limpo.includes("comparativo") && !limpo.includes("diferenca")) {
+        return {
+            intent: "ONDE_GASTEI_MAIS_E_MENOS",
+            confidence: 0.98,
+            periodo,
+        };
     }
 
     const { classes, logPriors, logLikelihoods, tokenTotals, vocabularioSize } = modelData;
@@ -142,6 +203,7 @@ export function classificarMensagem(texto: string): ResultadoClassificacao {
             intent: "DESCONHECIDO",
             confidence: topProb,
             categoriaSugerida: categoriaDetectada,
+            periodo,
         };
     }
 
@@ -149,5 +211,6 @@ export function classificarMensagem(texto: string): ResultadoClassificacao {
         intent: topClass,
         confidence: topProb,
         categoriaSugerida: categoriaDetectada,
+        periodo,
     };
 }

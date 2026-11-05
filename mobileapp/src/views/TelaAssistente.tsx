@@ -40,6 +40,7 @@ import {
     carregarContextoBufunfa,
     ContextoFinanceiroBufunfa,
     responderPerguntaComIA,
+    ResultadoClassificacao,
 } from "../services/bufunfa/bufunfaService";
 
 import { colors } from "../styles/colors";
@@ -91,6 +92,7 @@ export default function TelaAssistente() {
     const [isListening, setIsListening] = useState(false);
     const [permissionDenied, setPermissionDenied] = useState(false);
     const [contexto, setContexto] = useState<ContextoFinanceiroBufunfa | null>(null);
+    const lastClassificationRef = useRef<ResultadoClassificacao | null>(null);
 
     const scrollRef = useRef<any>(null);
     const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -288,11 +290,17 @@ export default function TelaAssistente() {
         setTyping(true);
 
         setTimeout(() => {
-            const { resposta, classificacao } = responderPerguntaComIA(text.trim(), contexto);
+            const { resposta, classificacao } = responderPerguntaComIA(
+                text.trim(),
+                contexto,
+                lastClassificationRef.current
+            );
+            lastClassificationRef.current = classificacao;
+
             console.log(
                 `[Bufunfa IA] Intenção detectada: ${classificacao.intent} (Confiança: ${(
                     classificacao.confidence * 100
-                ).toFixed(1)}%)`
+                ).toFixed(1)}%) [Período: ${classificacao.periodo}]`
             );
 
             setTyping(false);

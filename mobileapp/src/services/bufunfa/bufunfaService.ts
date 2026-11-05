@@ -9,8 +9,10 @@ import type { Conta, Transacao } from "../../../../shared/types/finup";
 import {
     classificarMensagem,
     IntencaoBufunfa,
+    PeriodoConsulta,
     ResultadoClassificacao,
 } from "./bufunfaClassifier";
+export type { ResultadoClassificacao, IntencaoBufunfa, PeriodoConsulta };
 
 export interface CategoriaGasto {
     categoria: string;
@@ -26,6 +28,7 @@ export interface ResumoMesAnterior {
     saldoLiquido: number;
     despesasPorCategoria: CategoriaGasto[];
     maiorGasto: CategoriaGasto | null;
+    menorGasto: CategoriaGasto | null;
 }
 
 export interface ContextoFinanceiroBufunfa {
@@ -202,6 +205,14 @@ export async function carregarContextoBufunfa(
         }))
         .sort((a, b) => b.total - a.total);
 
+    const maiorGastoAnt =
+        despesasPorCatAnt.length > 0 ? despesasPorCatAnt[0] : null;
+
+    const menorGastoAnt =
+        despesasPorCatAnt.length > 0
+            ? despesasPorCatAnt[despesasPorCatAnt.length - 1]
+            : null;
+
     const mesAnteriorResumo: ResumoMesAnterior = {
         mesAno: mesAnoAnterior,
         nomeMes: nomeMesAnterior,
@@ -209,7 +220,8 @@ export async function carregarContextoBufunfa(
         despesas: despesasMesAnt,
         saldoLiquido: receitasMesAnt - despesasMesAnt,
         despesasPorCategoria: despesasPorCatAnt,
-        maiorGasto: despesasPorCatAnt.length > 0 ? despesasPorCatAnt[0] : null,
+        maiorGasto: maiorGastoAnt,
+        menorGasto: menorGastoAnt,
     };
 
     return {
@@ -246,6 +258,19 @@ export function gerarRespostaComparativoMesAnterior(
         return `📊 Comparativo Mensal:\n\nAinda não encontrei registros completos no mês anterior (${ant?.nomeMes || "passado"}) para traçar o comparativo.\n\nNeste mês (${ctx.mesReferencia}), você já teve ${formatarMoeda(ctx.despesasMes)} em despesas e ${formatarMoeda(ctx.receitasMes)} em receitas. Assim que houver histórico em ambos os meses, farei um comparativo detalhado! 💡`;
     }
 
+    // Se neste mês ainda não há despesas, mas no mês anterior há:
+    if (ctx.despesasMes === 0 && ant.despesas > 0) {
+        const maiorAnt = ant.maiorGasto
+            ? `\n• 🏆 Maior gasto mês passado: ${ant.maiorGasto.categoria} (${formatarMoeda(ant.maiorGasto.total)})`
+            : "";
+        const menorAnt =
+            ant.menorGasto && ant.menorGasto.categoria !== ant.maiorGasto?.categoria
+                ? `\n• 📉 Menor gasto mês passado: ${ant.menorGasto.categoria} (${formatarMoeda(ant.menorGasto.total)})`
+                : "";
+
+        return `📊 Comparativo: ${ctx.mesReferencia} vs ${ant.nomeMes}:\n\n• Despesas neste mês: ${formatarMoeda(ctx.despesasMes)} (sem lançamentos ainda)\n• Despesas mês passado: ${formatarMoeda(ant.despesas)}\n\nNo mês passado (${ant.nomeMes}):${maiorAnt}${menorAnt}\n\n💡 Conforme você registrar os gastos deste mês, vou comparando onde aumentou e onde diminuiu!`;
+    }
+
     const difDespesas = ctx.despesasMes - ant.despesas;
     const variacaoPct =
         ant.despesas > 0
@@ -263,49 +288,111 @@ export function gerarRespostaComparativoMesAnterior(
         ? `\n• Onde gastou mais neste mês: ${ctx.maiorGastoCategoria.categoria} (${formatarMoeda(ctx.maiorGastoCategoria.total)})`
         : "";
 
-    const menorTexto = ctx.menorGastoCategoria
-        ? `\n• Onde gastou menos neste mês: ${ctx.menorGastoCategoria.categoria} (${formatarMoeda(ctx.menorGastoCategoria.total)})`
+    const menorTexto =
+        ctx.menorGastoCategoria &&
+        ctx.menorGastoCategoria.categoria !== ctx.maiorGastoCategoria?.categoria
+            ? `\n• Onde gastou menos neste mês: ${ctx.menorGastoCategoria.categoria} (${formatarMoeda(ctx.menorGastoCategoria.total)})`
+            : "";
+
+    const antTexto = ant.maiorGasto
+        ? `\n• Maior gasto no mês passado (${ant.nomeMes}): ${ant.maiorGasto.categoria} (${formatarMoeda(ant.maiorGasto.total)})`
         : "";
 
-    return `📊 Comparativo: ${ctx.mesReferencia} vs ${ant.nomeMes}:\n\n• Despesas neste mês: ${formatarMoeda(ctx.despesasMes)}\n• Despesas mês passado: ${formatarMoeda(ant.despesas)}\n\n${statusGasto}${maiorTexto}${menorTexto}`;
+    return `📊 Comparativo: ${ctx.mesReferencia} vs ${ant.nomeMes}:\n\n• Despesas neste mês: ${formatarMoeda(ctx.despesasMes)}\n• Despesas mês passado: ${formatarMoeda(ant.despesas)}\n\n${statusGasto}${maiorTexto}${menorTexto}${antTexto}`;
 }
 
-export function gerarRespostaMaiorGasto(ctx: ContextoFinanceiroBufunfa): string {
-    if (!ctx.maiorGastoCategoria) {
-        return `🔍 Você ainda não tem despesas registradas em ${ctx.mesReferencia}.`;
+/**
+ * Responde onde o usuário gastou mais, menos ou ambos, no mês atual ou anterior.
+ */
+export function gerarRespostaExtremosGastos(
+    ctx: ContextoFinanceiroBufunfa,
+    modo: "MAIS" | "MENOS" | "AMBOS",
+    periodo: PeriodoConsulta
+): string {
+    const alvo = periodo === "ANTERIOR" ? ctx.mesAnterior : null;
+    const nomeMes = alvo ? alvo.nomeMes : ctx.mesReferencia;
+    const despesas = alvo ? alvo.despesas : ctx.despesasMes;
+    const maior = alvo ? alvo.maiorGasto : ctx.maiorGastoCategoria;
+    const menor = alvo ? alvo.menorGasto : ctx.menorGastoCategoria;
+
+    // Se o período pedido não tem despesas
+    if (despesas === 0 || !maior) {
+        if (periodo === "ATUAL" && ctx.mesAnterior && ctx.mesAnterior.despesas > 0) {
+            const ant = ctx.mesAnterior;
+            let complemento = "";
+            if (modo === "AMBOS" && ant.maiorGasto) {
+                const menorInfo = ant.menorGasto && ant.menorGasto.categoria !== ant.maiorGasto.categoria
+                    ? `\n• 📉 Menor gasto: ${ant.menorGasto.categoria} (${formatarMoeda(ant.menorGasto.total)})`
+                    : "";
+                complemento = `\n\nNo entanto, no mês passado (${ant.nomeMes}), seus registros foram:\n• 🏆 Maior gasto: ${ant.maiorGasto.categoria} (${formatarMoeda(ant.maiorGasto.total)})${menorInfo}\n• Total de despesas: ${formatarMoeda(ant.despesas)} 💡`;
+            } else if (modo === "MAIS" && ant.maiorGasto) {
+                complemento = `\n\nNo mês passado (${ant.nomeMes}), seu maior gasto foi em "${ant.maiorGasto.categoria}" (${formatarMoeda(ant.maiorGasto.total)}).`;
+            } else if (modo === "MENOS" && ant.menorGasto) {
+                complemento = `\n\nNo mês passado (${ant.nomeMes}), seu menor gasto foi em "${ant.menorGasto.categoria}" (${formatarMoeda(ant.menorGasto.total)}).`;
+            }
+            return `🔍 Você ainda não tem despesas registradas em ${nomeMes}.${complemento}`;
+        }
+        return `🔍 Não há despesas registradas em ${nomeMes}.`;
     }
 
-    return `🏆 Seu maior gasto neste mês foi em "${ctx.maiorGastoCategoria.categoria}":\n\n• Valor: ${formatarMoeda(ctx.maiorGastoCategoria.total)}\n• Representa ${ctx.maiorGastoCategoria.porcentagem.toFixed(1)}% de todas as suas despesas no mês.\n\nTotal de despesas acumuladas: ${formatarMoeda(ctx.despesasMes)} 💡`;
-}
-
-export function gerarRespostaMenorGasto(ctx: ContextoFinanceiroBufunfa): string {
-    if (!ctx.menorGastoCategoria) {
-        return `🔍 Você ainda não tem despesas registradas em ${ctx.mesReferencia}.`;
+    if (modo === "AMBOS") {
+        const menorTexto =
+            menor && menor.categoria !== maior.categoria
+                ? `\n• 📉 Menor gasto: ${menor.categoria} (${formatarMoeda(menor.total)})`
+                : "";
+        return `📊 Gastos em ${nomeMes}:\n\n• 🏆 Maior gasto: ${maior.categoria} (${formatarMoeda(maior.total)})\n  ↳ Representa ${maior.porcentagem.toFixed(1)}% das despesas${menorTexto}\n\nTotal de despesas: ${formatarMoeda(despesas)} 💡`;
     }
 
-    return `📉 Seu menor gasto registrado neste mês foi em "${ctx.menorGastoCategoria.categoria}":\n\n• Valor: ${formatarMoeda(ctx.menorGastoCategoria.total)} (${ctx.menorGastoCategoria.porcentagem.toFixed(1)}% das despesas).`;
+    if (modo === "MAIS") {
+        return `🏆 Seu maior gasto em ${nomeMes} foi em "${maior.categoria}":\n\n• Valor: ${formatarMoeda(maior.total)}\n• Representa ${maior.porcentagem.toFixed(1)}% das suas despesas.\n\nTotal de despesas acumuladas: ${formatarMoeda(despesas)} 💡`;
+    }
+
+    // modo === "MENOS"
+    if (menor) {
+        return `📉 Seu menor gasto registrado em ${nomeMes} foi em "${menor.categoria}":\n\n• Valor: ${formatarMoeda(menor.total)} (${menor.porcentagem.toFixed(1)}% das despesas).\n\nTotal de despesas: ${formatarMoeda(despesas)} 💡`;
+    }
+
+    return `📉 Seu menor gasto em ${nomeMes} foi em "${maior.categoria}" (${formatarMoeda(maior.total)}).`;
 }
 
 export function gerarRespostaGastoCategoria(
     ctx: ContextoFinanceiroBufunfa,
-    categoriaDetectada?: string
+    categoriaDetectada?: string,
+    periodo: PeriodoConsulta = "ATUAL"
 ): string {
     if (!categoriaDetectada) {
         return gerarRespostaOndeCortarGastos(ctx);
     }
 
+    const listaCategorias =
+        periodo === "ANTERIOR" && ctx.mesAnterior
+            ? ctx.mesAnterior.despesasPorCategoria
+            : ctx.despesasPorCategoria;
+
+    const nomeMes =
+        periodo === "ANTERIOR" && ctx.mesAnterior
+            ? ctx.mesAnterior.nomeMes
+            : ctx.mesReferencia;
+
+    const totalDespesas =
+        periodo === "ANTERIOR" && ctx.mesAnterior
+            ? ctx.mesAnterior.despesas
+            : ctx.despesasMes;
+
     // Busca exata ou por correspondência parcial
-    const match = ctx.despesasPorCategoria.find(
+    const match = listaCategorias.find(
         (c) =>
             c.categoria.toLowerCase().includes(categoriaDetectada.toLowerCase()) ||
             categoriaDetectada.toLowerCase().includes(c.categoria.toLowerCase())
     );
 
     if (!match) {
-        return `🔍 Não encontrei gastos registrados na categoria "${categoriaDetectada}" em ${ctx.mesReferencia}.\n\nSuas categorias com lançamentos este mês são: ${ctx.despesasPorCategoria.map((c) => c.categoria).join(", ") || "nenhuma no momento"}.`;
+        return `🔍 Não encontrei gastos registrados na categoria "${categoriaDetectada}" em ${nomeMes}.\n\nSuas categorias com lançamentos em ${nomeMes} são: ${
+            listaCategorias.map((c) => c.categoria).join(", ") || "nenhuma no momento"
+        }.`;
     }
 
-    return `💳 Seus gastos com "${match.categoria}" em ${ctx.mesReferencia}:\n\n• Total: ${formatarMoeda(match.total)}\n• Representa ${match.porcentagem.toFixed(1)}% das suas despesas do mês.\n\nTotal geral de despesas: ${formatarMoeda(ctx.despesasMes)} 💡`;
+    return `💳 Seus gastos com "${match.categoria}" em ${nomeMes}:\n\n• Total: ${formatarMoeda(match.total)}\n• Representa ${match.porcentagem.toFixed(1)}% das suas despesas do mês.\n\nTotal geral de despesas: ${formatarMoeda(totalDespesas)} 💡`;
 }
 
 export function gerarRespostaSaudeFinanceira(ctx: ContextoFinanceiroBufunfa): string {
@@ -321,23 +408,38 @@ export function gerarRespostaSaudeFinanceira(ctx: ContextoFinanceiroBufunfa): st
 }
 
 export function gerarRespostaOndeCortarGastos(ctx: ContextoFinanceiroBufunfa): string {
-    if (ctx.despesasPorCategoria.length === 0) {
-        return `🔍 Você ainda não possui despesas registradas em ${ctx.mesReferencia}. Assim que registrar compras ou contas, analisarei onde você pode economizar!`;
+    const lista =
+        ctx.despesasPorCategoria.length > 0
+            ? ctx.despesasPorCategoria
+            : ctx.mesAnterior?.despesasPorCategoria || [];
+
+    const nomeMes =
+        ctx.despesasPorCategoria.length > 0
+            ? ctx.mesReferencia
+            : ctx.mesAnterior?.nomeMes || ctx.mesReferencia;
+
+    const totalDespesas =
+        ctx.despesasPorCategoria.length > 0
+            ? ctx.despesasMes
+            : ctx.mesAnterior?.despesas || 0;
+
+    if (lista.length === 0) {
+        return `🔍 Você ainda não possui despesas registradas. Assim que registrar compras ou contas, analisarei onde você pode economizar!`;
     }
 
-    const top = ctx.despesasPorCategoria.slice(0, 3);
-    const lista = top
+    const top = lista.slice(0, 3);
+    const listaTexto = top
         .map(
             (c, i) =>
                 `${i + 1}. ${c.categoria}: ${formatarMoeda(c.total)} (${c.porcentagem.toFixed(0)}% das despesas)`
         )
         .join("\n");
 
-    const maior = ctx.maiorGastoCategoria
-        ? `\n\nSua maior oportunidade de economia está em "${ctx.maiorGastoCategoria.categoria}". Planejar reduções nessa área fará grande diferença!`
+    const maior = top.length > 0
+        ? `\n\nSua maior oportunidade de economia está em "${top[0].categoria}". Planejar reduções nessa área fará grande diferença!`
         : "";
 
-    return `🔍 Oportunidades de economia em ${ctx.mesReferencia}:\n\nSuas maiores despesas até agora:\n${lista}${maior}\n\nTotal gasto no mês: ${formatarMoeda(ctx.despesasMes)} 💡`;
+    return `🔍 Oportunidades de economia baseadas em ${nomeMes}:\n\nSuas maiores despesas:\n${listaTexto}${maior}\n\nTotal gasto no período: ${formatarMoeda(totalDespesas)} 💡`;
 }
 
 export function gerarRespostaSaldo(ctx: ContextoFinanceiroBufunfa): string {
@@ -349,22 +451,35 @@ export function gerarRespostaSaldo(ctx: ContextoFinanceiroBufunfa): string {
     return `💰 Saldo Total: ${formatarMoeda(ctx.saldoTotal)}\n\nDistribuído nas suas contas:\n${contasTexto}`;
 }
 
-export function gerarRespostaGastos(ctx: ContextoFinanceiroBufunfa): string {
+export function gerarRespostaGastos(
+    ctx: ContextoFinanceiroBufunfa,
+    periodo: PeriodoConsulta = "ATUAL"
+): string {
+    if (periodo === "ANTERIOR" && ctx.mesAnterior) {
+        return `💸 No mês passado (${ctx.mesAnterior.nomeMes}), você teve um total de ${formatarMoeda(ctx.mesAnterior.despesas)} em despesas efetivadas.`;
+    }
     return `💸 Neste mês (${ctx.mesReferencia}), você teve um total de ${formatarMoeda(ctx.despesasMes)} em despesas efetivadas em ${ctx.totalTransacoesMes} movimentação(ões).`;
 }
 
-export function gerarRespostaReceitas(ctx: ContextoFinanceiroBufunfa): string {
+export function gerarRespostaReceitas(
+    ctx: ContextoFinanceiroBufunfa,
+    periodo: PeriodoConsulta = "ATUAL"
+): string {
+    if (periodo === "ANTERIOR" && ctx.mesAnterior) {
+        return `📈 No mês passado (${ctx.mesAnterior.nomeMes}), suas receitas totalizaram ${formatarMoeda(ctx.mesAnterior.receitas)}.`;
+    }
     return `📈 Neste mês (${ctx.mesReferencia}), suas receitas totalizam ${formatarMoeda(ctx.receitasMes)}.`;
 }
 
 /**
- * Processa a mensagem do usuário utilizando o Classificador Naive Bayes local.
+ * Processa a mensagem do usuário utilizando o Classificador Naive Bayes local e contexto conversacional.
  */
 export function responderPerguntaComIA(
     texto: string,
-    ctx: ContextoFinanceiroBufunfa | null
+    ctx: ContextoFinanceiroBufunfa | null,
+    ultimoResultado?: ResultadoClassificacao | null
 ): { resposta: string; classificacao: ResultadoClassificacao } {
-    const classificacao = classificarMensagem(texto);
+    const classificacao = classificarMensagem(texto, ultimoResultado);
 
     if (!ctx) {
         return {
@@ -381,16 +496,24 @@ export function responderPerguntaComIA(
             resposta = gerarRespostaComparativoMesAnterior(ctx);
             break;
 
+        case "ONDE_GASTEI_MAIS_E_MENOS":
+            resposta = gerarRespostaExtremosGastos(ctx, "AMBOS", classificacao.periodo);
+            break;
+
         case "ONDE_GASTEI_MAIS":
-            resposta = gerarRespostaMaiorGasto(ctx);
+            resposta = gerarRespostaExtremosGastos(ctx, "MAIS", classificacao.periodo);
             break;
 
         case "ONDE_GASTEI_MENOS":
-            resposta = gerarRespostaMenorGasto(ctx);
+            resposta = gerarRespostaExtremosGastos(ctx, "MENOS", classificacao.periodo);
             break;
 
         case "GASTO_CATEGORIA":
-            resposta = gerarRespostaGastoCategoria(ctx, classificacao.categoriaSugerida);
+            resposta = gerarRespostaGastoCategoria(
+                ctx,
+                classificacao.categoriaSugerida,
+                classificacao.periodo
+            );
             break;
 
         case "CONSULTAR_SALDO":
@@ -398,11 +521,11 @@ export function responderPerguntaComIA(
             break;
 
         case "CONSULTAR_GASTOS":
-            resposta = gerarRespostaGastos(ctx);
+            resposta = gerarRespostaGastos(ctx, classificacao.periodo);
             break;
 
         case "CONSULTAR_RECEITAS":
-            resposta = gerarRespostaReceitas(ctx);
+            resposta = gerarRespostaReceitas(ctx, classificacao.periodo);
             break;
 
         case "SAUDE_FINANCEIRA":
@@ -416,7 +539,7 @@ export function responderPerguntaComIA(
         default:
             resposta = `Entendido! 📝 Analisei suas finanças atuais (Saldo total: ${formatarMoeda(
                 ctx.saldoTotal
-            )}, Despesas no mês: ${formatarMoeda(ctx.despesasMes)}).\n\nVocê pode me perguntar coisas como:\n• "Compara meus gastos desse mês com mês passado"\n• "Onde gastei mais?" ou "Onde gastei menos?"\n• "Quanto gastei com alimentação?"\n• "Qual é o meu saldo atual?" 💡`;
+            )}, Despesas no mês: ${formatarMoeda(ctx.despesasMes)}).\n\nVocê pode me perguntar coisas como:\n• "Compara meus gastos desse mês com mês passado"\n• "Onde gastei mais e onde gastei menos no mês passado"\n• "Quanto gastei com alimentação?"\n• "Qual é o meu saldo atual?" 💡`;
             break;
     }
 
