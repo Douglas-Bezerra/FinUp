@@ -97,7 +97,7 @@ export default function TelaAssistente() {
     const [permissionDenied, setPermissionDenied] = useState(false);
     const [contexto, setContexto] = useState<ContextoFinanceiroBufunfa | null>(null);
 
-    const scrollRef = useRef<ScrollView>(null);
+    const scrollRef = useRef<any>(null);
     const pulseAnim = useRef(new Animated.Value(1)).current;
 
     useEffect(() => {

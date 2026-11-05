@@ -4,6 +4,8 @@ import { LinearGradient } from "expo-linear-gradient";
 
 import { colors } from "../styles/colors";
 
+const MaskedViewAny = MaskedView as any;
+
 interface GradientTextProps {
   children: string;
   style?: StyleProp<TextStyle>;
@@ -14,7 +16,7 @@ export default function GradientText({
   style,
 }: GradientTextProps) {
   return (
-    <MaskedView
+    <MaskedViewAny
       maskElement={
         <Text style={style}>
           {children}
@@ -30,6 +32,6 @@ export default function GradientText({
           {children}
         </Text>
       </LinearGradient>
-    </MaskedView>
+    </MaskedViewAny>
   );
 }
