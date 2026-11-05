@@ -1,0 +1,182 @@
+{
+  "intents": [
+    {
+      "name": "COMPARAR_MES_ANTERIOR",
+      "description": "Compara os gastos e receitas do mês atual com o mês anterior, indicando variações, aumentos e reduções",
+      "examples": [
+        "compara os meus gastos desse mes com mes passado",
+        "compara meus gastos desse mes com o anterior",
+        "gastei mais esse mes ou no mes passado",
+        "qual a diferenca dos meus gastos em relacao ao mes anterior",
+        "como estao meus gastos comparados ao mes passado",
+        "gastei mais ou gastei menos que o mes anterior",
+        "comparar despesas desse mes com mes passado",
+        "como foi minha evolucao de gastos do mes passado pra ca",
+        "comparativo de gastos entre os meses",
+        "estou gastando mais que no mes anterior",
+        "compara esse mes com o mes passado e diz onde gastei mais",
+        "meus gastos aumentaram ou diminuiram em relacao ao mes passado",
+        "comparacao mensal de despesas",
+        "o que mudou nos meus gastos do mes passado para este",
+        "quero ver o comparativo desse mes com o mes anterior",
+        "gastei quanto a mais que mes passado"
+      ]
+    },
+    {
+      "name": "ONDE_GASTEI_MAIS",
+      "description": "Identifica a categoria ou área com maior volume de gastos no período",
+      "examples": [
+        "onde gastei mais",
+        "onde gastei mais esse mes",
+        "onde gastei mais este mes",
+        "qual foi meu maior gasto",
+        "qual foi meu maior gasto esse mes",
+        "qual meu maior gasto",
+        "onde foi a maior parte do meu dinheiro",
+        "qual categoria gastei mais",
+        "qual categoria mais gastei este mes",
+        "onde tive mais despesas este mes",
+        "qual foi o maior rombo no meu orcamento",
+        "em que categoria eu mais gastei",
+        "o que mais pesou no meu bolso",
+        "qual foi minha maior despesa",
+        "onde foi embora a maior parte do salario",
+        "qual categoria lidera os gastos",
+        "no que torrei mais grana esse mes",
+        "me diga onde gastei mais dinheiro",
+        "qual despesa foi a mais cara",
+        "onde estou gastando a maior parte da renda"
+      ]
+    },
+    {
+      "name": "ONDE_GASTEI_MENOS",
+      "description": "Identifica a categoria com menor volume de gastos no período",
+      "examples": [
+        "onde gastei menos",
+        "onde gastei menos esse mes",
+        "onde gastei menos este mes",
+        "qual foi meu menor gasto",
+        "qual foi meu menor gasto esse mes",
+        "qual meu menor gasto",
+        "em qual categoria gastei menos",
+        "onde economizei mais esse mes",
+        "qual categoria teve menos despesa",
+        "qual foi a menor despesa",
+        "onde menos gastei dinheiro",
+        "no que gastei menos este mes",
+        "qual despesa foi a mais baixa",
+        "categoria com menor gasto",
+        "onde foi minha despesa mais barata",
+        "qual categoria gastei quase nada"
+      ]
+    },
+    {
+      "name": "GASTO_CATEGORIA",
+      "description": "Consulta o total gasto em uma categoria ou tipo de compra específica",
+      "examples": [
+        "quanto gastei com alimentacao",
+        "quanto gastei no mercado",
+        "quanto foi de uber esse mes",
+        "quanto gastei com transporte",
+        "qual foi meu gasto com lazer",
+        "quanto gastei com farmacia e saude",
+        "quanto gastei com restaurante",
+        "quanto foi gasto em educacao",
+        "quanto gastei com moradia e aluguel",
+        "qual o total gasto com compras",
+        "quanto paguei de contas este mes",
+        "quanto gastei com gasolina e combustivel",
+        "quanto gastei com assinaturas e streaming",
+        "qual o valor gasto em comida",
+        "quanto saiu em lazer esse mes"
+      ]
+    },
+    {
+      "name": "CONSULTAR_SALDO",
+      "description": "Consulta o saldo total disponível e saldos das contas bancárias",
+      "examples": [
+        "qual e o meu saldo atual",
+        "quanto tenho na conta",
+        "qual meu saldo total",
+        "quanto dinheiro eu tenho",
+        "meu saldo em contas",
+        "quanto sobrou de saldo",
+        "qual saldo disponivel",
+        "quanto dinheiro tenho agora",
+        "como esta meu saldo bancario",
+        "quanto eu tenho no banco",
+        "me mostra meu saldo",
+        "quanto sobrou na minha conta",
+        "qual o saldo geral das contas",
+        "to com quanto de saldo"
+      ]
+    },
+    {
+      "name": "CONSULTAR_GASTOS",
+      "description": "Consulta o valor total de despesas e saídas efetuadas no mês",
+      "examples": [
+        "quanto gastei este mes",
+        "qual o total das minhas despesas",
+        "quanto ja saiu da conta esse mes",
+        "meu total de gastos",
+        "quantas despesas tive este mes",
+        "quanto dinheiro gastei ate agora",
+        "total de saidas do mes",
+        "qual foi a soma de todas as despesas",
+        "quantos reais ja foram gastos esse mes",
+        "quanto ja gastei no total",
+        "me mostra o total de despesas deste mes"
+      ]
+    },
+    {
+      "name": "CONSULTAR_RECEITAS",
+      "description": "Consulta o valor total de receitas, salários e entradas no mês",
+      "examples": [
+        "quanto ganhei este mes",
+        "qual o total das minhas receitas",
+        "quanto dinheiro entrou na conta",
+        "meu salario ja entrou",
+        "total de entradas do mes",
+        "quanto recebi este mes",
+        "qual foi o total de ganhos",
+        "quanto entrou de dinheiro ate agora",
+        "quais foram minhas receitas",
+        "quanto faturei este mes"
+      ]
+    },
+    {
+      "name": "SAUDE_FINANCEIRA",
+      "description": "Diagnóstico geral da saúde financeira, taxa de poupança e sobra do mês",
+      "examples": [
+        "como esta minha saude financeira",
+        "minha situacao financeira esta boa",
+        "como estao minhas financas esse mes",
+        "estou no azul ou no vermelho",
+        "to conseguindo economizar esse mes",
+        "como esta meu ritmo financeiro",
+        "quanto sobrou do meu salario",
+        "qual a minha taxa de poupanca",
+        "estou guardando dinheiro esse mes",
+        "diagnostico das minhas financas",
+        "estou gastando mais do que ganho",
+        "analise das minhas contas este mes"
+      ]
+    },
+    {
+      "name": "CORTAR_GASTOS",
+      "description": "Sugestões de onde economizar dinheiro e oportunidades de cortes",
+      "examples": [
+        "onde posso cortar gastos",
+        "como posso economizar mais",
+        "dicas para cortar despesas",
+        "onde estou gastando muito dinheiro",
+        "onde posso economizar esse mes",
+        "oportunidades de corte de gastos",
+        "me de dicas para economizar",
+        "em que despesa posso dar uma segurada",
+        "onde da pra enxugar o orcamento",
+        "como reduzir meus custos este mes"
+      ]
+    }
+  ]
+}

@@ -39,12 +39,7 @@ import { auth, db } from "../firebase";
 import {
     carregarContextoBufunfa,
     ContextoFinanceiroBufunfa,
-    formatarMoeda,
-    gerarRespostaSaudeFinanceira,
-    gerarRespostaOndeCortarGastos,
-    gerarRespostaSaldo,
-    gerarRespostaGastos,
-    gerarRespostaReceitas,
+    responderPerguntaComIA,
 } from "../services/bufunfa/bufunfaService";
 
 import { colors } from "../styles/colors";
@@ -68,10 +63,10 @@ const INITIAL: Msg[] = [
 ];
 
 const QUICK = [
-    "Como está minha saúde financeira?",
-    "Onde posso cortar gastos?",
+    "Compara meus gastos desse mês com mês passado",
+    "Onde gastei mais este mês?",
     "Qual é o meu saldo atual?",
-    "Quanto gastei este mês?",
+    "Como está minha saúde financeira?",
 ];
 
 const RESPONSES: Record<string, string> = {
@@ -293,28 +288,12 @@ export default function TelaAssistente() {
         setTyping(true);
 
         setTimeout(() => {
-            let reply = "";
-            const pergunta = text.trim().toLowerCase();
-
-            if (contexto) {
-                if (pergunta.includes("saúde") || pergunta.includes("saude")) {
-                    reply = gerarRespostaSaudeFinanceira(contexto);
-                } else if (pergunta.includes("cortar") || pergunta.includes("economizar") || pergunta.includes("economia")) {
-                    reply = gerarRespostaOndeCortarGastos(contexto);
-                } else if (pergunta.includes("saldo") || pergunta.includes("quanto tenho") || pergunta.includes("conta")) {
-                    reply = gerarRespostaSaldo(contexto);
-                } else if (pergunta.includes("gastei") || pergunta.includes("gasto") || pergunta.includes("despesa")) {
-                    reply = gerarRespostaGastos(contexto);
-                } else if (pergunta.includes("ganhei") || pergunta.includes("receita") || pergunta.includes("entrada") || pergunta.includes("salário")) {
-                    reply = gerarRespostaReceitas(contexto);
-                } else {
-                    reply = RESPONSES[text.trim()] ||
-                        `Entendido! 📝 Analisei suas finanças atuais (Saldo total: ${formatarMoeda(contexto.saldoTotal)}, Despesas no mês: ${formatarMoeda(contexto.despesasMes)}).\n\nVocê pode me perguntar:\n• "Qual é o meu saldo atual?"\n• "Como está minha saúde financeira?"\n• "Onde posso cortar gastos?"\n• "Quanto gastei este mês?" 💡`;
-                }
-            } else {
-                reply = RESPONSES[text.trim()] ||
-                    "Entendido! 📝 Estou conectando aos seus dados financeiros... Tente me perguntar sobre saldo, despesas ou onde economizar!";
-            }
+            const { resposta, classificacao } = responderPerguntaComIA(text.trim(), contexto);
+            console.log(
+                `[Bufunfa IA] Intenção detectada: ${classificacao.intent} (Confiança: ${(
+                    classificacao.confidence * 100
+                ).toFixed(1)}%)`
+            );
 
             setTyping(false);
 
@@ -323,11 +302,11 @@ export default function TelaAssistente() {
                 {
                     id: Date.now() + 1,
                     role: "bot",
-                    text: reply,
+                    text: resposta,
                     time: now(),
                 },
             ]);
-        }, 1000);
+        }, 800);
     }
 
     return (

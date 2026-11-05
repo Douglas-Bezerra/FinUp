@@ -6,11 +6,26 @@ import {
     obterExtrato,
 } from "../../../../shared/services/finupService";
 import type { Conta, Transacao } from "../../../../shared/types/finup";
+import {
+    classificarMensagem,
+    IntencaoBufunfa,
+    ResultadoClassificacao,
+} from "./bufunfaClassifier";
 
 export interface CategoriaGasto {
     categoria: string;
     total: number;
     porcentagem: number;
+}
+
+export interface ResumoMesAnterior {
+    mesAno: string;
+    nomeMes: string;
+    receitas: number;
+    despesas: number;
+    saldoLiquido: number;
+    despesasPorCategoria: CategoriaGasto[];
+    maiorGasto: CategoriaGasto | null;
 }
 
 export interface ContextoFinanceiroBufunfa {
@@ -28,8 +43,10 @@ export interface ContextoFinanceiroBufunfa {
     taxaPoupanca: number;
     despesasPorCategoria: CategoriaGasto[];
     maiorGastoCategoria: CategoriaGasto | null;
+    menorGastoCategoria: CategoriaGasto | null;
     totalTransacoesMes: number;
     mesReferencia: string;
+    mesAnterior: ResumoMesAnterior | null;
 }
 
 /**
@@ -44,7 +61,18 @@ export function formatarMoeda(valor: number): string {
 }
 
 /**
- * Carrega e consolida o resumo financeiro real do usuário logado diretamente do Firestore.
+ * Normaliza data para string AAAA-MM
+ */
+function obterMesAno(data: any): string {
+    if (!data) return "";
+    if (data instanceof Date) {
+        return data.toISOString().slice(0, 7);
+    }
+    return String(data).slice(0, 7);
+}
+
+/**
+ * Carrega e consolida o histórico financeiro real do usuário logado via Firestore.
  */
 export async function carregarContextoBufunfa(
     db: Firestore,
@@ -68,31 +96,52 @@ export async function carregarContextoBufunfa(
         .filter((c) => c.ativo !== false)
         .reduce((total, c) => total + (c.saldoAtual || 0), 0);
 
-    const dataAtual = new Date();
-    const mesAnoAtual = dataAtual.toISOString().slice(0, 7); // AAAA-MM
-    const mesNome = dataAtual.toLocaleDateString("pt-BR", {
+    const agora = new Date();
+    const anoAtual = agora.getFullYear();
+    const mesAtualNum = agora.getMonth(); // 0 a 11
+
+    const mesAnoAtual = `${anoAtual}-${String(mesAtualNum + 1).padStart(2, "0")}`;
+
+    // Calcular mês anterior
+    const dataMesAnterior = new Date(anoAtual, mesAtualNum - 1, 1);
+    const mesAnoAnterior = `${dataMesAnterior.getFullYear()}-${String(
+        dataMesAnterior.getMonth() + 1
+    ).padStart(2, "0")}`;
+
+    const nomeMesAtual = agora.toLocaleDateString("pt-BR", {
         month: "long",
         year: "numeric",
     });
 
-    const transacoesMes = transacoes.filter((t) => {
-        if (!t.dataTransacao) return false;
-        const dataFormatada =
-            t.dataTransacao instanceof Date
-                ? t.dataTransacao.toISOString().slice(0, 7)
-                : String(t.dataTransacao).slice(0, 7);
+    const nomeMesAnterior = dataMesAnterior.toLocaleDateString("pt-BR", {
+        month: "long",
+        year: "numeric",
+    });
+
+    // 1. Filtrar transações efetivadas deste mês
+    const transacoesMesAtual = transacoes.filter((t) => {
         return (
-            dataFormatada === mesAnoAtual &&
+            obterMesAno(t.dataTransacao) === mesAnoAtual &&
             t.status === "EFETIVADO" &&
             !t.estornado
         );
     });
 
-    const receitasMes = transacoesMes
+    // 2. Filtrar transações efetivadas do mês anterior
+    const transacoesMesAnterior = transacoes.filter((t) => {
+        return (
+            obterMesAno(t.dataTransacao) === mesAnoAnterior &&
+            t.status === "EFETIVADO" &&
+            !t.estornado
+        );
+    });
+
+    // Métricas do Mês Atual
+    const receitasMes = transacoesMesAtual
         .filter((t) => t.tipoMovimentacao === "RECEITA")
         .reduce((total, t) => total + (t.valor || 0), 0);
 
-    const despesasMes = transacoesMes
+    const despesasMes = transacoesMesAtual
         .filter((t) => t.tipoMovimentacao === "DESPESA")
         .reduce((total, t) => total + (t.valor || 0), 0);
 
@@ -103,16 +152,16 @@ export async function carregarContextoBufunfa(
             ? Math.max(0, Math.round(((receitasMes - despesasMes) / receitasMes) * 100))
             : 0;
 
-    // Agrupar despesas por categoria
-    const mapaCategorias: Record<string, number> = {};
-    for (const t of transacoesMes) {
+    // Agrupar categorias do mês atual
+    const mapaCatAtual: Record<string, number> = {};
+    for (const t of transacoesMesAtual) {
         if (t.tipoMovimentacao === "DESPESA") {
             const cat = t.categoriaNome || "Outros";
-            mapaCategorias[cat] = (mapaCategorias[cat] || 0) + (t.valor || 0);
+            mapaCatAtual[cat] = (mapaCatAtual[cat] || 0) + (t.valor || 0);
         }
     }
 
-    const despesasPorCategoria: CategoriaGasto[] = Object.entries(mapaCategorias)
+    const despesasPorCategoria: CategoriaGasto[] = Object.entries(mapaCatAtual)
         .map(([categoria, total]) => ({
             categoria,
             total,
@@ -122,6 +171,46 @@ export async function carregarContextoBufunfa(
 
     const maiorGastoCategoria =
         despesasPorCategoria.length > 0 ? despesasPorCategoria[0] : null;
+
+    const menorGastoCategoria =
+        despesasPorCategoria.length > 0
+            ? despesasPorCategoria[despesasPorCategoria.length - 1]
+            : null;
+
+    // Métricas do Mês Anterior
+    const receitasMesAnt = transacoesMesAnterior
+        .filter((t) => t.tipoMovimentacao === "RECEITA")
+        .reduce((total, t) => total + (t.valor || 0), 0);
+
+    const despesasMesAnt = transacoesMesAnterior
+        .filter((t) => t.tipoMovimentacao === "DESPESA")
+        .reduce((total, t) => total + (t.valor || 0), 0);
+
+    const mapaCatAnt: Record<string, number> = {};
+    for (const t of transacoesMesAnterior) {
+        if (t.tipoMovimentacao === "DESPESA") {
+            const cat = t.categoriaNome || "Outros";
+            mapaCatAnt[cat] = (mapaCatAnt[cat] || 0) + (t.valor || 0);
+        }
+    }
+
+    const despesasPorCatAnt: CategoriaGasto[] = Object.entries(mapaCatAnt)
+        .map(([categoria, total]) => ({
+            categoria,
+            total,
+            porcentagem: despesasMesAnt > 0 ? (total / despesasMesAnt) * 100 : 0,
+        }))
+        .sort((a, b) => b.total - a.total);
+
+    const mesAnteriorResumo: ResumoMesAnterior = {
+        mesAno: mesAnoAnterior,
+        nomeMes: nomeMesAnterior,
+        receitas: receitasMesAnt,
+        despesas: despesasMesAnt,
+        saldoLiquido: receitasMesAnt - despesasMesAnt,
+        despesasPorCategoria: despesasPorCatAnt,
+        maiorGasto: despesasPorCatAnt.length > 0 ? despesasPorCatAnt[0] : null,
+    };
 
     return {
         nomeUsuario: perfil.nome || "Usuário",
@@ -138,14 +227,86 @@ export async function carregarContextoBufunfa(
         taxaPoupanca,
         despesasPorCategoria,
         maiorGastoCategoria,
-        totalTransacoesMes: transacoesMes.length,
-        mesReferencia: mesNome,
+        menorGastoCategoria,
+        totalTransacoesMes: transacoesMesAtual.length,
+        mesReferencia: nomeMesAtual,
+        mesAnterior: mesAnteriorResumo,
     };
 }
 
 /**
- * Respostas dinâmicas do Bufunfa geradas a partir dos dados reais do banco.
+ * Gera análise comparativa detalhada entre o mês atual e o mês anterior.
  */
+export function gerarRespostaComparativoMesAnterior(
+    ctx: ContextoFinanceiroBufunfa
+): string {
+    const ant = ctx.mesAnterior;
+
+    if (!ant || (ant.despesas === 0 && ant.receitas === 0)) {
+        return `📊 Comparativo Mensal:\n\nAinda não encontrei registros completos no mês anterior (${ant?.nomeMes || "passado"}) para traçar o comparativo.\n\nNeste mês (${ctx.mesReferencia}), você já teve ${formatarMoeda(ctx.despesasMes)} em despesas e ${formatarMoeda(ctx.receitasMes)} em receitas. Assim que houver histórico em ambos os meses, farei um comparativo detalhado! 💡`;
+    }
+
+    const difDespesas = ctx.despesasMes - ant.despesas;
+    const variacaoPct =
+        ant.despesas > 0
+            ? ((difDespesas / ant.despesas) * 100).toFixed(1)
+            : "0";
+
+    const statusGasto =
+        difDespesas > 0
+            ? `🔺 Você gastou ${formatarMoeda(difDespesas)} (+${variacaoPct}%) a mais que no mês anterior.`
+            : difDespesas < 0
+            ? `🟢 Parabéns! Você economizou ${formatarMoeda(Math.abs(difDespesas))} (-${Math.abs(Number(variacaoPct))}%) em relação ao mês anterior.`
+            : `⚖️ Seus gastos estão exatamente iguais aos do mês anterior.`;
+
+    const maiorTexto = ctx.maiorGastoCategoria
+        ? `\n• Onde gastou mais neste mês: ${ctx.maiorGastoCategoria.categoria} (${formatarMoeda(ctx.maiorGastoCategoria.total)})`
+        : "";
+
+    const menorTexto = ctx.menorGastoCategoria
+        ? `\n• Onde gastou menos neste mês: ${ctx.menorGastoCategoria.categoria} (${formatarMoeda(ctx.menorGastoCategoria.total)})`
+        : "";
+
+    return `📊 Comparativo: ${ctx.mesReferencia} vs ${ant.nomeMes}:\n\n• Despesas neste mês: ${formatarMoeda(ctx.despesasMes)}\n• Despesas mês passado: ${formatarMoeda(ant.despesas)}\n\n${statusGasto}${maiorTexto}${menorTexto}`;
+}
+
+export function gerarRespostaMaiorGasto(ctx: ContextoFinanceiroBufunfa): string {
+    if (!ctx.maiorGastoCategoria) {
+        return `🔍 Você ainda não tem despesas registradas em ${ctx.mesReferencia}.`;
+    }
+
+    return `🏆 Seu maior gasto neste mês foi em "${ctx.maiorGastoCategoria.categoria}":\n\n• Valor: ${formatarMoeda(ctx.maiorGastoCategoria.total)}\n• Representa ${ctx.maiorGastoCategoria.porcentagem.toFixed(1)}% de todas as suas despesas no mês.\n\nTotal de despesas acumuladas: ${formatarMoeda(ctx.despesasMes)} 💡`;
+}
+
+export function gerarRespostaMenorGasto(ctx: ContextoFinanceiroBufunfa): string {
+    if (!ctx.menorGastoCategoria) {
+        return `🔍 Você ainda não tem despesas registradas em ${ctx.mesReferencia}.`;
+    }
+
+    return `📉 Seu menor gasto registrado neste mês foi em "${ctx.menorGastoCategoria.categoria}":\n\n• Valor: ${formatarMoeda(ctx.menorGastoCategoria.total)} (${ctx.menorGastoCategoria.porcentagem.toFixed(1)}% das despesas).`;
+}
+
+export function gerarRespostaGastoCategoria(
+    ctx: ContextoFinanceiroBufunfa,
+    categoriaDetectada?: string
+): string {
+    if (!categoriaDetectada) {
+        return gerarRespostaOndeCortarGastos(ctx);
+    }
+
+    // Busca exata ou por correspondência parcial
+    const match = ctx.despesasPorCategoria.find(
+        (c) =>
+            c.categoria.toLowerCase().includes(categoriaDetectada.toLowerCase()) ||
+            categoriaDetectada.toLowerCase().includes(c.categoria.toLowerCase())
+    );
+
+    if (!match) {
+        return `🔍 Não encontrei gastos registrados na categoria "${categoriaDetectada}" em ${ctx.mesReferencia}.\n\nSuas categorias com lançamentos este mês são: ${ctx.despesasPorCategoria.map((c) => c.categoria).join(", ") || "nenhuma no momento"}.`;
+    }
+
+    return `💳 Seus gastos com "${match.categoria}" em ${ctx.mesReferencia}:\n\n• Total: ${formatarMoeda(match.total)}\n• Representa ${match.porcentagem.toFixed(1)}% das suas despesas do mês.\n\nTotal geral de despesas: ${formatarMoeda(ctx.despesasMes)} 💡`;
+}
 
 export function gerarRespostaSaudeFinanceira(ctx: ContextoFinanceiroBufunfa): string {
     if (ctx.receitasMes === 0 && ctx.despesasMes === 0) {
@@ -194,4 +355,70 @@ export function gerarRespostaGastos(ctx: ContextoFinanceiroBufunfa): string {
 
 export function gerarRespostaReceitas(ctx: ContextoFinanceiroBufunfa): string {
     return `📈 Neste mês (${ctx.mesReferencia}), suas receitas totalizam ${formatarMoeda(ctx.receitasMes)}.`;
+}
+
+/**
+ * Processa a mensagem do usuário utilizando o Classificador Naive Bayes local.
+ */
+export function responderPerguntaComIA(
+    texto: string,
+    ctx: ContextoFinanceiroBufunfa | null
+): { resposta: string; classificacao: ResultadoClassificacao } {
+    const classificacao = classificarMensagem(texto);
+
+    if (!ctx) {
+        return {
+            resposta:
+                "Entendido! 📝 Estou conectando aos seus dados financeiros... Tente me perguntar novamente em alguns instantes!",
+            classificacao,
+        };
+    }
+
+    let resposta = "";
+
+    switch (classificacao.intent) {
+        case "COMPARAR_MES_ANTERIOR":
+            resposta = gerarRespostaComparativoMesAnterior(ctx);
+            break;
+
+        case "ONDE_GASTEI_MAIS":
+            resposta = gerarRespostaMaiorGasto(ctx);
+            break;
+
+        case "ONDE_GASTEI_MENOS":
+            resposta = gerarRespostaMenorGasto(ctx);
+            break;
+
+        case "GASTO_CATEGORIA":
+            resposta = gerarRespostaGastoCategoria(ctx, classificacao.categoriaSugerida);
+            break;
+
+        case "CONSULTAR_SALDO":
+            resposta = gerarRespostaSaldo(ctx);
+            break;
+
+        case "CONSULTAR_GASTOS":
+            resposta = gerarRespostaGastos(ctx);
+            break;
+
+        case "CONSULTAR_RECEITAS":
+            resposta = gerarRespostaReceitas(ctx);
+            break;
+
+        case "SAUDE_FINANCEIRA":
+            resposta = gerarRespostaSaudeFinanceira(ctx);
+            break;
+
+        case "CORTAR_GASTOS":
+            resposta = gerarRespostaOndeCortarGastos(ctx);
+            break;
+
+        default:
+            resposta = `Entendido! 📝 Analisei suas finanças atuais (Saldo total: ${formatarMoeda(
+                ctx.saldoTotal
+            )}, Despesas no mês: ${formatarMoeda(ctx.despesasMes)}).\n\nVocê pode me perguntar coisas como:\n• "Compara meus gastos desse mês com mês passado"\n• "Onde gastei mais?" ou "Onde gastei menos?"\n• "Quanto gastei com alimentação?"\n• "Qual é o meu saldo atual?" 💡`;
+            break;
+    }
+
+    return { resposta, classificacao };
 }
