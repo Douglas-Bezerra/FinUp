@@ -1,4 +1,8 @@
+/*
+  webapp/src/styles/overview.css
+  Estilos para a tela Visão Geral */
 /* Styles for the financial overview screen. */
+/* ===================================================== */
 
 .overview-institution-tabs { display: flex; gap: 8px; overflow-x: auto; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--finup-border); }
 .overview-institution-tab { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 9px; min-height: 42px; padding: 0 16px; border: 1px solid transparent; border-radius: 9px 9px 0 0; background: transparent; color: var(--finup-muted); cursor: pointer; font: inherit; font-size: 14px; font-weight: 650; }
@@ -30,6 +34,7 @@
 .overview-account-tab { display: grid; flex: 0 0 auto; gap: 6px; min-width: 170px; padding: 12px 14px; border: 1px solid var(--finup-border); border-radius: 10px; background: var(--finup-background); color: var(--finup-muted); cursor: pointer; font: inherit; text-align: left; }
 .overview-account-tab span { font-size: 12px; }
 .overview-account-tab strong { color: var(--finup-foreground); font-size: 14px; }
+.overview-account-tab strong small { display: block; margin-bottom: 2px; color: var(--finup-muted); font-size: 10px; font-weight: 600; }
 .overview-account-tab:hover,
 .overview-account-tab.is-active { border-color: var(--finup-primary); }
 .overview-account-panel { padding: 18px; border: 1px solid var(--finup-border); border-radius: 10px; background: var(--finup-background); }
@@ -37,11 +42,51 @@
 .overview-account-heading h3 { margin: 0; color: var(--finup-foreground); font-size: 16px; }
 .overview-account-heading p { margin: 6px 0 0; color: var(--finup-muted); font-size: 13px; }
 .overview-account-heading p strong { color: var(--finup-foreground); }
+.overview-credit-summary { display: flex; flex-wrap: wrap; gap: 10px 18px; margin-top: 8px; }
+.overview-credit-summary > div { display: grid; gap: 4px; min-width: 130px; }
+.overview-credit-summary span { color: var(--finup-muted); font-size: 11px; }
+.overview-credit-summary strong { color: var(--finup-foreground); font-size: 14px; }
 .overview-record-link { flex: 0 0 auto; padding: 9px 12px; border: 1px solid var(--finup-border); border-radius: 8px; color: var(--finup-muted); font-size: 12px; text-decoration: none; }
 .overview-record-link:hover { border-color: var(--finup-primary); color: var(--finup-primary); }
 .overview-statement-title { margin: 0 0 10px; color: var(--finup-foreground); font-size: 14px; }
 .overview-invoice-tabs { margin: 0 0 14px; border-bottom: 1px solid var(--finup-border); }
 .overview-invoice-panel { min-height: 60px; }
+.overview-view-tabs { display: flex; gap: 8px; margin-bottom: 14px; overflow-x: auto; }
+.overview-category-analysis { min-width: 0; padding: 18px; border: 1px solid var(--finup-border); border-radius: 12px; background: var(--finup-surface); }
+.overview-month-tabs { display: flex; gap: 8px; margin-bottom: 12px; overflow-x: auto; border-bottom: 1px solid var(--finup-border); }
+.overview-category-analysis-tabs { margin-bottom: 14px; }
+.overview-category-chart-panel { display: grid; grid-template-columns: minmax(220px, 320px) minmax(0, 1fr); align-items: center; gap: 28px; padding: 18px; }
+.overview-category-pie { aspect-ratio: 1; width: 100%; max-width: 320px; border-radius: 50%; display: grid; place-items: center; justify-self: center; }
+.overview-category-pie-center { display: grid; place-items: center; width: 58%; aspect-ratio: 1; border-radius: 50%; background: var(--finup-surface); color: var(--finup-muted); text-align: center; }
+.overview-category-pie-center span { font-size: 12px; }
+.overview-category-pie-center strong { color: var(--finup-foreground); font-size: 16px; }
+.overview-category-chart-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.overview-category-chart-list li { display: grid; grid-template-columns: 12px minmax(0, 1fr); align-items: center; gap: 8px; }
+.overview-category-chart-color { width: 12px; height: 12px; border-radius: 50%; }
+.overview-category-chart-list button { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; width: 100%; padding: 10px 12px; border: 1px solid var(--finup-border); border-radius: 8px; background: var(--finup-background); color: var(--finup-foreground); cursor: pointer; text-align: left; font: inherit; }
+.overview-category-chart-list button:hover { border-color: var(--finup-primary); }
+.overview-category-chart-list button strong { grid-row: 1 / span 2; grid-column: 2; align-self: center; }
+.overview-category-chart-list button small { color: var(--finup-muted); }
+.overview-payment-warning { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; padding: 12px 14px; border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 9px; background: rgba(245, 158, 11, 0.08); }
+.overview-payment-warning.is-overdue { border-color: rgba(239, 68, 68, 0.38); background: rgba(239, 68, 68, 0.08); }
+.overview-payment-warning.is-due { border-color: rgba(245, 158, 11, 0.5); background: rgba(245, 158, 11, 0.12); }
+.overview-payment-warning > div { display: grid; gap: 4px; }
+.overview-payment-warning strong { color: var(--finup-foreground); font-size: 13px; }
+.overview-payment-warning span { color: var(--finup-muted); font-size: 12px; }
+.overview-pay-button { flex: 0 0 auto; min-height: 38px; padding: 0 14px; border: 0; border-radius: 8px; background: var(--finup-primary); color: #08110b; cursor: pointer; font: inherit; font-size: 13px; font-weight: 750; }
+.overview-pay-button:disabled { cursor: wait; opacity: 0.65; }
+.overview-payment-overlay { position: fixed; z-index: 1000; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(0, 0, 0, 0.55); }
+.overview-payment-modal { width: min(460px, 100%); padding: 20px; border: 1px solid var(--finup-border); border-radius: 12px; background: var(--finup-surface); box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35); }
+.overview-payment-modal h3 { margin: 0; color: var(--finup-foreground); }
+.overview-payment-modal > p { margin: 8px 0 14px; color: var(--finup-muted); font-size: 13px; }
+.overview-payment-total { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 14px; padding: 12px; border-radius: 8px; background: var(--finup-background); }
+.overview-payment-total span { color: var(--finup-muted); font-size: 12px; }
+.overview-payment-total strong { color: var(--finup-foreground); font-size: 15px; }
+.overview-payment-modal label { display: block; margin-bottom: 7px; color: var(--finup-foreground); font-size: 12px; font-weight: 700; }
+.overview-payment-modal select { width: 100%; min-height: 42px; padding: 0 10px; border: 1px solid var(--finup-border); border-radius: 8px; background: var(--finup-background); color: var(--finup-foreground); font: inherit; }
+.overview-payment-error { margin: 10px 0 0 !important; color: #ef4444 !important; }
+.overview-payment-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+.overview-payment-cancel { min-height: 38px; padding: 0 14px; border: 1px solid var(--finup-border); border-radius: 8px; background: transparent; color: var(--finup-muted); cursor: pointer; font: inherit; }
 .overview-invoice-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 28px; margin-bottom: 12px; padding: 14px; border: 1px solid var(--finup-border); border-radius: 9px; background: var(--finup-surface); }
 .overview-invoice-summary > div { display: grid; gap: 5px; }
 .overview-invoice-summary > div > span { color: var(--finup-subtle); font-size: 11px; text-transform: capitalize; }
@@ -50,6 +95,7 @@
 .overview-invoice-status.is-paga { background: rgba(74, 222, 128, 0.12); color: var(--finup-primary); }
 .overview-invoice-status.is-aberta { background: rgba(245, 158, 11, 0.12); color: var(--finup-warning, #f59e0b); }
 .overview-future-invoices { display: grid; gap: 18px; }
+.overview-future-invoice-tabs { display: flex; gap: 8px; overflow-x: auto; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--finup-border); }
 .overview-future-invoice + .overview-future-invoice { padding-top: 16px; border-top: 1px solid var(--finup-border); }
 .overview-movements { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .overview-movement { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-width: 0; padding: 12px 14px; border: 1px solid var(--finup-border); border-radius: 8px; background: var(--finup-surface); }
@@ -65,6 +111,11 @@
 @media (max-width: 600px) {
   .overview-institution-panel { padding: 14px; }
   .overview-account-panel { padding: 14px; }
+  .overview-category-analysis { padding: 14px; }
+  .overview-category-chart-panel { grid-template-columns: 1fr; gap: 18px; padding: 8px 0; }
+  .overview-category-pie { max-width: 240px; }
+  .overview-payment-warning { align-items: stretch; flex-direction: column; }
+  .overview-pay-button { align-self: flex-start; }
   .overview-account-heading { align-items: stretch; flex-direction: column; }
   .overview-record-link { align-self: flex-start; }
   .overview-invoice-summary { gap: 12px 20px; }

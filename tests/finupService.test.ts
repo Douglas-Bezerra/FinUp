@@ -222,6 +222,65 @@ test('profile registration, pending entries and transfers update Firestore atomi
   )
 })
 
+test('a funded savings account is created atomically from the principal account', async () => {
+  const db = getTestFirestore(environment.authenticatedContext('savings-owner', {
+    email: 'savings-owner@finup.test',
+  }))
+  await criarUsuarioPrincipal(db, 'savings-owner', 'savings-owner@finup.test', 'Pessoa Caixinha')
+  const [principal] = await listarContas(db, 'savings-owner')
+  await cadastrarTransacao(db, 'savings-owner', {
+    descricao: 'Saldo disponível',
+    valor: 100,
+    tipoMovimentacao: 'RECEITA',
+    status: 'EFETIVADO',
+    dataTransacao: new Date('2026-11-02T12:00:00.000Z'),
+    contaId: principal.id,
+    categoriaId: '10000000-0000-4000-8000-000000000001',
+    categoriaNome: 'Salário',
+    criadoPorUsuarioId: 'savings-owner',
+    criadoPorNome: 'Pessoa Caixinha',
+    estornado: false,
+  })
+
+  await assert.rejects(
+    setDoc(doc(db, 'familias', 'savings-owner', 'contas', 'caixinha-sem-funding'), {
+      nome: 'Caixinha sem funding',
+      tipoConta: 'CAIXINHA',
+      saldoAtual: 50,
+      ativo: true,
+      criadaPorUsuarioId: 'savings-owner',
+      dataCriacao: Timestamp.now(),
+    }),
+  )
+  await assert.rejects(
+    criarConta(db, 'savings-owner', 'savings-owner', {
+      nome: 'Reserva',
+      tipoConta: 'CAIXINHA',
+      saldoAtual: 101,
+      ativo: true,
+    }),
+    /não pode ser maior que o saldo disponível/,
+  )
+  let accounts = await listarContas(db, 'savings-owner')
+  assert.equal(accounts.length, 1)
+  assert.equal(accounts.find((account) => account.id === principal.id)?.saldoAtual, 100)
+
+  const savingsId = await criarConta(db, 'savings-owner', 'savings-owner', {
+    nome: 'Reserva',
+    tipoConta: 'CAIXINHA',
+    saldoAtual: 70,
+    ativo: true,
+  })
+  accounts = await listarContas(db, 'savings-owner')
+  assert.equal(accounts.find((account) => account.id === principal.id)?.saldoAtual, 30)
+  assert.equal(accounts.find((account) => account.id === savingsId)?.saldoAtual, 70)
+
+  const transfers = (await obterExtrato(db, 'savings-owner'))
+    .filter((entry) => entry.transferenciaId)
+  assert.equal(transfers.length, 2)
+  assert.ok(transfers.every((entry) => entry.descricao === 'Saldo inicial da Caixinha: Reserva'))
+})
+
 test('card installments create their invoice atomically and are idempotent', async () => {
   const db = getTestFirestore(environment.authenticatedContext('installment-owner', {
     email: 'installment-owner@finup.test',

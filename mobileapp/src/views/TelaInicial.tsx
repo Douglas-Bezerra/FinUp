@@ -1,6 +1,6 @@
-import { StyleSheet, Text, View, Pressable, ScrollView } from "react-native";
-import { useEffect, useState } from "react";
-import { useNavigation } from "@react-navigation/native";
+import { RefreshControl, StyleSheet, Text, View, Pressable, ScrollView } from "react-native";
+import { useCallback, useState } from "react";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 import { RootStackParamList } from "../navigation/types";
@@ -17,48 +17,62 @@ export default function TelaInicial() {
         useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const [nomeUsuario, setNomeUsuario] = useState("");
     const [saldoTotal, setSaldoTotal] = useState(0);
+    const [saldoCaixinha, setSaldoCaixinha] = useState(0);
     const [receitas, setReceitas] = useState(0);
     const [despesas, setDespesas] = useState(0);
     const [loadError, setLoadError] = useState("");
+    const [refreshing, setRefreshing] = useState(false);
 
     const [transacoes, setTransacoes] = useState<Transacao[]>([]);
     const [larguraGrafico, setLarguraGrafico] = useState(0);
 
-    useEffect(() => {
-        let cancelled = false;
-        async function carregarResumo() {
-            try {
-                const currentUser = auth.currentUser;
-                if (!currentUser) throw new Error("Sua sessão expirou.");
-                const profile = await obterUsuario(db, currentUser.uid);
-                if (!profile) throw new Error("Não encontramos seu perfil financeiro.");
-                const [accounts, transactions] = await Promise.all([
-                    listarContas(db, profile.familiaId),
-                    obterExtrato(db, profile.familiaId),
-                ]);
-                if (cancelled) return;
-                setTransacoes(transactions);
-                setNomeUsuario(profile.nome);
-                setSaldoTotal(accounts.reduce((total, account) => total + account.saldoAtual, 0));
-                const currentMonth = new Date().toISOString().slice(0, 7);
-                setReceitas(transactions
-                    .filter((item) => item.tipoMovimentacao === "RECEITA" && item.status === "EFETIVADO" && !item.estornado
-                        && item.dataTransacao.toISOString().slice(0, 7) === currentMonth)
-                    .reduce((total, item) => total + item.valor, 0));
-                setDespesas(transactions
-                    .filter((item) => item.tipoMovimentacao === "DESPESA" && item.status === "EFETIVADO" && !item.estornado
-                        && item.dataTransacao.toISOString().slice(0, 7) === currentMonth)
-                    .reduce((total, item) => total + item.valor, 0));
-            } catch (error) {
-                console.error("Erro ao carregar resumo financeiro:", error);
-                if (!cancelled) setLoadError("Não foi possível carregar seu resumo financeiro.");
-            }
+    const carregarResumo = useCallback(async (estaAtivo: () => boolean = () => true) => {
+        setRefreshing(true);
+        setLoadError("");
+        try {
+            const currentUser = auth.currentUser;
+            if (!currentUser) throw new Error("Sua sessão expirou.");
+            const profile = await obterUsuario(db, currentUser.uid);
+            if (!profile) throw new Error("Não encontramos seu perfil financeiro.");
+            const [accounts, transactions] = await Promise.all([
+                listarContas(db, profile.familiaId),
+                obterExtrato(db, profile.familiaId),
+            ]);
+            if (!estaAtivo()) return;
+            setTransacoes(transactions);
+            setNomeUsuario(profile.nome);
+            setSaldoTotal(accounts
+                .filter((account) => account.tipoConta !== "CAIXINHA")
+                .reduce((total, account) => total + account.saldoAtual, 0));
+            setSaldoCaixinha(accounts
+                .filter((account) => account.tipoConta === "CAIXINHA")
+                .reduce((total, account) => total + account.saldoAtual, 0));
+            const currentMonth = new Date().toISOString().slice(0, 7);
+            setReceitas(transactions
+                .filter((item) => item.tipoMovimentacao === "RECEITA" && item.status === "EFETIVADO" && !item.estornado
+                    && item.dataTransacao.toISOString().slice(0, 7) === currentMonth)
+                .reduce((total, item) => total + item.valor, 0));
+            setDespesas(transactions
+                .filter((item) => item.tipoMovimentacao === "DESPESA" && item.status === "EFETIVADO" && !item.estornado
+                    && item.dataTransacao.toISOString().slice(0, 7) === currentMonth)
+                .reduce((total, item) => total + item.valor, 0));
+        } catch (error) {
+            console.error("Erro ao carregar resumo financeiro:", error);
+            if (estaAtivo()) setLoadError("Não foi possível carregar seu resumo financeiro.");
+        } finally {
+            if (estaAtivo()) setRefreshing(false);
         }
-        void carregarResumo();
-        return () => {
-            cancelled = true;
-        };
     }, []);
+
+    useFocusEffect(
+        useCallback(() => {
+            let estaAtivo = true;
+            void carregarResumo(() => estaAtivo);
+            return () => {
+                estaAtivo = false;
+            };
+        }, [carregarResumo]),
+    );
 
     const currency = (value: number) => value.toLocaleString("pt-BR", {
         style: "currency",
@@ -193,7 +207,16 @@ export default function TelaInicial() {
                         : "→"}`;
 
     return (
-        <View style={styles.container}>
+        <ScrollView
+            style={styles.container}
+            contentContainerStyle={styles.contentContainer}
+            refreshControl={
+                <RefreshControl
+                    refreshing={refreshing}
+                    onRefresh={() => void carregarResumo()}
+                />
+            }
+        >
 
             {/* Cabeçalho */}
             <View style={styles.header}>
@@ -245,13 +268,16 @@ export default function TelaInicial() {
                     <Text style={styles.actionLabel}>Despesa</Text>
                 </Pressable>
 
-                <View style={styles.quickAction}>
+                <Pressable
+                    style={styles.quickAction}
+                    onPress={() => navigation.navigate("Caixinha")}
+                >
                     <View style={[styles.actionIcon, { backgroundColor: "rgba(96, 165, 250, 0.12)" }]}>
                         <Text style={[styles.actionIconText, { color: colors.info }]}>$</Text>
                     </View>
 
                     <Text style={styles.actionLabel}>Caixinha</Text>
-                </View>
+                </Pressable>
 
                 <Pressable
                     style={styles.quickAction}
@@ -304,7 +330,7 @@ export default function TelaInicial() {
 
                     <View>
                         <Text style={styles.summaryLabel}>Caixinha</Text>
-                        <Text style={styles.savings}>{currency(0)}</Text>
+                        <Text style={styles.savings}>{currency(saldoCaixinha)}</Text>
                     </View>
                 </View>
             </View>
@@ -437,7 +463,7 @@ export default function TelaInicial() {
             </View>
 
 
-        </View>
+        </ScrollView>
     );
 }
 
@@ -445,8 +471,11 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: colors.background,
+    },
+    contentContainer: {
         paddingHorizontal: 20,
         paddingTop: 50,
+        paddingBottom: 24,
     },
     header: {
         flexDirection: "row",
@@ -507,17 +536,17 @@ const styles = StyleSheet.create({
     },
     income: {
         color: colors.primary,
-        fontSize: 18,
+        fontSize: 15,
         fontWeight: "600",
     },
     expense: {
         color: "#FF6B6B",
-        fontSize: 18,
+        fontSize: 15,
         fontWeight: "600",
     },
     savings: {
         color: colors.info,
-        fontSize: 18,
+        fontSize: 15,
         fontWeight: "600",
     },
     divider: {
@@ -634,7 +663,7 @@ const styles = StyleSheet.create({
         marginTop: 8,
     },
     monthActive: {
-        backgroundColor: colors.primary,
+        backgroundColor: colors.foreground + "5A", // 10% opacity
     },
     monthText: {
         color: colors.mutedForeground,

@@ -32,6 +32,8 @@ import type {
   Usuario,
 } from '../types/finup'
 
+const DEFAULT_TRANSFER_CATEGORY_ID = '30000000-0000-4000-8000-000000000001'
+
 const defaultCategories: Categoria[] = [
   { id: '10000000-0000-4000-8000-000000000001', nome: 'Salário', icone: 'cash-outline', tipo: 'RECEITA' },
   { id: '10000000-0000-4000-8000-000000000002', nome: 'Freelance', icone: 'briefcase-outline', tipo: 'RECEITA' },
@@ -48,7 +50,7 @@ const defaultCategories: Categoria[] = [
   { id: '20000000-0000-4000-8000-000000000007', nome: 'Assinatura', icone: 'repeat-outline', tipo: 'DESPESA' },
   { id: '20000000-0000-4000-8000-000000000008', nome: 'Tecnologia', icone: 'phone-portrait-outline', tipo: 'DESPESA' },
   { id: '20000000-0000-4000-8000-000000000009', nome: 'Outros', icone: 'ellipsis-horizontal-outline', tipo: 'DESPESA' },
-  { id: '30000000-0000-4000-8000-000000000001', nome: 'Transferência', icone: 'swap-horizontal-outline', tipo: 'TRANSFERENCIA' },
+  { id: DEFAULT_TRANSFER_CATEGORY_ID, nome: 'Transferência', icone: 'swap-horizontal-outline', tipo: 'TRANSFERENCIA' },
 ]
 
 function familyCollection(db: Firestore, familyId: string, name: string) {
@@ -399,16 +401,108 @@ export async function criarConta(
   if (conta.tipoConta === 'CARTAO_CREDITO' && conta.limiteTotal != null && conta.limiteTotal <= 0) {
     throw new Error('O limite da conta cartão deve ser maior que zero.')
   }
+  const initialBalance = Number(conta.saldoAtual)
+  if (conta.tipoConta === 'CAIXINHA' && (!Number.isFinite(initialBalance) || initialBalance < 0)) {
+    throw new Error('O saldo inicial da Caixinha deve ser igual ou maior que zero.')
+  }
   const accountData = Object.fromEntries(
     Object.entries({
       ...conta,
       agencia: conta.agencia?.trim() || null,
       numeroConta: conta.numeroConta?.trim() || null,
-      saldoAtual: Number(conta.saldoAtual),
+      saldoAtual: initialBalance,
       criadaPorUsuarioId: usuarioId,
       dataCriacao: Timestamp.now(),
     }).filter(([, value]) => value !== undefined),
   )
+  if (conta.tipoConta === 'CAIXINHA' && initialBalance > 0) {
+    const creator = await obterUsuario(db, usuarioId)
+    if (!creator) throw new Error('Não encontramos o perfil de quem está criando a Caixinha.')
+    const accountRef = doc(familyCollection(db, familiaId, 'contas'))
+    const principalRef = familyDocument(db, familiaId, 'contas', 'principal')
+    const transferRef = doc(familyCollection(db, familiaId, 'transferencias'))
+    const originTransactionRef = doc(familyCollection(db, familiaId, 'transacoes'))
+    const destinationTransactionRef = doc(familyCollection(db, familiaId, 'transacoes'))
+    const logRef = doc(familyCollection(db, familiaId, 'logs_atividades'))
+    const now = Timestamp.now()
+    const transferDate = now
+    const description = `Saldo inicial da Caixinha: ${conta.nome.trim()}`
+
+    await runTransaction(db, async (transaction) => {
+      const principalSnapshot = await transaction.get(principalRef)
+      if (!principalSnapshot.exists()
+        || principalSnapshot.data().tipoConta !== 'CORRENTE'
+        || principalSnapshot.data().ativo === false) {
+        throw new Error('A conta principal ativa não foi encontrada para financiar a Caixinha.')
+      }
+
+      const principalBalance = Number(principalSnapshot.data().saldoAtual)
+      if (!Number.isFinite(principalBalance)) {
+        throw new Error('O saldo atual da conta principal é inválido.')
+      }
+      if (principalBalance < initialBalance) {
+        throw new Error('O saldo inicial da Caixinha não pode ser maior que o saldo disponível na conta principal.')
+      }
+
+      transaction.update(principalRef, {
+        saldoAtual: principalBalance - initialBalance,
+        ultimaMovimentacaoId: originTransactionRef.id,
+      })
+      transaction.set(accountRef, {
+        ...accountData,
+        ultimaMovimentacaoId: destinationTransactionRef.id,
+      })
+      transaction.set(transferRef, {
+        contaOrigemId: 'principal',
+        contaDestinoId: accountRef.id,
+        transacaoOrigemId: originTransactionRef.id,
+        transacaoDestinoId: destinationTransactionRef.id,
+        status: 'EFETIVADO',
+        valor: initialBalance,
+        dataTransacao: transferDate,
+        criadoPorUsuarioId: usuarioId,
+        dataCriacao: now,
+      })
+      const sharedData = {
+        descricao: description,
+        valor: initialBalance,
+        tipoMovimentacao: 'TRANSFERENCIA',
+        status: 'EFETIVADO',
+        categoriaId: DEFAULT_TRANSFER_CATEGORY_ID,
+        categoriaNome: 'Transferência',
+        criadoPorUsuarioId: usuarioId,
+        criadoPorNome: creator.nome,
+        transferenciaId: transferRef.id,
+        dataTransacao: transferDate,
+        dataCriacao: now,
+        dataAtualizacao: now,
+        estornado: false,
+      }
+      transaction.set(originTransactionRef, {
+        ...sharedData,
+        contaId: 'principal',
+        contaDestinoId: accountRef.id,
+        direcaoTransferencia: 'SAIDA',
+      })
+      transaction.set(destinationTransactionRef, {
+        ...sharedData,
+        contaId: accountRef.id,
+        contaDestinoId: 'principal',
+        direcaoTransferencia: 'ENTRADA',
+      })
+      transaction.set(logRef, {
+        transacaoId: transferRef.id,
+        usuarioId,
+        acao: 'CRIAR_TRANSFERENCIA',
+        dataAcao: now,
+        descricaoSnapshot: description,
+        valoresAntigos: {},
+        valoresNovos: { valor: initialBalance, status: 'EFETIVADO' },
+      })
+    })
+    return accountRef.id
+  }
+
   const reference = await addDoc(familyCollection(db, familiaId, 'contas'), accountData)
   return reference.id
 }
@@ -680,6 +774,96 @@ export async function atualizarFaturaCartao(
     throw new Error('Os valores da fatura são inválidos.')
   }
   await updateDoc(familyDocument(db, familiaId, 'faturas_cartao', faturaId), fatura)
+}
+
+export async function pagarFaturaCartao(
+  db: Firestore,
+  familiaId: string,
+  usuarioId: string,
+  usuarioNome: string,
+  faturaId: string,
+  contaOrigemId: string,
+  descricao: string,
+): Promise<void> {
+  const invoiceRef = familyDocument(db, familiaId, 'faturas_cartao', faturaId)
+  const sourceAccountRef = familyDocument(db, familiaId, 'contas', contaOrigemId)
+  const transactionRef = doc(familyCollection(db, familiaId, 'transacoes'))
+  const logRef = doc(familyCollection(db, familiaId, 'logs_atividades'))
+  const now = Timestamp.now()
+
+  await runTransaction(db, async (transaction) => {
+    const [invoiceSnapshot, sourceSnapshot] = await Promise.all([
+      transaction.get(invoiceRef),
+      transaction.get(sourceAccountRef),
+    ])
+    if (!invoiceSnapshot.exists()) throw new Error('A fatura selecionada não existe.')
+    if (!sourceSnapshot.exists()) throw new Error('A conta de origem não existe.')
+
+    const invoice = invoiceSnapshot.data() as {
+      contaId: string
+      valorTotal: number
+      valorPago: number
+      status: FaturaCartao['status']
+    }
+    const sourceAccount = sourceSnapshot.data() as Conta
+    if (!sourceAccount.ativo) throw new Error('A conta selecionada está inativa.')
+    if (sourceAccount.tipoConta === 'CARTAO_CREDITO') {
+      throw new Error('Selecione uma conta corrente, poupança, caixinha ou dinheiro.')
+    }
+    if (invoice.status === 'PAGA') throw new Error('Esta fatura já está paga.')
+
+    const amount = Number(invoice.valorTotal) - Number(invoice.valorPago ?? 0)
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new Error('Não há saldo pendente nesta fatura.')
+    }
+    const sourceBalance = Number(sourceAccount.saldoAtual)
+    if (!Number.isFinite(sourceBalance) || sourceBalance < amount) {
+      throw new Error('O saldo da conta selecionada é insuficiente para efetivar o pagamento.')
+    }
+
+    const cardAccountSnapshot = await transaction.get(
+      familyDocument(db, familiaId, 'contas', invoice.contaId),
+    )
+    if (!cardAccountSnapshot.exists() || cardAccountSnapshot.data().tipoConta !== 'CARTAO_CREDITO') {
+      throw new Error('O cartão associado à fatura não foi encontrado.')
+    }
+
+    transaction.update(sourceAccountRef, {
+      saldoAtual: sourceBalance - amount,
+      ultimaMovimentacaoId: transactionRef.id,
+    })
+    transaction.update(invoiceRef, {
+      valorPago: invoice.valorTotal,
+      status: 'PAGA',
+    })
+    transaction.set(transactionRef, {
+      descricao: descricao.trim() || 'Pagamento de fatura de cartão',
+      valor: amount,
+      tipoMovimentacao: 'DESPESA',
+      status: 'EFETIVADO',
+      dataTransacao: now,
+      contaId: contaOrigemId,
+      categoriaId: 'pagamento-fatura-cartao',
+      categoriaNome: 'Pagamento de cartão',
+      criadoPorUsuarioId: usuarioId,
+      criadoPorNome: usuarioNome,
+      atualizadoPorUsuarioId: usuarioId,
+      dataCriacao: now,
+      dataAtualizacao: now,
+      estornado: false,
+      formaPagamento: 'normal',
+      faturaId,
+    })
+    transaction.set(logRef, {
+      transacaoId: transactionRef.id,
+      usuarioId: usuarioId,
+      acao: 'PAGAR_FATURA',
+      dataAcao: now,
+      descricaoSnapshot: descricao.trim() || 'Pagamento de fatura de cartão',
+      valoresAntigos: { valorPago: invoice.valorPago, status: invoice.status },
+      valoresNovos: { valorPago: invoice.valorTotal, status: 'PAGA' },
+    })
+  })
 }
 
 export async function listarLogsAtividade(db: Firestore, familiaId: string): Promise<LogAtividade[]> {

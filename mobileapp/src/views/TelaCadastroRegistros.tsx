@@ -2,7 +2,7 @@
 // Arquivo principal do sistema FinUp que efetua o lançamento de transações.
 // ==========================================================================
 
-import { Alert, StyleSheet, Text, View, Pressable, Modal } from "react-native";
+import { Alert, StyleSheet, Text, View, Pressable, Modal, ScrollView } from "react-native";
 import { useState, useEffect } from "react";
 
 import { colors } from "../styles/colors";
@@ -113,6 +113,9 @@ export default function TelaCadastroRegistros() {
       && item.dataTransacao.getFullYear() === currentDate.getFullYear()
       && item.dataTransacao.getMonth() === currentDate.getMonth())
     .reduce((total, item) => total + item.valor, 0);
+  const transacoesVisiveis = transacoes.filter((transacao) =>
+    transacao.tipoMovimentacao === "RECEITA" || transacao.tipoMovimentacao === "DESPESA",
+  );
 
   const salvarTransacao = async () => {
     let valido = true;
@@ -202,6 +205,26 @@ export default function TelaCadastroRegistros() {
       Alert.alert("Saldo inválido", "Informe um saldo inicial válido.");
       return;
     }
+    if (tipoConta === "CAIXINHA") {
+      const principal = contas.find((account) =>
+        account.id === "principal" && account.tipoConta === "CORRENTE" && account.ativo,
+      );
+      if (balance < 0) {
+        Alert.alert("Saldo inválido", "O saldo inicial da Caixinha deve ser igual ou maior que zero.");
+        return;
+      }
+      if (!principal && balance > 0) {
+        Alert.alert("Conta principal não encontrada", "Não foi possível financiar a Caixinha pela conta principal.");
+        return;
+      }
+      if (principal && balance > principal.saldoAtual) {
+        Alert.alert(
+          "Saldo insuficiente",
+          `O saldo inicial da Caixinha não pode ser maior que o saldo disponível na conta principal (${principal.saldoAtual.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}).`,
+        );
+        return;
+      }
+    }
     setIsSavingAccount(true);
     try {
       const id = await criarConta(db, usuario.familiaId, usuario.id, {
@@ -210,13 +233,20 @@ export default function TelaCadastroRegistros() {
         saldoAtual: balance,
         ativo: true,
       });
-      setContas((current) => [...current, {
-        id,
-        nome: nomeConta.trim(),
-        tipoConta,
-        saldoAtual: balance,
-        ativo: true,
-      }]);
+      setContas((current) => [
+        ...current.map((account) =>
+          tipoConta === "CAIXINHA" && balance > 0 && account.id === "principal"
+            ? { ...account, saldoAtual: account.saldoAtual - balance }
+            : account,
+        ),
+        {
+          id,
+          nome: nomeConta.trim(),
+          tipoConta,
+          saldoAtual: balance,
+          ativo: true,
+        },
+      ]);
       setContaId(id);
       setContaAberta(false);
       setNomeConta("");
@@ -291,18 +321,19 @@ export default function TelaCadastroRegistros() {
         </View>
       </View>
 
-      <View style={styles.transactions}>
+      <ScrollView
+        style={styles.transactionScroll}
+        contentContainerStyle={styles.transactions}
+      >
         {isLoading ? (
           <Text style={styles.transactionMeta}>Carregando registros...</Text>
         ) : erroCarregamento ? (
           <Text style={styles.errorText}>{erroCarregamento}</Text>
-        ) : transacoes.length === 0 ? (
+        ) : transacoesVisiveis.length === 0 ? (
           <Text style={styles.transactionMeta}>Nenhuma movimentação registrada.</Text>
-        ) : transacoes.map((transacao) => (
+        ) : transacoesVisiveis.map((transacao) => (
           <View key={transacao.id} style={styles.transactionItem}>
-            <View style={styles.transactionIcon}>
-              <Text>💰</Text>
-            </View>
+            
 
             <View style={styles.transactionInfo}>
               <Text style={styles.transactionDescription}>
@@ -325,18 +356,18 @@ export default function TelaCadastroRegistros() {
             <Text
               style={[
                 styles.transactionValue,
-                transacao.tipoMovimentacao === "RECEITA" || (transacao.tipoMovimentacao === "TRANSFERENCIA" && transacao.direcaoTransferencia === "ENTRADA")
+                transacao.tipoMovimentacao === "RECEITA"
                   ? styles.incomeTransaction
                   : styles.expenseTransaction,
               ]}
             >
-              {transacao.tipoMovimentacao === "RECEITA" || (transacao.tipoMovimentacao === "TRANSFERENCIA" && transacao.direcaoTransferencia === "ENTRADA") ? "+" : "-"}R$ {transacao.valor.toLocaleString("pt-BR", {
+              {transacao.tipoMovimentacao === "RECEITA" ? "+" : "-"}R$ {transacao.valor.toLocaleString("pt-BR", {
                 minimumFractionDigits: 2,
               })}
             </Text>
           </View>
         ))}
-      </View>
+      </ScrollView>
 
       <Modal
         visible={novoAberto}
@@ -668,6 +699,14 @@ export default function TelaCadastroRegistros() {
                 placeholder="0,00"
                 keyboardType="numeric"
               />
+              {tipoConta === "CAIXINHA" ? (
+                <Text style={styles.accountBalanceHint}>
+                  O saldo inicial será transferido da conta principal
+                  {contas.find((account) => account.id === "principal")
+                    ? ` (${contas.find((account) => account.id === "principal")?.saldoAtual.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} disponível).`
+                    : "."}
+                </Text>
+              ) : null}
               <GradientButton
                 title={isSavingAccount ? "Salvando..." : "Criar conta"}
                 onPress={() => void salvarConta()}
@@ -735,21 +774,24 @@ const styles = StyleSheet.create({
   },
   incomeValue: {
     color: colors.primary,
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "700",
   },
   expenseValue: {
     color: colors.danger,
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "700",
   },
   creditValue: {
     color: colors.warning,
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "700",
   },
   transactions: {
     gap: 8,
+  },
+  transactionScroll: {
+    flex: 1,
   },
   transactionItem: {
     flexDirection: "row",
@@ -757,15 +799,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
     borderRadius: 14,
     padding: 14,
-  },
-  transactionIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: "rgba(74, 222, 128, 0.1)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 12,
   },
   transactionInfo: {
     flex: 1,
@@ -860,6 +893,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "600",
     marginBottom: 8,
+  },
+  accountBalanceHint: {
+    color: colors.mutedForeground,
+    fontSize: 11,
+    lineHeight: 16,
+    marginTop: -10,
+    marginBottom: 12,
   },
   categoryList: {
     flexDirection: "row",

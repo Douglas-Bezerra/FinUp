@@ -5,4 +5,5 @@ export type RootStackParamList = {
   Inicio: undefined;
   CadastroRegistros: undefined;
   Assistente: undefined;
+  Caixinha: undefined;
 };
