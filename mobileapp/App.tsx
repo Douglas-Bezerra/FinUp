@@ -1,5 +1,6 @@
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 {/* Importando o tipo de navegação */ }
 import { RootStackParamList } from "./src/navigation/types";
@@ -17,44 +18,46 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
   return (
-    <NavigationContainer> 
-      <Stack.Navigator
-        initialRouteName="Login"
-        screenOptions={{
-          headerShown: false,
-        }}
-      >
-        <Stack.Screen
-          name="Login"
-          component={TelaLogin}
-        />
+    <SafeAreaProvider>
+      <NavigationContainer>
+        <Stack.Navigator
+          initialRouteName="Login"
+          screenOptions={{
+            headerShown: false,
+          }}
+        >
+          <Stack.Screen
+            name="Login"
+            component={TelaLogin}
+          />
 
-        <Stack.Screen
-          name="Cadastro"
-          component={TelaCadastro}
-        />
+          <Stack.Screen
+            name="Cadastro"
+            component={TelaCadastro}
+          />
 
-        <Stack.Screen
-          name="Inicio"
-          component={TelaInicial}
-        />
+          <Stack.Screen
+            name="Inicio"
+            component={TelaInicial}
+          />
 
-        <Stack.Screen
-          name="CadastroRegistros"
-          component={TelaCadastroReceitas}
-        />
+          <Stack.Screen
+            name="CadastroRegistros"
+            component={TelaCadastroReceitas}
+          />
 
-        <Stack.Screen
-          name="Assistente"
-          component={TelaAssistente}
-        />
+          <Stack.Screen
+            name="Assistente"
+            component={TelaAssistente}
+          />
 
-        <Stack.Screen
-          name="Caixinha"
-          component={TelaCaixinha}
-        />
+          <Stack.Screen
+            name="Caixinha"
+            component={TelaCaixinha}
+          />
 
-      </Stack.Navigator>
-    </NavigationContainer>
+        </Stack.Navigator>
+      </NavigationContainer>
+    </SafeAreaProvider>
   );
 }

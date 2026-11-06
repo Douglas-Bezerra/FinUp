@@ -14,10 +14,12 @@ import {
 
 import { createUserWithEmailAndPassword, deleteUser } from "firebase/auth";
 import { auth, db } from "../firebase";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { colors } from "../styles/colors";
 import { RootStackParamList } from "../navigation/types";
 import { criarUsuarioPrincipal } from "../../../shared/services/finupService";
+import { useResponsive } from "../hooks/useResponsive";
 
 {/* Importando Componentes para "montar" TelaCadastro */ }
 import Input from "../components/Input";
@@ -32,6 +34,8 @@ type CadastroNavigationProp = NativeStackNavigationProp<
 
 export default function TelaCadastro() {
   const navigation = useNavigation<CadastroNavigationProp>();
+  const insets = useSafeAreaInsets();
+  const { horizontalPadding } = useResponsive();
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -97,7 +101,16 @@ export default function TelaCadastro() {
     >
       {/* ScrollView para permitir rolagem quando o teclado estiver aberto */}
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          {
+            alignSelf: "center",
+            maxWidth: 560,
+            paddingHorizontal: horizontalPadding,
+            paddingTop: Math.max(insets.top, 16),
+            paddingBottom: Math.max(insets.bottom, 24),
+          },
+        ]}
         keyboardShouldPersistTaps="handled"
       >
 
@@ -250,11 +263,10 @@ const styles = StyleSheet.create({
   },
   content: {
     flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingTop: 48,
-    paddingBottom: 32,
+    width: "100%",
   },
   logoArea: {
+    flex: 1,
     alignItems: "center",
     marginBottom: 10,
     marginTop: 20,
@@ -263,6 +275,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 12,
     marginBottom: 24,
+    alignItems: "flex-start",
   },
   backButton: {
     width: 40,

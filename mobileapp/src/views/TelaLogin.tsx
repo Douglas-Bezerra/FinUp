@@ -16,9 +16,11 @@ import {
   signInWithEmailAndPassword,
 } from "firebase/auth";
 import { auth } from "../firebase";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { colors } from "../styles/colors";
 import { RootStackParamList } from "../navigation/types";
+import { useResponsive } from "../hooks/useResponsive";
 
 import Input from "../components/Input";
 import Logo from "../components/Logo";
@@ -32,6 +34,8 @@ type LoginNavigationProp = NativeStackNavigationProp<
 
 export default function TelaLogin() {
   const navigation = useNavigation<LoginNavigationProp>();
+  const insets = useSafeAreaInsets();
+  const { height, horizontalPadding } = useResponsive();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -139,12 +143,21 @@ export default function TelaLogin() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          {
+            alignSelf: "center",
+            maxWidth: 560,
+            paddingHorizontal: horizontalPadding,
+            paddingTop: Math.max(insets.top, height < 700 ? 12 : 24),
+            paddingBottom: Math.max(insets.bottom, 24),
+          },
+        ]}
         keyboardShouldPersistTaps="handled"
       >
 
         {/* Logo */}
-        <View style={styles.logoArea}>
+        <View style={[styles.logoArea, { marginTop: height < 700 ? 12 : 28 }]}>
           <Logo />
         </View>
 
@@ -265,14 +278,12 @@ const styles = StyleSheet.create({
   },
   content: {
     flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingTop: 30,
-    paddingBottom: 32,
+    width: "100%",
   },
   logoArea: {
     alignItems: "center",
     marginBottom: 32,
-    marginTop: 65,
+    marginTop: 0,
   },
   card: {
     backgroundColor: colors.card,

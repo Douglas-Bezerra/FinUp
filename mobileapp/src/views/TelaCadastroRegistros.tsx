@@ -4,6 +4,7 @@
 
 import { Alert, StyleSheet, Text, View, Pressable, Modal, ScrollView } from "react-native";
 import { useState, useEffect } from "react";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { colors } from "../styles/colors";
 
@@ -22,8 +23,11 @@ import {
   obterUsuario,
 } from "../../../shared/services/finupService";
 import type { Categoria, Conta, Transacao, Usuario } from "../../../shared/types/finup";
+import { useResponsive } from "../hooks/useResponsive";
 
 export default function TelaCadastroRegistros() {
+  const insets = useSafeAreaInsets();
+  const { horizontalPadding, isCompact, isTablet } = useResponsive();
   const [usuario, setUsuario] = useState<Usuario | null>(null);
   const [contas, setContas] = useState<Conta[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
@@ -282,15 +286,27 @@ export default function TelaCadastroRegistros() {
   };
 
   return (
-    <View style={styles.container}>
+    <View
+      style={[
+        styles.container,
+        {
+          alignSelf: "center",
+          width: "100%",
+          maxWidth: isTablet ? 1000 : undefined,
+          paddingHorizontal: horizontalPadding,
+          paddingTop: Math.max(insets.top, 12),
+          paddingBottom: Math.max(insets.bottom, 12),
+        },
+      ]}
+    >
 
-      <View style={styles.header}>
+      <View style={[styles.header, isCompact && styles.headerCompact]}>
         <View>
           <Text style={styles.month}>{new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(new Date())}</Text>
           <Text style={styles.title}>Registros</Text>
         </View>
 
-        <View style={{ flexDirection: "row", gap: 8 }}>
+        <View style={styles.headerActions}>
           <GradientButton
             title="+ Conta"
             onPress={() => setContaAberta(true)}
@@ -304,18 +320,18 @@ export default function TelaCadastroRegistros() {
         </View>
       </View>
 
-      <View style={styles.summary}>
-        <View style={[styles.summaryCard, styles.incomeCard]}>
+      <View style={[styles.summary, isCompact && styles.summaryCompact]}>
+        <View style={[styles.summaryCard, isCompact && styles.summaryCardCompact, styles.incomeCard]}>
           <Text style={styles.summaryLabel}>Receitas</Text>
           <Text style={styles.incomeValue}>+{receitaMes.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</Text>
         </View>
 
-        <View style={[styles.summaryCard, styles.expenseCard]}>
+        <View style={[styles.summaryCard, isCompact && styles.summaryCardCompact, styles.expenseCard]}>
           <Text style={styles.summaryLabel}>Despesas</Text>
           <Text style={styles.expenseValue}>-{despesaMes.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</Text>
         </View>
 
-        <View style={[styles.summaryCard, styles.creditCard]}>
+        <View style={[styles.summaryCard, isCompact && styles.summaryCardCompact, styles.creditCard]}>
           <Text style={styles.summaryLabel}>Crédito</Text>
           <Text style={styles.creditValue}>{creditPending.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</Text>
         </View>
@@ -375,7 +391,7 @@ export default function TelaCadastroRegistros() {
         animationType="fade"
         onRequestClose={() => setNovoAberto(false)}
       >
-        <View style={styles.modalOverlay}>
+        <View style={[styles.modalOverlay, { paddingTop: Math.max(insets.top, 24), paddingBottom: Math.max(insets.bottom, 24) }]}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Novo registro</Text>
 
@@ -472,7 +488,7 @@ export default function TelaCadastroRegistros() {
           setFormAberto(false);
         }}
       >
-        <View style={styles.modalOverlay}>
+        <View style={[styles.modalOverlay, { paddingTop: Math.max(insets.top, 24), paddingBottom: Math.max(insets.bottom, 24) }]}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>
               {tipoRegistro === "income"
@@ -483,6 +499,11 @@ export default function TelaCadastroRegistros() {
             </Text>
 
             {/* formulário entra aqui */}
+            <ScrollView
+              style={styles.modalScroll}
+              contentContainerStyle={styles.modalScrollContent}
+              keyboardShouldPersistTaps="handled"
+            >
             <View style={styles.formFields}>
               <Text style={styles.categoryLabel}>
                 {tipoRegistro === "transfer" ? "Conta de origem" : "Conta"}
@@ -659,6 +680,7 @@ export default function TelaCadastroRegistros() {
                 style={{ marginTop: 20 }}
               />
             </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -669,9 +691,14 @@ export default function TelaCadastroRegistros() {
         animationType="slide"
         onRequestClose={() => setContaAberta(false)}
       >
-        <View style={styles.modalOverlay}>
+        <View style={[styles.modalOverlay, { paddingTop: Math.max(insets.top, 24), paddingBottom: Math.max(insets.bottom, 24) }]}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Nova conta</Text>
+            <ScrollView
+              style={styles.modalScroll}
+              contentContainerStyle={styles.modalScrollContent}
+              keyboardShouldPersistTaps="handled"
+            >
             <View style={styles.formFields}>
               <Input label="Nome da conta" value={nomeConta} onChangeText={setNomeConta} placeholder="Ex.: Poupança" />
               <Text style={styles.categoryLabel}>Tipo da conta</Text>
@@ -714,6 +741,7 @@ export default function TelaCadastroRegistros() {
                 style={{ marginTop: 12 }}
               />
             </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -726,7 +754,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-    padding: 15,
   },
   title: {
     color: colors.foreground,
@@ -738,7 +765,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     marginBottom: 20,
-    marginTop: 30
+    marginTop: 8,
+    gap: 12,
+  },
+  headerCompact: {
+    alignItems: "flex-start",
+    flexDirection: "column",
+  },
+  headerActions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
   },
   month: {
     color: colors.mutedForeground,
@@ -746,14 +783,23 @@ const styles = StyleSheet.create({
   },
   summary: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: 8,
     marginBottom: 16,
   },
+  summaryCompact: {
+    justifyContent: "space-between",
+  },
   summaryCard: {
     flex: 1,
+    minWidth: 0,
     padding: 10,
     borderRadius: 12,
     borderWidth: 1,
+  },
+  summaryCardCompact: {
+    flexBasis: "47%",
+    flexGrow: 0,
   },
   incomeCard: {
     backgroundColor: "rgba(74, 222, 128, 0.07)",
@@ -832,11 +878,19 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     width: "100%",
+    maxWidth: 560,
+    maxHeight: "100%",
     backgroundColor: colors.card,
     borderRadius: 20,
     padding: 20,
     borderWidth: 1,
     borderColor: colors.border,
+  },
+  modalScroll: {
+    flexShrink: 1,
+  },
+  modalScrollContent: {
+    flexGrow: 1,
   },
   modalTitle: {
     color: colors.foreground,

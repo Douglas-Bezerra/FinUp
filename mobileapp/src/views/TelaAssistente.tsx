@@ -15,6 +15,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 // =========================================================================================
 // ATENÇÃO / IMPORTANTE: NÃO ALTERAR ESTE BLOCO PARA IMPORT ESTÁTICO!
 // O módulo "expo-speech-recognition" contém código nativo e NÃO existe dentro do Expo Go padrão.
@@ -44,6 +45,7 @@ import {
 } from "../services/bufunfa/bufunfaService";
 
 import { colors } from "../styles/colors";
+import { useResponsive } from "../hooks/useResponsive";
 import GradientText from "../components/GradientText"
 import { LinearGradient } from "expo-linear-gradient";
 
@@ -86,6 +88,8 @@ const RESPONSES: Record<string, string> = {
 
 export default function TelaAssistente() {
     const navigation = useNavigation();
+    const insets = useSafeAreaInsets();
+    const { horizontalPadding, isTablet } = useResponsive();
     const [messages, setMessages] = useState<Msg[]>(INITIAL);
     const [input, setInput] = useState("");
     const [typing, setTyping] = useState(false);
@@ -324,7 +328,18 @@ export default function TelaAssistente() {
             keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 25}
         >
             {/* Cabeçalho */}
-            <View style={styles.header}>
+            <View
+                style={[
+                    styles.header,
+                    {
+                        alignSelf: "center",
+                        width: "100%",
+                        maxWidth: isTablet ? 960 : undefined,
+                        paddingHorizontal: horizontalPadding,
+                        paddingTop: Math.max(insets.top, 12),
+                    },
+                ]}
+            >
                 <Pressable
                     style={styles.backButton}
                     onPress={() => navigation.goBack()}
@@ -346,7 +361,7 @@ export default function TelaAssistente() {
                     </View>
                 </LinearGradient>
 
-                <View>
+                <View style={styles.headerInfo}>
                     <GradientText style={styles.finnName}>
                         Bufunfa
                     </GradientText>
@@ -364,7 +379,15 @@ export default function TelaAssistente() {
             <ScrollView
                 ref={scrollRef}
                 style={styles.messages}
-                contentContainerStyle={styles.messagesContent}
+                contentContainerStyle={[
+                    styles.messagesContent,
+                    {
+                        alignSelf: "center",
+                        width: "100%",
+                        maxWidth: isTablet ? 960 : undefined,
+                        paddingHorizontal: horizontalPadding,
+                    },
+                ]}
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
             >
@@ -441,8 +464,18 @@ export default function TelaAssistente() {
                 <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
-                    style={styles.quickScroll}
-                    contentContainerStyle={styles.quickContent}
+                    style={[
+                        styles.quickScroll,
+                        {
+                            alignSelf: "center",
+                            width: "100%",
+                            maxWidth: isTablet ? 960 : undefined,
+                        },
+                    ]}
+                    contentContainerStyle={[
+                        styles.quickContent,
+                        { paddingHorizontal: horizontalPadding },
+                    ]}
                     keyboardShouldPersistTaps="handled"
                 >
                     {QUICK.map((question) => (
@@ -486,7 +519,18 @@ export default function TelaAssistente() {
             )}
 
             {/* Campo de mensagem */}
-            <View style={styles.inputContainer}>
+            <View
+                style={[
+                    styles.inputContainer,
+                    {
+                        alignSelf: "center",
+                        width: "100%",
+                        maxWidth: isTablet ? 960 : undefined,
+                        paddingHorizontal: horizontalPadding,
+                        paddingBottom: Math.max(insets.bottom + 12, Platform.OS === "ios" ? 28 : 30),
+                    },
+                ]}
+            >
                 <TextInput
                     value={input}
                     onChangeText={setInput}
@@ -553,8 +597,6 @@ const styles = StyleSheet.create({
     header: {
         flexDirection: "row",
         alignItems: "center",
-        paddingHorizontal: 20,
-        paddingTop: 30,
         paddingBottom: 14,
         gap: 12,
     },
@@ -585,6 +627,10 @@ const styles = StyleSheet.create({
         color: colors.primary,
         fontSize: 25,
     },
+    headerInfo: {
+        flex: 1,
+        minWidth: 0,
+    },
     finnName: {
         color: colors.foreground,
         fontSize: 20,
@@ -610,7 +656,6 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     messagesContent: {
-        paddingHorizontal: 16,
         paddingVertical: 10,
         gap: 12,
     },
@@ -693,7 +738,6 @@ const styles = StyleSheet.create({
         flexGrow: 0,
     },
     quickContent: {
-        paddingHorizontal: 16,
         paddingVertical: 8,
         gap: 8,
     },
@@ -762,9 +806,7 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         alignItems: "flex-end",
         gap: 8,
-        paddingHorizontal: 16,
         paddingTop: 10,
-        paddingBottom: Platform.OS === "ios" ? 28 : 30,
         borderTopWidth: 1,
         borderTopColor: colors.border,
         backgroundColor: colors.background,

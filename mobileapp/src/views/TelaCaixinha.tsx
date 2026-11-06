@@ -9,6 +9,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 
@@ -22,6 +23,7 @@ import {
 } from "../../../shared/services/finupService";
 import type { Categoria, Conta, Transacao, Usuario } from "../../../shared/types/finup";
 import { colors } from "../styles/colors";
+import { useResponsive } from "../hooks/useResponsive";
 
 type Tab = "box" | "add";
 type MovementMode = "deposit" | "withdraw";
@@ -46,6 +48,8 @@ function parseAmount(value: string) {
 }
 
 export default function TelaCaixinha() {
+  const insets = useSafeAreaInsets();
+  const { horizontalPadding, isCompact, isTablet } = useResponsive();
   const [tab, setTab] = useState<Tab>("box");
   const [mode, setMode] = useState<MovementMode>("deposit");
   const [amount, setAmount] = useState("");
@@ -215,10 +219,19 @@ export default function TelaCaixinha() {
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[
+        {
+          alignSelf: "center",
+          width: "100%",
+          maxWidth: isTablet ? 800 : undefined,
+          paddingHorizontal: horizontalPadding,
+          paddingTop: Math.max(insets.top, 16),
+          paddingBottom: Math.max(insets.bottom, 24),
+        },
+      ]}
       keyboardShouldPersistTaps="handled"
     >
-      <View style={styles.header}>
+      <View style={[styles.header, isCompact && styles.headerCompact]}>
         <View style={styles.headerText}>
           <Text style={styles.title}>Caixinha</Text>
         </View>
@@ -282,7 +295,9 @@ export default function TelaCaixinha() {
             <View style={styles.balanceTop}>
               <View>
                 <Text style={styles.balanceLabel}>SALDO RESERVADO</Text>
-                <Text style={styles.balanceValue}>{formatCurrency(saldoCaixinha)}</Text>
+                <Text style={[styles.balanceValue, isCompact && styles.balanceValueCompact]}>
+                  {formatCurrency(saldoCaixinha)}
+                </Text>
               </View>
             </View>
 
@@ -294,12 +309,12 @@ export default function TelaCaixinha() {
               <View style={[styles.progressFill, { width: `${progress}%` }]} />
             </View>
 
-            <View style={styles.statsRow}>
+            <View style={[styles.statsRow, isCompact && styles.statsRowCompact]}>
               <View>
                 <Text style={styles.statLabel}>Total depositado</Text>
                 <Text style={styles.statDeposit}>+{formatCurrency(totalDeposited)}</Text>
               </View>
-              <View style={styles.statsDivider} />
+              {!isCompact && <View style={styles.statsDivider} />}
               <View>
                 <Text style={styles.statLabel}>Retiradas</Text>
                 <Text style={styles.statWithdraw}>-{formatCurrency(totalWithdrawn)}</Text>
@@ -307,7 +322,7 @@ export default function TelaCaixinha() {
             </View>
           </View>
 
-          <View style={styles.quickActions}>
+          <View style={[styles.quickActions, isCompact && styles.quickActionsCompact]}>
             <Pressable
               accessibilityRole="button"
               onPress={() => openMovement("deposit")}
@@ -534,11 +549,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  content: {
-    paddingHorizontal: 20,
-    paddingTop: 36,
-    paddingBottom: 36,
-  },
   loading: {
     flexDirection: "row",
     alignItems: "center",
@@ -572,6 +582,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     marginBottom: 22,
+  },
+  headerCompact: {
+    alignItems: "flex-start",
+    flexDirection: "column",
   },
   headerText: {
     flex: 1,
@@ -620,6 +634,9 @@ const styles = StyleSheet.create({
     marginTop: 5,
     fontVariant: ["tabular-nums"],
   },
+  balanceValueCompact: {
+    fontSize: 28,
+  },
   progressHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -651,6 +668,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 20,
     gap: 16,
+  },
+  statsRowCompact: {
+    alignItems: "flex-start",
+    flexDirection: "column",
+    gap: 12,
   },
   statLabel: {
     color: colors.mutedForeground,
@@ -697,6 +719,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 12,
     marginBottom: 23,
+  },
+  quickActionsCompact: {
+    flexDirection: "column",
   },
   quickAction: {
     flex: 1,

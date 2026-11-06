@@ -2,6 +2,7 @@ import { RefreshControl, StyleSheet, Text, View, Pressable, ScrollView } from "r
 import { useCallback, useState } from "react";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { RootStackParamList } from "../navigation/types";
 
@@ -10,11 +11,14 @@ import { auth, db } from "../firebase";
 import { listarContas, obterExtrato, obterUsuario } from "../../../shared/services/finupService";
 
 import type { Transacao } from "../../../shared/types/finup";
+import { useResponsive } from "../hooks/useResponsive";
 
 export default function TelaInicial() {
 
     const navigation =
         useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+    const insets = useSafeAreaInsets();
+    const { horizontalPadding, isCompact, isTablet } = useResponsive();
     const [nomeUsuario, setNomeUsuario] = useState("");
     const [saldoTotal, setSaldoTotal] = useState(0);
     const [saldoCaixinha, setSaldoCaixinha] = useState(0);
@@ -209,7 +213,16 @@ export default function TelaInicial() {
     return (
         <ScrollView
             style={styles.container}
-            contentContainerStyle={styles.contentContainer}
+            contentContainerStyle={[
+                {
+                    alignSelf: "center",
+                    width: "100%",
+                    maxWidth: isTablet ? 960 : undefined,
+                    paddingHorizontal: horizontalPadding,
+                    paddingTop: Math.max(insets.top, 16),
+                    paddingBottom: Math.max(insets.bottom, 24),
+                },
+            ]}
             refreshControl={
                 <RefreshControl
                     refreshing={refreshing}
@@ -231,9 +244,9 @@ export default function TelaInicial() {
             </View>
 
             {/* Ações rápidas */}
-            <View style={styles.quickActions}>
+            <View style={[styles.quickActions, isCompact && styles.quickActionsCompact]}>
                 <Pressable
-                    style={styles.quickAction}
+                    style={[styles.quickAction, isCompact && styles.quickActionCompact]}
                     onPress={() => navigation.navigate("CadastroRegistros")}
                 >
                     <View
@@ -251,7 +264,7 @@ export default function TelaInicial() {
                 </Pressable>
 
                 <Pressable
-                    style={styles.quickAction}
+                    style={[styles.quickAction, isCompact && styles.quickActionCompact]}
                     onPress={() => navigation.navigate("CadastroRegistros")}
                 >
                     <View
@@ -269,7 +282,7 @@ export default function TelaInicial() {
                 </Pressable>
 
                 <Pressable
-                    style={styles.quickAction}
+                    style={[styles.quickAction, isCompact && styles.quickActionCompact]}
                     onPress={() => navigation.navigate("Caixinha")}
                 >
                     <View style={[styles.actionIcon, { backgroundColor: "rgba(96, 165, 250, 0.12)" }]}>
@@ -280,7 +293,7 @@ export default function TelaInicial() {
                 </Pressable>
 
                 <Pressable
-                    style={styles.quickAction}
+                    style={[styles.quickAction, isCompact && styles.quickActionCompact]}
                     onPress={() => navigation.navigate("Assistente")}
                 >
                     <View
@@ -308,27 +321,27 @@ export default function TelaInicial() {
             <View style={styles.balanceCard}>
                 <Text style={styles.balanceLabel}>SALDO TOTAL</Text>
 
-                <Text style={styles.balance}>
+                <Text style={[styles.balance, isCompact && styles.balanceCompact]}>
                     {currency(saldoTotal)}
                 </Text>
 
                 {loadError ? <Text style={styles.greeting}>{loadError}</Text> : null}
-                <View style={styles.summary}>
-                    <View>
+                <View style={[styles.summary, isCompact && styles.summaryCompact]}>
+                    <View style={styles.summaryItem}>
                         <Text style={styles.summaryLabel}>Receitas</Text>
                         <Text style={styles.income}>+{currency(receitas)}</Text>
                     </View>
 
-                    <View style={styles.divider} />
+                    {!isCompact && <View style={styles.divider} />}
 
-                    <View>
+                    <View style={styles.summaryItem}>
                         <Text style={styles.summaryLabel}>Despesas</Text>
                         <Text style={styles.expense}>-{currency(despesas)}</Text>
                     </View>
 
-                    <View style={styles.divider} />
+                    {!isCompact && <View style={styles.divider} />}
 
-                    <View>
+                    <View style={styles.summaryItem}>
                         <Text style={styles.summaryLabel}>Caixinha</Text>
                         <Text style={styles.savings}>{currency(saldoCaixinha)}</Text>
                     </View>
@@ -472,11 +485,6 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: colors.background,
     },
-    contentContainer: {
-        paddingHorizontal: 20,
-        paddingTop: 50,
-        paddingBottom: 24,
-    },
     header: {
         flexDirection: "row",
         alignItems: "center",
@@ -524,10 +532,22 @@ const styles = StyleSheet.create({
         fontWeight: "700",
         marginTop: 6,
     },
+    balanceCompact: {
+        fontSize: 28,
+    },
     summary: {
         flexDirection: "row",
         alignItems: "center",
         marginTop: 20,
+    },
+    summaryCompact: {
+        flexDirection: "column",
+        alignItems: "stretch",
+        gap: 12,
+    },
+    summaryItem: {
+        flex: 1,
+        minWidth: 0,
     },
     summaryLabel: {
         color: colors.mutedForeground,
@@ -558,16 +578,26 @@ const styles = StyleSheet.create({
     quickActions: {
         flexDirection: "row",
         justifyContent: "space-between",
+        flexWrap: "wrap",
         marginBottom: 30
     },
+    quickActionsCompact: {
+        justifyContent: "space-between",
+        gap: 8,
+    },
     quickAction: {
-        width: "23%",
+        flexBasis: "23%",
+        minWidth: 64,
+        flexGrow: 0,
         alignItems: "center",
         paddingVertical: 12,
         backgroundColor: colors.card,
         borderWidth: 1,
         borderColor: colors.border,
         borderRadius: 12,
+    },
+    quickActionCompact: {
+        flexBasis: "47%",
     },
     actionIcon: {
         width: 44,
@@ -585,6 +615,8 @@ const styles = StyleSheet.create({
         color: colors.mutedForeground,
         fontSize: 15,
         fontWeight: "500",
+        flexShrink: 1,
+        textAlign: "center",
     },
     cashFlowCard: {
         backgroundColor: colors.card,
