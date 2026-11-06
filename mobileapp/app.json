@@ -16,6 +16,7 @@
     ],
     "android": {
       "adaptiveIcon": {
+        "foregroundImage": "./assets/logo-tela.png",
         "backgroundColor": "#000000"
       },
       "predictiveBackGestureEnabled": false,
