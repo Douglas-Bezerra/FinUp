@@ -35,6 +35,8 @@ type CadastroNavigationProp = NativeStackNavigationProp<
 export default function TelaCadastro() {
   const navigation = useNavigation<CadastroNavigationProp>();
   const insets = useSafeAreaInsets();
+  
+  {/* Obtendo o padding horizontal responsivo */ }
   const { horizontalPadding } = useResponsive();
 
   const [name, setName] = useState("");
@@ -269,13 +271,9 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     marginBottom: 10,
-    marginTop: 20,
   },
   header: {
-    flexDirection: "row",
-    gap: 12,
     marginBottom: 24,
-    alignItems: "flex-start",
   },
   backButton: {
     width: 40,
