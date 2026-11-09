@@ -969,15 +969,14 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   categoryButtonSelected: {
-    backgroundColor: "rgba(74, 222, 128, 0.12)",
-    borderColor: colors.primary,
+    backgroundColor: colors.secondary,
+    borderColor: colors.foreground,
   },
   categoryText: {
     color: colors.secondaryForeground,
     fontSize: 12,
   },
   categoryTextSelected: {
-    color: colors.primary,
     fontWeight: "600",
   },
   paymentSection: {
