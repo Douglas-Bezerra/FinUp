@@ -42,6 +42,15 @@ const accountCategoryLabels: Record<AccountCategory, string> = {
   OUTROS: 'Outros',
 }
 
+const accountCategoryOrder: AccountCategory[] = [
+  'CORRENTE',
+  'CARTAO_CREDITO',
+  'INVESTIMENTO',
+  'POUPANCA',
+  'CAIXINHA',
+  'OUTROS',
+]
+
 const currencyFormatter = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
 const dateFormatter = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
 const shortDateFormatter = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })
@@ -275,7 +284,7 @@ function CategoryOverview({ transactions }: { transactions: Transacao[] }) {
 function InstitutionAccounts({ group, accounts, profile, transactions, invoices, onPaymentConfirmed }: InstitutionAccountsProps) {
   const accountCategories = Array.from(new Set(group.accounts.map(getAccountCategory)))
     .map((id) => ({ id, label: accountCategoryLabels[id] }))
-    .sort((first, second) => first.label.localeCompare(second.label, 'pt-BR'))
+    .sort((first, second) => accountCategoryOrder.indexOf(first.id) - accountCategoryOrder.indexOf(second.id))
   const initialCategory = accountCategories.find(({ id }) =>
     group.accounts.some((account) => getAccountCategory(account) === id),
   )?.id ?? 'CORRENTE'

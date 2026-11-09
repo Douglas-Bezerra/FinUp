@@ -6,15 +6,10 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { doc, updateDoc } from 'firebase/firestore'
 import {
   arquivarOrcamentoMeta,
-  arquivarParcelamento,
   arquivarRecorrencia,
-  atualizarFaturaCartao,
   atualizarOrcamentoMeta,
-  atualizarParcelamento,
   atualizarRecorrencia,
-  criarFaturaCartao,
   criarOrcamentoMeta,
-  criarParcelamento,
   criarRecorrencia,
   listarCartoesPlasticos,
   listarFaturasCartao,
@@ -46,7 +41,7 @@ type Props = {
   onCardsCountChange: (count: number) => void
 }
 
-type Editor = Exclude<ManagerResourceTab, 'cartoes'>
+type Editor = Extract<ManagerResourceTab, 'orcamentos' | 'recorrencias'>
 type MovementType = Extract<TipoMovimentacao, 'RECEITA' | 'DESPESA'>
 type InvoiceStatus = FaturaCartao['status']
 
@@ -117,20 +112,10 @@ export default function ManagerResourcePanel({
   const [reloadKey, setReloadKey] = useState(0)
   const [editor, setEditor] = useState<Editor | null>(null)
   const [editingBudget, setEditingBudget] = useState<OrcamentoMeta | null>(null)
-  const [editingInstallment, setEditingInstallment] = useState<Parcelamento | null>(null)
   const [editingRecurrence, setEditingRecurrence] = useState<Recorrencia | null>(null)
-  const [editingInvoice, setEditingInvoice] = useState<FaturaCartao | null>(null)
   const [budgetCategoryId, setBudgetCategoryId] = useState('')
   const [budgetAmount, setBudgetAmount] = useState('')
   const [budgetMonth, setBudgetMonth] = useState(monthInput())
-  const [installmentDescription, setInstallmentDescription] = useState('')
-  const [installmentAmount, setInstallmentAmount] = useState('')
-  const [installmentCount, setInstallmentCount] = useState('2')
-  const [installmentStart, setInstallmentStart] = useState(dateInput(new Date()))
-  const [installmentAccountId, setInstallmentAccountId] = useState('')
-  const [installmentCategoryId, setInstallmentCategoryId] = useState('')
-  const [installmentType, setInstallmentType] = useState<MovementType>('DESPESA')
-  const [installmentCardId, setInstallmentCardId] = useState('')
   const [recurrenceDescription, setRecurrenceDescription] = useState('')
   const [recurrenceAmount, setRecurrenceAmount] = useState('')
   const [recurrenceDay, setRecurrenceDay] = useState('1')
@@ -139,11 +124,6 @@ export default function ManagerResourcePanel({
   const [recurrenceAccountId, setRecurrenceAccountId] = useState('')
   const [recurrenceCategoryId, setRecurrenceCategoryId] = useState('')
   const [recurrenceType, setRecurrenceType] = useState<MovementType>('DESPESA')
-  const [invoiceAccountId, setInvoiceAccountId] = useState('')
-  const [invoiceMonth, setInvoiceMonth] = useState(monthInput())
-  const [invoiceTotal, setInvoiceTotal] = useState('0')
-  const [invoicePaid, setInvoicePaid] = useState('0')
-  const [invoiceStatus, setInvoiceStatus] = useState<InvoiceStatus>('ABERTA')
 
   useEffect(() => {
     let cancelled = false
@@ -178,25 +158,14 @@ export default function ManagerResourcePanel({
     return () => { cancelled = true }
   }, [onCardsCountChange, profile.familiaId, reloadKey])
 
-  const creditAccounts = useMemo(
-    () => accounts.filter((account) => account.tipoConta === 'CARTAO_CREDITO'),
-    [accounts],
-  )
-  const activeCards = useMemo(() => cards.filter((card) => card.ativo), [cards])
   const budgetCategories = useMemo(
     () => categories.filter((category) => category.tipo === 'DESPESA' || category.tipo === 'AMBAS'),
     [categories],
-  )
-  const installmentCategories = useMemo(
-    () => categories.filter((category) => category.tipo === installmentType || category.tipo === 'AMBAS'),
-    [categories, installmentType],
   )
   const recurrenceCategories = useMemo(
     () => categories.filter((category) => category.tipo === recurrenceType || category.tipo === 'AMBAS'),
     [categories, recurrenceType],
   )
-  const canCreateCardResource = creditAccounts.some((account) => account.ativo)
-
   function handleCardsChanged(nextCards: CartaoPlastico[]) {
     setCards(nextCards)
     onCardsCountChange(nextCards.length)
@@ -215,19 +184,6 @@ export default function ManagerResourcePanel({
     openEditor('orcamentos')
   }
 
-  function openInstallmentForm(item?: Parcelamento) {
-    setEditingInstallment(item ?? null)
-    setInstallmentDescription(item?.descricao ?? '')
-    setInstallmentAmount(item ? String(item.valorTotal).replace('.', ',') : '')
-    setInstallmentCount(String(item?.totalParcelas ?? 2))
-    setInstallmentStart(dateInput(item?.dataInicio ?? new Date()))
-    setInstallmentAccountId(item?.contaId ?? accounts.find((account) => account.ativo)?.id ?? '')
-    setInstallmentCategoryId(item?.categoriaId ?? '')
-    setInstallmentType(item?.tipoMovimentacao ?? 'DESPESA')
-    setInstallmentCardId(item?.cartaoPlasticoId ?? '')
-    openEditor('parcelamentos')
-  }
-
   function openRecurrenceForm(item?: Recorrencia) {
     setEditingRecurrence(item ?? null)
     setRecurrenceDescription(item?.descricao ?? '')
@@ -239,16 +195,6 @@ export default function ManagerResourcePanel({
     setRecurrenceCategoryId(item?.categoriaId ?? '')
     setRecurrenceType(item?.tipoMovimentacao ?? 'DESPESA')
     openEditor('recorrencias')
-  }
-
-  function openInvoiceForm(invoice?: FaturaCartao) {
-    setEditingInvoice(invoice ?? null)
-    setInvoiceAccountId(invoice?.contaId ?? creditAccounts.find((account) => account.ativo)?.id ?? '')
-    setInvoiceMonth(invoice?.mesReferencia ?? monthInput())
-    setInvoiceTotal(String(invoice?.valorTotal ?? 0).replace('.', ','))
-    setInvoicePaid(String(invoice?.valorPago ?? 0).replace('.', ','))
-    setInvoiceStatus(invoice?.status ?? 'ABERTA')
-    openEditor('faturas')
   }
 
   function closeEditor() {
@@ -278,35 +224,6 @@ export default function ManagerResourcePanel({
           await criarOrcamentoMeta(db, profile.familiaId, { ...budget, ativo: true })
         }
         setFeedback(editingBudget ? 'Orçamento atualizado.' : 'Orçamento criado.')
-      } else if (editor === 'parcelamentos') {
-        const amount = parseAmount(installmentAmount)
-        const count = Number(installmentCount)
-        const category = installmentCategories.find((item) => item.id === installmentCategoryId)
-        const startDate = dateFromInput(installmentStart)
-        if (!installmentDescription.trim()) throw new Error('Informe a descrição do parcelamento.')
-        if (amount === null) throw new Error('Informe um valor total maior que zero.')
-        if (!Number.isInteger(count) || count < 1) throw new Error('Informe um número inteiro de parcelas.')
-        if (!startDate || !installmentAccountId || !category) throw new Error('Preencha a data, a conta e a categoria.')
-        const installment = {
-          descricao: installmentDescription.trim(),
-          valorTotal: amount,
-          totalParcelas: count,
-          dataInicio: startDate,
-          contaId: installmentAccountId,
-          categoriaId: category.id,
-          tipoMovimentacao: installmentType,
-          cartaoPlasticoId: installmentCardId || undefined,
-        }
-        if (editingInstallment) {
-          await atualizarParcelamento(db, profile.familiaId, editingInstallment.id, installment)
-        } else {
-          await criarParcelamento(db, profile.familiaId, {
-            ...installment,
-            ativo: true,
-            criadoPorUsuarioId: profile.id,
-          })
-        }
-        setFeedback(editingInstallment ? 'Parcelamento atualizado.' : 'Parcelamento criado.')
       } else if (editor === 'recorrencias') {
         const amount = parseAmount(recurrenceAmount)
         const dueDay = Number(recurrenceDay)
@@ -338,34 +255,6 @@ export default function ManagerResourcePanel({
           })
         }
         setFeedback(editingRecurrence ? 'Recorrência atualizada.' : 'Recorrência criada.')
-      } else if (editor === 'faturas') {
-        if (!invoiceAccountId || !invoiceMonth) throw new Error('Selecione a conta e o mês da fatura.')
-        if (editingInvoice) {
-          const total = parseAmount(invoiceTotal, true)
-          const paid = parseAmount(invoicePaid, true)
-          if (total === null || paid === null || paid > total) {
-            throw new Error('Informe valores válidos; o valor pago não pode superar o total.')
-          }
-          if (invoiceStatus === 'PAGA' && paid !== total) {
-            throw new Error('Uma fatura paga deve ter o valor pago igual ao total.')
-          }
-          await atualizarFaturaCartao(db, profile.familiaId, editingInvoice.id, {
-            valorTotal: total,
-            valorPago: paid,
-            status: invoiceStatus,
-          })
-          setFeedback('Fatura atualizada.')
-        } else {
-          if (invoices.some((invoice) => invoice.contaId === invoiceAccountId
-            && invoice.mesReferencia === invoiceMonth)) {
-            throw new Error('Já existe uma fatura para esta conta e este mês.')
-          }
-          await criarFaturaCartao(db, profile.familiaId, {
-            contaId: invoiceAccountId,
-            mesReferencia: invoiceMonth,
-          })
-          setFeedback('Fatura criada.')
-        }
       }
       setEditor(null)
       setReloadKey((key) => key + 1)
@@ -408,23 +297,6 @@ export default function ManagerResourcePanel({
     )
   }
 
-  function archiveInstallment(item: Parcelamento) {
-    if (!window.confirm(`Arquivar o parcelamento “${item.descricao}”?`)) return
-    void runAction(
-      () => arquivarParcelamento(db, profile.familiaId, item.id),
-      'Parcelamento arquivado.',
-      'Não foi possível arquivar o parcelamento.',
-    )
-  }
-
-  function restoreInstallment(item: Parcelamento) {
-    void runAction(
-      () => updateDoc(doc(db, 'familias', profile.familiaId, 'parcelamentos', item.id), { ativo: true }),
-      'Parcelamento reativado.',
-      'Não foi possível reativar o parcelamento.',
-    )
-  }
-
   function archiveRecurrence(item: Recorrencia) {
     if (!window.confirm(`Arquivar a recorrência “${item.descricao}”?`)) return
     void runAction(
@@ -443,7 +315,6 @@ export default function ManagerResourcePanel({
   }
 
   const canEditBudget = (budget: OrcamentoMeta) => budget.usuarioId === profile.id
-  const canEditInstallment = (item: Parcelamento) => item.criadoPorUsuarioId === profile.id
   const canEditRecurrence = (item: Recorrencia) => item.criadoPorUsuarioId === profile.id
   return (
     <div>
@@ -452,27 +323,20 @@ export default function ManagerResourcePanel({
           <div>
             <h2>{resourceTitles[tab]}</h2>
             <p>
-                {tab === 'faturas'
-                  ? 'Cadastre e acompanhe os valores e o pagamento das faturas.'
-                  : 'Cadastre, edite e arquive os itens financeiros da sua família.'}
+                {tab === 'parcelamentos' || tab === 'faturas'
+                  ? `Visualize ${tab === 'parcelamentos' ? 'os parcelamentos' : 'as faturas'} cadastrados.`
+                  : 'Cadastre, edite e arquive os itens financeiros da sua família. (Etapa em desenvolvimento)'}
             </p>
           </div>
-          {tab !== 'faturas' || canCreateCardResource ? (
+          {(tab === 'orcamentos' || tab === 'recorrencias') && (
           <button
             className="records-create-button"
             type="button"
-            onClick={() => {
-                if (tab === 'orcamentos') openBudgetForm()
-                else if (tab === 'parcelamentos') openInstallmentForm()
-                else if (tab === 'recorrencias') openRecurrenceForm()
-                else openInvoiceForm()
-            }}
+            onClick={() => tab === 'orcamentos' ? openBudgetForm() : openRecurrenceForm()}
           >
-            <span aria-hidden="true">+</span> {tab === 'orcamentos' ? 'Novo orçamento'
-                : tab === 'parcelamentos' ? 'Novo parcelamento'
-                  : tab === 'recorrencias' ? 'Nova recorrência' : 'Nova fatura'}
+            <span aria-hidden="true">+</span> {tab === 'orcamentos' ? 'Novo orçamento' : 'Nova recorrência'}
           </button>
-          ) : null}
+          )}
         </div>
       )}
       {feedback && <p className="records-feedback" role="status">{feedback}</p>}
@@ -532,18 +396,9 @@ export default function ManagerResourcePanel({
                     <div>
                       <strong>{item.descricao}</strong>
                       <span>{item.totalParcelas} parcelas · {currencyFormatter.format(item.valorTotal)} · {dateFormatter.format(item.dataInicio)}</span>
-                      {!canEditInstallment(item) && <span>Cadastro de outro membro</span>}
                     </div>
                     {!item.ativo && <span className="manager-badge">Arquivado</span>}
                   </div>
-                  {canEditInstallment(item) && (
-                    <div className="manager-card-actions">
-                      <button className="manager-action" type="button" onClick={() => openInstallmentForm(item)}>Editar</button>
-                      {item.ativo
-                        ? <button className="manager-action is-danger" type="button" disabled={isSaving} onClick={() => archiveInstallment(item)}>Arquivar</button>
-                        : <button className="manager-action" type="button" disabled={isSaving} onClick={() => restoreInstallment(item)}>Reativar</button>}
-                    </div>
-                  )}
                 </li>
               ))}
             </ul>
@@ -575,12 +430,6 @@ export default function ManagerResourcePanel({
               ))}
             </ul>
           ))}
-          {tab === 'faturas' && !canCreateCardResource && (
-            <div className="records-state">
-              <p>Nenhuma conta ativa de cartão de crédito cadastrada.</p>
-              <p>Cadastre ou reative uma conta do tipo cartão de crédito para gerenciar faturas.</p>
-            </div>
-          )}
           {tab === 'faturas' && (invoices.length === 0 ? (
             <p className="records-state">Nenhuma fatura cadastrada.</p>
           ) : (
@@ -594,9 +443,6 @@ export default function ManagerResourcePanel({
                       <span>Total {currencyFormatter.format(invoice.valorTotal)} · pago {currencyFormatter.format(invoice.valorPago)}</span>
                     </div>
                     <span className="manager-badge">{invoiceStatusLabels[invoice.status]}</span>
-                  </div>
-                  <div className="manager-card-actions">
-                    <button className="manager-action" type="button" onClick={() => openInvoiceForm(invoice)}>Editar</button>
                   </div>
                 </li>
               ))}
@@ -617,9 +463,7 @@ export default function ManagerResourcePanel({
                 <p className="eyebrow">{resourceTitles[editor]}</p>
                 <h2 id="resource-dialog-title">
                   {editor === 'orcamentos' ? editingBudget ? 'Editar orçamento' : 'Novo orçamento'
-                    : editor === 'parcelamentos' ? editingInstallment ? 'Editar parcelamento' : 'Novo parcelamento'
-                      : editor === 'recorrencias' ? editingRecurrence ? 'Editar recorrência' : 'Nova recorrência'
-                        : editingInvoice ? 'Editar fatura' : 'Nova fatura'}
+                    : editingRecurrence ? 'Editar recorrência' : 'Nova recorrência'}
                 </h2>
               </div>
               <button className="records-close" type="button" aria-label="Fechar formulário" onClick={closeEditor} disabled={isSaving}>×</button>
@@ -639,48 +483,6 @@ export default function ManagerResourcePanel({
                   <input id="resource-budget-amount" type="text" inputMode="decimal" value={budgetAmount} onChange={(event) => setBudgetAmount(event.target.value)} required />
                   <label htmlFor="resource-budget-month">Mês</label>
                   <input id="resource-budget-month" type="month" value={budgetMonth} onChange={(event) => setBudgetMonth(event.target.value)} required />
-                </>
-              )}
-              {editor === 'parcelamentos' && (
-                <>
-                  <label htmlFor="resource-installment-description">Descrição</label>
-                  <input id="resource-installment-description" value={installmentDescription} onChange={(event) => setInstallmentDescription(event.target.value)} maxLength={120} required />
-                  <label htmlFor="resource-installment-amount">Valor total</label>
-                  <input id="resource-installment-amount" type="text" inputMode="decimal" value={installmentAmount} onChange={(event) => setInstallmentAmount(event.target.value)} required />
-                  <label htmlFor="resource-installment-count">Número de parcelas</label>
-                  <input id="resource-installment-count" type="number" min="1" step="1" value={installmentCount} onChange={(event) => setInstallmentCount(event.target.value)} required />
-                  <label htmlFor="resource-installment-date">Data inicial</label>
-                  <input id="resource-installment-date" type="date" value={installmentStart} onChange={(event) => setInstallmentStart(event.target.value)} required />
-                  <label htmlFor="resource-installment-type">Tipo</label>
-                  <select id="resource-installment-type" value={installmentType} onChange={(event) => {
-                    setInstallmentType(event.target.value as MovementType)
-                    setInstallmentCategoryId('')
-                  }}>
-                    {Object.entries(movementLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                  </select>
-                  <label htmlFor="resource-installment-account">Conta</label>
-                  <select id="resource-installment-account" value={installmentAccountId} onChange={(event) => setInstallmentAccountId(event.target.value)} required>
-                    <option value="" disabled>Selecione uma conta</option>
-                    {accounts.filter((account) => account.ativo || account.id === editingInstallment?.contaId).map((account) => (
-                      <option key={account.id} value={account.id}>{account.nome}{account.ativo ? '' : ' (arquivada)'}</option>
-                    ))}
-                  </select>
-                  <label htmlFor="resource-installment-category">Categoria</label>
-                  <select id="resource-installment-category" value={installmentCategoryId} onChange={(event) => setInstallmentCategoryId(event.target.value)} required>
-                    <option value="" disabled>Selecione uma categoria</option>
-                    {[...installmentCategories, ...categories.filter((item) => item.id === editingInstallment?.categoriaId
-                      && !installmentCategories.some((allowed) => allowed.id === item.id))].map((category) => (
-                      <option key={category.id} value={category.id}>{category.nome}{category.ativo === false ? ' (arquivada)' : ''}</option>
-                    ))}
-                  </select>
-                  <label htmlFor="resource-installment-card">Cartão plástico (opcional)</label>
-                  <select id="resource-installment-card" value={installmentCardId} onChange={(event) => setInstallmentCardId(event.target.value)}>
-                    <option value="">Nenhum</option>
-                    {[...activeCards, ...cards.filter((card) => card.id === editingInstallment?.cartaoPlasticoId
-                      && !activeCards.some((active) => active.id === card.id))].map((card) => (
-                      <option key={card.id} value={card.id}>{card.nomeExibicao}{card.ativo ? '' : ' (arquivado)'}</option>
-                    ))}
-                  </select>
                 </>
               )}
               {editor === 'recorrencias' && (
@@ -717,33 +519,6 @@ export default function ManagerResourcePanel({
                   <input id="resource-recurrence-next" type="date" value={recurrenceNextDate} onChange={(event) => setRecurrenceNextDate(event.target.value)} />
                   <label htmlFor="resource-recurrence-end">Data final (opcional)</label>
                   <input id="resource-recurrence-end" type="date" value={recurrenceEndDate} onChange={(event) => setRecurrenceEndDate(event.target.value)} />
-                </>
-              )}
-              {editor === 'faturas' && (
-                <>
-                  <label htmlFor="resource-invoice-account">Conta de crédito</label>
-                  <select id="resource-invoice-account" value={invoiceAccountId} onChange={(event) => setInvoiceAccountId(event.target.value)} disabled={Boolean(editingInvoice)} required>
-                    <option value="" disabled>Selecione uma conta</option>
-                    {accounts.filter((account) => account.tipoConta === 'CARTAO_CREDITO'
-                      && (account.ativo || account.id === editingInvoice?.contaId)).map((account) => (
-                      <option key={account.id} value={account.id}>{account.nome}{account.ativo ? '' : ' (arquivada)'}</option>
-                    ))}
-                  </select>
-                  <label htmlFor="resource-invoice-month">Mês de referência</label>
-                  <input id="resource-invoice-month" type="month" value={invoiceMonth} onChange={(event) => setInvoiceMonth(event.target.value)} disabled={Boolean(editingInvoice)} required />
-                  {editingInvoice && (
-                    <>
-                      <label htmlFor="resource-invoice-total">Valor total</label>
-                      <input id="resource-invoice-total" type="text" inputMode="decimal" value={invoiceTotal} onChange={(event) => setInvoiceTotal(event.target.value)} required />
-                      <label htmlFor="resource-invoice-paid">Valor pago</label>
-                      <input id="resource-invoice-paid" type="text" inputMode="decimal" value={invoicePaid} onChange={(event) => setInvoicePaid(event.target.value)} required />
-                      <label htmlFor="resource-invoice-status">Situação</label>
-                      <select id="resource-invoice-status" value={invoiceStatus} onChange={(event) => setInvoiceStatus(event.target.value as InvoiceStatus)}>
-                        {Object.entries(invoiceStatusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                      </select>
-                    </>
-                  )}
-                  {!editingInvoice && <p className="manager-form-note">A fatura será criada como aberta, com os valores zerados. As regras atuais não permitem excluir faturas.</p>}
                 </>
               )}
               {formError && <p className="records-form-error" role="alert">{formError}</p>}
