@@ -599,6 +599,7 @@ const styles = StyleSheet.create({
         alignItems: "center",
         paddingBottom: 14,
         gap: 12,
+        marginTop: 7,
     },
     backButton: {
         width: 40,
