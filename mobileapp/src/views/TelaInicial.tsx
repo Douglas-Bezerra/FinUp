@@ -556,17 +556,17 @@ const styles = StyleSheet.create({
     },
     income: {
         color: colors.primary,
-        fontSize: 15,
+        fontSize: 14,
         fontWeight: "600",
     },
     expense: {
         color: "#FF6B6B",
-        fontSize: 15,
+        fontSize: 14,
         fontWeight: "600",
     },
     savings: {
         color: colors.info,
-        fontSize: 15,
+        fontSize: 14,
         fontWeight: "600",
     },
     divider: {

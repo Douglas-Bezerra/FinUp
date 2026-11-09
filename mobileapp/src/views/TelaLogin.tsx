@@ -149,7 +149,7 @@ export default function TelaLogin() {
             alignSelf: "center",
             maxWidth: 560,
             paddingHorizontal: horizontalPadding,
-            paddingTop: Math.max(insets.top, height < 700 ? 12 : 24),
+            paddingTop: Math.max(insets.top, height < 700 ? 12 : 38),
             paddingBottom: Math.max(insets.bottom, 24),
           },
         ]}
@@ -157,7 +157,7 @@ export default function TelaLogin() {
       >
 
         {/* Logo */}
-        <View style={[styles.logoArea, { marginTop: height < 700 ? 12 : 28 }]}>
+        <View style={[styles.logoArea, { marginTop: height < 700 ? 12 : 38 }]}>
           <Logo />
         </View>
 
@@ -283,7 +283,6 @@ const styles = StyleSheet.create({
   logoArea: {
     alignItems: "center",
     marginBottom: 32,
-    marginTop: 0,
   },
   card: {
     backgroundColor: colors.card,
