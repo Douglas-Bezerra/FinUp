@@ -10,6 +10,7 @@ import {
     Alert,
     Animated,
     AppState,
+    Image,
     Linking,
 } from "react-native";
 import { useEffect, useRef, useState } from "react";
@@ -51,6 +52,8 @@ import { colors } from "../styles/colors";
 import { useResponsive } from "../hooks/useResponsive";
 import GradientText from "../components/GradientText"
 import { LinearGradient } from "expo-linear-gradient";
+
+const bufunfaMascote = require("../../assets/bufunfa-mascote.jpg");
 
 type Msg = {
     id: number;
@@ -422,9 +425,11 @@ export default function TelaAssistente() {
                     style={styles.finnIconBorder}
                 >
                     <View style={styles.finnIcon}>
-                        <GradientText style={styles.finnSymbol}>
-                            ✦
-                        </GradientText>
+                        <Image
+                            source={bufunfaMascote}
+                            style={styles.headerMascotImage}
+                            resizeMode="cover"
+                        />
                     </View>
                 </LinearGradient>
 
@@ -509,9 +514,11 @@ export default function TelaAssistente() {
                         ]}
                     >
                         {message.role === "bot" && (
-                            <GradientText style={styles.botIconText}>
-                                ✦
-                            </GradientText>
+                            <Image
+                                source={bufunfaMascote}
+                                style={styles.botAvatar}
+                                resizeMode="cover"
+                            />
                         )}
 
                         <View style={styles.messageContainer}>
@@ -577,9 +584,11 @@ export default function TelaAssistente() {
                 {/* Digitando */}
                 {typing && (
                     <View style={styles.messageRow}>
-                        <GradientText style={styles.botIconText}>
-                            ✦
-                        </GradientText>
+                        <Image
+                            source={bufunfaMascote}
+                            style={styles.botAvatar}
+                            resizeMode="cover"
+                        />
 
                         <View style={styles.typingBubble}>
                             <View style={styles.typingDots}>
@@ -772,19 +781,20 @@ const styles = StyleSheet.create({
     finnIcon: {
         flex: 1,
         borderRadius: 15,
-        backgroundColor: colors.background,
+        backgroundColor: "#000000",
         alignItems: "center",
         justifyContent: "center",
+        overflow: "hidden",
+    },
+    headerMascotImage: {
+        width: "100%",
+        height: "100%",
     },
     finnIconBorder: {
         width: 50,
         height: 50,
         borderRadius: 16,
         padding: 1,
-    },
-    finnSymbol: {
-        color: colors.primary,
-        fontSize: 25,
     },
     headerInfo: {
         flex: 1,
@@ -831,9 +841,13 @@ const styles = StyleSheet.create({
     userRow: {
         justifyContent: "flex-end",
     },
-    botIconText: {
-        color: colors.primary,
-        fontSize: 13,
+    botAvatar: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: "#000000",
+        borderWidth: 1,
+        borderColor: colors.border,
     },
     messageContainer: {
         maxWidth: "80%",

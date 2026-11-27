@@ -1,4 +1,4 @@
-import { RefreshControl, StyleSheet, Text, View, Pressable, ScrollView } from "react-native";
+import { RefreshControl, StyleSheet, Text, View, Pressable, ScrollView, Image } from "react-native";
 import { useCallback, useState } from "react";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -12,6 +12,8 @@ import { listarContas, obterExtrato, obterUsuario } from "../../../shared/servic
 
 import type { Transacao } from "../../../shared/types/finup";
 import { useResponsive } from "../hooks/useResponsive";
+
+const bufunfaMascote = require("../../assets/bufunfa-mascote.jpg");
 
 export default function TelaInicial() {
 
@@ -299,17 +301,19 @@ export default function TelaInicial() {
                     <View
                         style={[
                             styles.actionIcon,
-                            { backgroundColor: "rgba(192, 132, 252, 0.12)" },
+                            {
+                                backgroundColor: "#000000",
+                                overflow: "hidden",
+                                borderWidth: 1,
+                                borderColor: "rgba(74, 222, 128, 0.35)",
+                            },
                         ]}
                     >
-                        <Text
-                            style={[
-                                styles.actionIconText,
-                                { color: "#C084FC" },
-                            ]}
-                        >
-                            ✦
-                        </Text>
+                        <Image
+                            source={bufunfaMascote}
+                            style={styles.assistantMascotIcon}
+                            resizeMode="cover"
+                        />
                     </View>
 
                     <Text style={styles.actionLabel}>Assistente</Text>
@@ -610,6 +614,11 @@ const styles = StyleSheet.create({
     actionIconText: {
         fontSize: 27,
         fontWeight: "700",
+    },
+    assistantMascotIcon: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
     },
     actionLabel: {
         color: colors.mutedForeground,
