@@ -1,0 +1,186 @@
+{
+  "versao": "1.0.0",
+  "descricao": "Dataset de benchmark Baseline (Antes) para avaliar o classificador Naive Bayes puro do Bufunfa em cenários IN_DOMAIN, FORA_ESCOPO_TEMPORAL e CONSELHO_ABERTO.",
+  "perguntas": [
+    {
+      "id": 1,
+      "grupo": "IN_DOMAIN",
+      "pergunta": "qual meu saldo disponivel hoje nas contas?",
+      "intencaoEsperada": "CONSULTAR_SALDO"
+    },
+    {
+      "id": 2,
+      "grupo": "IN_DOMAIN",
+      "pergunta": "em qual area eu torrei mais dinheiro neste mes?",
+      "intencaoEsperada": "ONDE_GASTEI_MAIS"
+    },
+    {
+      "id": 3,
+      "grupo": "IN_DOMAIN",
+      "pergunta": "qual foi a categoria com o menor gasto do mes?",
+      "intencaoEsperada": "ONDE_GASTEI_MENOS"
+    },
+    {
+      "id": 4,
+      "grupo": "IN_DOMAIN",
+      "pergunta": "compara minhas despesas deste mes com o mes anterior",
+      "intencaoEsperada": "COMPARAR_MES_ANTERIOR"
+    },
+    {
+      "id": 5,
+      "grupo": "IN_DOMAIN",
+      "pergunta": "quanto eu gastei com supermercado e alimentacao esse mes?",
+      "intencaoEsperada": "GASTO_CATEGORIA"
+    },
+    {
+      "id": 6,
+      "grupo": "IN_DOMAIN",
+      "pergunta": "qual foi o total de despesas que tive ate agora no mes?",
+      "intencaoEsperada": "CONSULTAR_GASTOS"
+    },
+    {
+      "id": 7,
+      "grupo": "IN_DOMAIN",
+      "pergunta": "quanto de dinheiro entrou de receitas e salario esse mes?",
+      "intencaoEsperada": "CONSULTAR_RECEITAS"
+    },
+    {
+      "id": 8,
+      "grupo": "IN_DOMAIN",
+      "pergunta": "como anda a minha saude financeira neste mes?",
+      "intencaoEsperada": "SAUDE_FINANCEIRA"
+    },
+    {
+      "id": 9,
+      "grupo": "IN_DOMAIN",
+      "pergunta": "me mostra onde posso cortar gastos para economizar mais",
+      "intencaoEsperada": "CORTAR_GASTOS"
+    },
+    {
+      "id": 10,
+      "grupo": "IN_DOMAIN",
+      "pergunta": "quanto gastei com uber e transporte este mes?",
+      "intencaoEsperada": "GASTO_CATEGORIA"
+    },
+    {
+      "id": 11,
+      "grupo": "FORA_ESCOPO_TEMPORAL",
+      "pergunta": "quanto gastei nos últimos 6 meses?",
+      "intencaoEsperada": "FALLBACK"
+    },
+    {
+      "id": 12,
+      "grupo": "FORA_ESCOPO_TEMPORAL",
+      "pergunta": "qual o valor da minha fatura do cartão de crédito?",
+      "intencaoEsperada": "FALLBACK"
+    },
+    {
+      "id": 13,
+      "grupo": "FORA_ESCOPO_TEMPORAL",
+      "pergunta": "quanto falta para atingir minha meta de viagem na caixinha?",
+      "intencaoEsperada": "FALLBACK"
+    },
+    {
+      "id": 14,
+      "grupo": "FORA_ESCOPO_TEMPORAL",
+      "pergunta": "quanto gastei na semana passada?",
+      "intencaoEsperada": "FALLBACK"
+    },
+    {
+      "id": 15,
+      "grupo": "FORA_ESCOPO_TEMPORAL",
+      "pergunta": "qual foi o total de despesas no ano passado inteiro?",
+      "intencaoEsperada": "FALLBACK"
+    },
+    {
+      "id": 16,
+      "grupo": "FORA_ESCOPO_TEMPORAL",
+      "pergunta": "que dia vence a fatura do meu cartão Nubank?",
+      "intencaoEsperada": "FALLBACK"
+    },
+    {
+      "id": 17,
+      "grupo": "FORA_ESCOPO_TEMPORAL",
+      "pergunta": "quantas parcelas ainda faltam pagar do meu celular?",
+      "intencaoEsperada": "FALLBACK"
+    },
+    {
+      "id": 18,
+      "grupo": "FORA_ESCOPO_TEMPORAL",
+      "pergunta": "quais contas fixas vencem nos próximos 7 dias?",
+      "intencaoEsperada": "FALLBACK"
+    },
+    {
+      "id": 19,
+      "grupo": "FORA_ESCOPO_TEMPORAL",
+      "pergunta": "qual foi minha média mensal de gastos no último trimestre?",
+      "intencaoEsperada": "FALLBACK"
+    },
+    {
+      "id": 20,
+      "grupo": "FORA_ESCOPO_TEMPORAL",
+      "pergunta": "quanto eu já guardei nas minhas caixinhas até hoje?",
+      "intencaoEsperada": "FALLBACK"
+    },
+    {
+      "id": 21,
+      "grupo": "CONSELHO_ABERTO",
+      "pergunta": "consigo comprar um notebook de 3000 reais parcelado em 10x?",
+      "intencaoEsperada": "FALLBACK"
+    },
+    {
+      "id": 22,
+      "grupo": "CONSELHO_ABERTO",
+      "pergunta": "como faço para juntar mil reais até o fim do ano?",
+      "intencaoEsperada": "FALLBACK"
+    },
+    {
+      "id": 23,
+      "grupo": "CONSELHO_ABERTO",
+      "pergunta": "vale a pena investir no Tesouro Selic ou deixar na poupança?",
+      "intencaoEsperada": "FALLBACK"
+    },
+    {
+      "id": 24,
+      "grupo": "CONSELHO_ABERTO",
+      "pergunta": "por que meus gastos subiram tanto ultimamente?",
+      "intencaoEsperada": "FALLBACK"
+    },
+    {
+      "id": 25,
+      "grupo": "CONSELHO_ABERTO",
+      "pergunta": "qual é a melhor estratégia para quitar minhas dívidas do cartão?",
+      "intencaoEsperada": "FALLBACK"
+    },
+    {
+      "id": 26,
+      "grupo": "CONSELHO_ABERTO",
+      "pergunta": "quanto devo separar por mês para montar uma reserva de emergência?",
+      "intencaoEsperada": "FALLBACK"
+    },
+    {
+      "id": 27,
+      "grupo": "CONSELHO_ABERTO",
+      "pergunta": "é melhor pagar o aluguel à vista com desconto ou investir o dinheiro?",
+      "intencaoEsperada": "FALLBACK"
+    },
+    {
+      "id": 28,
+      "grupo": "CONSELHO_ABERTO",
+      "pergunta": "me ajuda a montar um orçamento mensal realista para minha família",
+      "intencaoEsperada": "FALLBACK"
+    },
+    {
+      "id": 29,
+      "grupo": "CONSELHO_ABERTO",
+      "pergunta": "como organizar minhas finanças usando a regra 50 30 20 na prática?",
+      "intencaoEsperada": "FALLBACK"
+    },
+    {
+      "id": 30,
+      "grupo": "CONSELHO_ABERTO",
+      "pergunta": "se eu economizar 300 reais por mês, quanto terei em 2 anos?",
+      "intencaoEsperada": "FALLBACK"
+    }
+  ]
+}

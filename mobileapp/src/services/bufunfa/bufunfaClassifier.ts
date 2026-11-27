@@ -1,4 +1,12 @@
-import modelData from "./model.json";
+import {
+    classificarNaiveBayesPuro,
+    extrairTokens,
+    normalizar,
+    type ResultadoNaiveBayesPuro,
+} from "./naiveBayesCore";
+
+export { classificarNaiveBayesPuro, extrairTokens, normalizar };
+export type { ResultadoNaiveBayesPuro };
 
 export type IntencaoBufunfa =
     | "COMPARAR_MES_ANTERIOR"
@@ -32,35 +40,6 @@ const CATEGORIAS_SINONIMOS: Record<string, string[]> = {
     Assinaturas: ["assinatura", "assinaturas", "streaming", "netflix", "spotify", "prime", "servico"],
     Outros: ["outros", "compras", "roupa", "vestuario", "shopping"],
 };
-
-/**
- * Normaliza o texto removendo acentos e pontuação.
- */
-export function normalizar(texto: string): string {
-    return texto
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .replace(/[^a-z0-9\s]/g, " ")
-        .replace(/\s+/g, " ")
-        .trim();
-}
-
-/**
- * Extrai unigramas e bigramas.
- */
-function extrairTokens(texto: string): string[] {
-    const limpo = normalizar(texto);
-    if (!limpo) return [];
-    const palavras = limpo.split(" ").filter((p) => p.length > 1);
-    const tokens = [...palavras];
-
-    for (let i = 0; i < palavras.length - 1; i++) {
-        tokens.push(`${palavras[i]}_${palavras[i + 1]}`);
-    }
-
-    return tokens;
-}
 
 /**
  * Detecta se a pergunta é direcionada ao mês passado/anterior.
@@ -148,47 +127,9 @@ export function classificarMensagem(
         };
     }
 
-    const { classes, logPriors, logLikelihoods, tokenTotals, vocabularioSize } = modelData;
-
-    const scores: Record<string, number> = {};
-
-    classes.forEach((className) => {
-        let score = (logPriors as Record<string, number>)[className] || 0;
-        const totalTokensClasse = (tokenTotals as Record<string, number>)[className] || 1;
-        const defaultLogProb = Math.log(1 / (totalTokensClasse + vocabularioSize));
-        const classLikelihoods = (logLikelihoods as Record<string, Record<string, number>>)[className] || {};
-
-        tokens.forEach((token) => {
-            if (classLikelihoods[token] !== undefined) {
-                score += classLikelihoods[token];
-            } else {
-                score += defaultLogProb;
-            }
-        });
-
-        scores[className] = score;
-    });
-
-    // Softmax para calcular a probabilidade/confiança
-    const maxScore = Math.max(...Object.values(scores));
-    const expScores: Record<string, number> = {};
-    let sumExp = 0;
-
-    classes.forEach((c) => {
-        expScores[c] = Math.exp(scores[c] - maxScore);
-        sumExp += expScores[c];
-    });
-
-    let topClass = classes[0] as IntencaoBufunfa;
-    let topProb = 0;
-
-    classes.forEach((c) => {
-        const prob = expScores[c] / sumExp;
-        if (prob > topProb) {
-            topProb = prob;
-            topClass = c as IntencaoBufunfa;
-        }
-    });
+    const resultadoNB = classificarNaiveBayesPuro(texto);
+    let topClass = resultadoNB.intencao as IntencaoBufunfa;
+    const topProb = resultadoNB.confianca;
 
     const categoriaDetectada = extrairCategoria(texto);
 
