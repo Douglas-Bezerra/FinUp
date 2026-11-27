@@ -9,16 +9,18 @@ const MaskedViewAny = MaskedView as any;
 interface GradientTextProps {
   children: string;
   style?: StyleProp<TextStyle>;
+  numberOfLines?: number;
 }
 
 export default function GradientText({
   children,
   style,
+  numberOfLines,
 }: GradientTextProps) {
   return (
     <MaskedViewAny
       maskElement={
-        <Text style={style}>
+        <Text style={style} numberOfLines={numberOfLines}>
           {children}
         </Text>
       }
@@ -28,7 +30,7 @@ export default function GradientText({
         start={colors.gradient.start}
         end={colors.gradient.end}
       >
-        <Text style={[style, { opacity: 0 }]}>
+        <Text style={[style, { opacity: 0 }]} numberOfLines={numberOfLines}>
           {children}
         </Text>
       </LinearGradient>

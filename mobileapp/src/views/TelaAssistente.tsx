@@ -40,8 +40,11 @@ import { auth, db } from "../firebase";
 import {
     carregarContextoBufunfa,
     ContextoFinanceiroBufunfa,
+    MetadadosExecucaoBufunfa,
+    ModoMotorBufunfa,
     responderPerguntaComIA,
     ResultadoClassificacao,
+    TurnoHistorico,
 } from "../services/bufunfa/bufunfaService";
 
 import { colors } from "../styles/colors";
@@ -54,7 +57,14 @@ type Msg = {
     role: "user" | "bot";
     text: string;
     time: string;
+    metadados?: MetadadosExecucaoBufunfa;
 };
+
+const MODOS_MOTOR: Array<{ id: ModoMotorBufunfa; label: string }> = [
+    { id: "CLASSICO", label: "Clássico" },
+    { id: "HIBRIDO", label: "Híbrido" },
+    { id: "LLM", label: "Apenas IA" },
+];
 
 const INITIAL: Msg[] = [
     {
@@ -96,6 +106,7 @@ export default function TelaAssistente() {
     const [isListening, setIsListening] = useState(false);
     const [permissionDenied, setPermissionDenied] = useState(false);
     const [contexto, setContexto] = useState<ContextoFinanceiroBufunfa | null>(null);
+    const [modoMotor, setModoMotor] = useState<ModoMotorBufunfa>("HIBRIDO");
     const lastClassificationRef = useRef<ResultadoClassificacao | null>(null);
 
     const scrollRef = useRef<any>(null);
@@ -272,8 +283,34 @@ export default function TelaAssistente() {
         });
     }
 
-    function send(text: string) {
-        if (!text.trim() || typing) return;
+    function formatarBadgeTelemetria(metadados: MetadadosExecucaoBufunfa): string {
+        if (metadados.motorUsado === "NAIVE_BAYES") {
+            const lat =
+                metadados.latenciaMs < 1
+                    ? metadados.latenciaMs.toFixed(1)
+                    : Math.round(metadados.latenciaMs).toString();
+            if (metadados.confianca !== undefined && metadados.taxaOOV !== undefined) {
+                return `⚡ Naive Bayes Local • ${lat}ms • Conf: ${Math.round(
+                    metadados.confianca * 100
+                )}% | OOV: ${Math.round(metadados.taxaOOV * 100)}%`;
+            }
+            return `⚡ Naive Bayes Local • ${lat}ms`;
+        }
+
+        if (metadados.motorUsado === "GEMINI_FLASH") {
+            return `✨ Gemini Flash (${metadados.motivoRoteamento}) • ${Math.round(
+                metadados.latenciaMs
+            )}ms`;
+        }
+
+        return `📡 Fallback Offline (${metadados.motivoRoteamento}) • ${Math.round(
+            metadados.latenciaMs
+        )}ms`;
+    }
+
+    async function send(text: string) {
+        const textoLimpo = text.trim();
+        if (!textoLimpo || typing) return;
 
         if (isListening && ExpoSpeechRecognitionModule) {
             try {
@@ -285,29 +322,36 @@ export default function TelaAssistente() {
         const userMsg: Msg = {
             id: Date.now(),
             role: "user",
-            text: text.trim(),
+            text: textoLimpo,
             time: now(),
         };
+
+        const historicoRecente: TurnoHistorico[] = messages
+            .filter((m) => m.id !== 1)
+            .map((m) => ({
+                role: m.role === "user" ? "user" : "model",
+                text: m.text,
+            }));
 
         setMessages((current) => [...current, userMsg]);
         setInput("");
         setTyping(true);
 
-        setTimeout(() => {
-            const { resposta, classificacao } = responderPerguntaComIA(
-                text.trim(),
+        try {
+            const { resposta, classificacao, metadados } = await responderPerguntaComIA(
+                textoLimpo,
                 contexto,
-                lastClassificationRef.current
+                lastClassificationRef.current,
+                modoMotor,
+                historicoRecente
             );
             lastClassificationRef.current = classificacao;
 
             console.log(
-                `[Bufunfa IA] Intenção detectada: ${classificacao.intent} (Confiança: ${(
-                    classificacao.confidence * 100
-                ).toFixed(1)}%) [Período: ${classificacao.periodo}]`
+                `[Bufunfa ${modoMotor}] Motor: ${metadados.motorUsado} | Motivo: ${metadados.motivoRoteamento} | Latência: ${metadados.latenciaMs.toFixed(
+                    1
+                )}ms`
             );
-
-            setTyping(false);
 
             setMessages((current) => [
                 ...current,
@@ -316,9 +360,23 @@ export default function TelaAssistente() {
                     role: "bot",
                     text: resposta,
                     time: now(),
+                    metadados,
                 },
             ]);
-        }, 800);
+        } catch (err) {
+            console.error("[Bufunfa] Erro inesperado ao processar pergunta:", err);
+            setMessages((current) => [
+                ...current,
+                {
+                    id: Date.now() + 1,
+                    role: "bot",
+                    text: "Desculpe, ocorreu um erro inesperado ao processar sua pergunta. Tente novamente.",
+                    time: now(),
+                },
+            ]);
+        } finally {
+            setTyping(false);
+        }
     }
 
     return (
@@ -362,16 +420,56 @@ export default function TelaAssistente() {
                 </LinearGradient>
 
                 <View style={styles.headerInfo}>
-                    <GradientText style={styles.finnName}>
+                    <GradientText style={styles.finnName} numberOfLines={1}>
                         Bufunfa
                     </GradientText>
 
                     <View style={styles.onlineStatus}>
                         <View style={styles.onlineIndicator} />
-                        <GradientText style={styles.onlineText}>
+                        <GradientText style={styles.onlineText} numberOfLines={1}>
                             Online · Assistente Financeiro
                         </GradientText>
                     </View>
+                </View>
+            </View>
+
+            {/* Seletor de Modo do Motor de PLN */}
+            <View
+                style={[
+                    styles.modeSelectorWrapper,
+                    {
+                        alignSelf: "center",
+                        width: "100%",
+                        maxWidth: isTablet ? 960 : undefined,
+                        paddingHorizontal: horizontalPadding,
+                    },
+                ]}
+            >
+                <View style={styles.modeSelectorBar}>
+                    {MODOS_MOTOR.map((opcao) => {
+                        const ativo = modoMotor === opcao.id;
+                        return (
+                            <Pressable
+                                key={opcao.id}
+                                style={[
+                                    styles.modeOption,
+                                    ativo && styles.modeOptionActive,
+                                ]}
+                                onPress={() => setModoMotor(opcao.id)}
+                                disabled={typing}
+                            >
+                                <Text
+                                    style={[
+                                        styles.modeOptionText,
+                                        ativo && styles.modeOptionTextActive,
+                                    ]}
+                                    numberOfLines={1}
+                                >
+                                    {opcao.label}
+                                </Text>
+                            </Pressable>
+                        );
+                    })}
                 </View>
             </View>
 
@@ -437,6 +535,32 @@ export default function TelaAssistente() {
                             >
                                 {message.time}
                             </Text>
+
+                            {message.role === "bot" && message.metadados && (
+                                <View
+                                    style={[
+                                        styles.telemetryBadge,
+                                        message.metadados.motorUsado === "NAIVE_BAYES"
+                                            ? styles.telemetryBadgeNB
+                                            : message.metadados.motorUsado === "GEMINI_FLASH"
+                                            ? styles.telemetryBadgeGemini
+                                            : styles.telemetryBadgeOffline,
+                                    ]}
+                                >
+                                    <Text
+                                        style={[
+                                            styles.telemetryText,
+                                            message.metadados.motorUsado === "NAIVE_BAYES"
+                                                ? styles.telemetryTextNB
+                                                : message.metadados.motorUsado === "GEMINI_FLASH"
+                                                ? styles.telemetryTextGemini
+                                                : styles.telemetryTextOffline,
+                                        ]}
+                                    >
+                                        {formatarBadgeTelemetria(message.metadados)}
+                                    </Text>
+                                </View>
+                            )}
                         </View>
                     </View>
                 ))}
@@ -631,6 +755,7 @@ const styles = StyleSheet.create({
     headerInfo: {
         flex: 1,
         minWidth: 0,
+        paddingRight: 44,
     },
     finnName: {
         color: colors.foreground,
@@ -638,11 +763,12 @@ const styles = StyleSheet.create({
         fontWeight: "700",
     },
     onlineText: {
-        fontSize: 15,
+        fontSize: 13,
     },
     onlineStatus: {
         flexDirection: "row",
         alignItems: "center",
+        flexShrink: 1,
         marginTop: 2,
     },
     onlineIndicator: {
@@ -853,5 +979,73 @@ const styles = StyleSheet.create({
         backgroundColor: colors.card,
         borderWidth: 1,
         borderColor: colors.border,
+    },
+    /* Seletor de Modo & Telemetria PLN */
+    modeSelectorWrapper: {
+        paddingBottom: 8,
+    },
+    modeSelectorBar: {
+        flexDirection: "row",
+        backgroundColor: colors.card,
+        borderWidth: 1,
+        borderColor: colors.border,
+        borderRadius: 10,
+        padding: 3,
+        gap: 4,
+    },
+    modeOption: {
+        flex: 1,
+        paddingVertical: 6,
+        paddingHorizontal: 6,
+        borderRadius: 7,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    modeOptionActive: {
+        backgroundColor: colors.secondary,
+        borderWidth: 1,
+        borderColor: colors.primary,
+    },
+    modeOptionText: {
+        color: colors.mutedForeground,
+        fontSize: 12,
+        fontWeight: "600",
+    },
+    modeOptionTextActive: {
+        color: colors.foreground,
+    },
+    telemetryBadge: {
+        marginTop: 4,
+        marginLeft: 4,
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 6,
+        borderWidth: 1,
+        alignSelf: "flex-start",
+    },
+    telemetryBadgeNB: {
+        backgroundColor: "rgba(74, 222, 128, 0.08)",
+        borderColor: "rgba(74, 222, 128, 0.25)",
+    },
+    telemetryBadgeGemini: {
+        backgroundColor: "rgba(96, 165, 250, 0.08)",
+        borderColor: "rgba(96, 165, 250, 0.25)",
+    },
+    telemetryBadgeOffline: {
+        backgroundColor: "rgba(251, 191, 36, 0.08)",
+        borderColor: "rgba(251, 191, 36, 0.25)",
+    },
+    telemetryText: {
+        fontSize: 10,
+        fontWeight: "500",
+    },
+    telemetryTextNB: {
+        color: colors.primary,
+    },
+    telemetryTextGemini: {
+        color: colors.info,
+    },
+    telemetryTextOffline: {
+        color: colors.warning,
     },
 });

@@ -7,12 +7,39 @@ import {
 } from "../../../../shared/services/finupService";
 import type { Conta, Transacao } from "../../../../shared/types/finup";
 import {
-    classificarMensagem,
+    avaliarTravasOOD,
+    classificarNaiveBayesPuro,
+    detectarRegraContextual,
+    extrairCategoria,
+    extrairPeriodo,
+    extrairTokens,
     IntencaoBufunfa,
     PeriodoConsulta,
     ResultadoClassificacao,
 } from "./bufunfaClassifier";
-export type { ResultadoClassificacao, IntencaoBufunfa, PeriodoConsulta };
+import { anonimizarContexto, consultarGemini, type TurnoHistorico } from "./geminiEngine";
+
+export type { ResultadoClassificacao, IntencaoBufunfa, PeriodoConsulta, TurnoHistorico };
+export { anonimizarContexto };
+
+export type ModoMotorBufunfa = "CLASSICO" | "HIBRIDO" | "LLM";
+export type MotorUsadoBufunfa = "NAIVE_BAYES" | "GEMINI_FLASH" | "FALLBACK_OFFLINE";
+
+export interface MetadadosExecucaoBufunfa {
+    motorUsado: MotorUsadoBufunfa;
+    latenciaMs: number;
+    motivoRoteamento: string;
+    confianca?: number;
+    margem?: number;
+    taxaOOV?: number;
+    tokensTotal?: number;
+}
+
+export interface RespostaBufunfaIA {
+    resposta: string;
+    classificacao: ResultadoClassificacao;
+    metadados: MetadadosExecucaoBufunfa;
+}
 
 export interface CategoriaGasto {
     categoria: string;
@@ -471,77 +498,283 @@ export function gerarRespostaReceitas(
     return `📈 Neste mês (${ctx.mesReferencia}), suas receitas totalizam ${formatarMoeda(ctx.receitasMes)}.`;
 }
 
+function agoraMs(): number {
+    if (typeof performance !== "undefined" && typeof performance.now === "function") {
+        return performance.now();
+    }
+    return Date.now();
+}
+
+function montarClassificacaoLocal(
+    texto: string,
+    intencao: IntencaoBufunfa,
+    confianca: number
+): ResultadoClassificacao {
+    const periodo = extrairPeriodo(texto);
+    const categoriaDetectada = extrairCategoria(texto);
+    let intentFinal = intencao;
+
+    if (categoriaDetectada && (intentFinal === "CONSULTAR_GASTOS" || intentFinal === "ONDE_GASTEI_MAIS")) {
+        intentFinal = "GASTO_CATEGORIA";
+    }
+
+    return {
+        intent: intentFinal,
+        confidence: confianca,
+        categoriaSugerida: categoriaDetectada,
+        periodo,
+    };
+}
+
+function montarRespostaLocal(
+    classificacao: ResultadoClassificacao,
+    ctx: ContextoFinanceiroBufunfa
+): string {
+    switch (classificacao.intent) {
+        case "COMPARAR_MES_ANTERIOR":
+            return gerarRespostaComparativoMesAnterior(ctx);
+
+        case "ONDE_GASTEI_MAIS_E_MENOS":
+            return gerarRespostaExtremosGastos(ctx, "AMBOS", classificacao.periodo);
+
+        case "ONDE_GASTEI_MAIS":
+            return gerarRespostaExtremosGastos(ctx, "MAIS", classificacao.periodo);
+
+        case "ONDE_GASTEI_MENOS":
+            return gerarRespostaExtremosGastos(ctx, "MENOS", classificacao.periodo);
+
+        case "GASTO_CATEGORIA":
+            return gerarRespostaGastoCategoria(
+                ctx,
+                classificacao.categoriaSugerida,
+                classificacao.periodo
+            );
+
+        case "CONSULTAR_SALDO":
+            return gerarRespostaSaldo(ctx);
+
+        case "CONSULTAR_GASTOS":
+            return gerarRespostaGastos(ctx, classificacao.periodo);
+
+        case "CONSULTAR_RECEITAS":
+            return gerarRespostaReceitas(ctx, classificacao.periodo);
+
+        case "SAUDE_FINANCEIRA":
+            return gerarRespostaSaudeFinanceira(ctx);
+
+        case "CORTAR_GASTOS":
+            return gerarRespostaOndeCortarGastos(ctx);
+
+        default:
+            return `Entendido! 📝 Analisei suas finanças atuais (Saldo total: ${formatarMoeda(
+                ctx.saldoTotal
+            )}, Despesas no mês: ${formatarMoeda(ctx.despesasMes)}).\n\nVocê pode me perguntar coisas como:\n• "Compara meus gastos desse mês com mês passado"\n• "Onde gastei mais e onde gastei menos no mês passado"\n• "Quanto gastei com alimentação?"\n• "Qual é o meu saldo atual?" 💡`;
+    }
+}
+
+function gerarMensagemFallbackOffline(ctx: ContextoFinanceiroBufunfa): string {
+    return `📡 No momento estou sem conexão com a inteligência avançada na nuvem para responder análises abertas ou fora do escopo local.\n\nMesmo offline, consigo responder instantaneamente com seus dados salvos (saldo atual: ${formatarMoeda(
+        ctx.saldoTotal
+    )}):\n• Saldo total e por conta\n• Total de gastos e receitas (mês atual ou passado)\n• Gastos por categoria (ex: alimentação, transporte)\n• Onde gastou mais / menos e comparativo mensal\n• Saúde financeira e sugestões de corte 💡`;
+}
+
 /**
- * Processa a mensagem do usuário utilizando o Classificador Naive Bayes local e contexto conversacional.
+ * Orquestrador de IA do Bufunfa com suporte aos modos Clássico (NB), Híbrido (NB + Travas OOD + Gemini) e LLM.
  */
-export function responderPerguntaComIA(
+export async function responderPerguntaComIA(
     texto: string,
     ctx: ContextoFinanceiroBufunfa | null,
-    ultimoResultado?: ResultadoClassificacao | null
-): { resposta: string; classificacao: ResultadoClassificacao } {
-    const classificacao = classificarMensagem(texto, ultimoResultado);
+    ultimoResultado?: ResultadoClassificacao | null,
+    modoMotor: ModoMotorBufunfa = "HIBRIDO",
+    historico: TurnoHistorico[] = []
+): Promise<RespostaBufunfaIA> {
+    const inicio = agoraMs();
 
     if (!ctx) {
         return {
             resposta:
                 "Entendido! 📝 Estou conectando aos seus dados financeiros... Tente me perguntar novamente em alguns instantes!",
-            classificacao,
+            classificacao: {
+                intent: "DESCONHECIDO",
+                confidence: 0,
+                periodo: extrairPeriodo(texto),
+            },
+            metadados: {
+                motorUsado: "NAIVE_BAYES",
+                latenciaMs: Math.max(0.01, agoraMs() - inicio),
+                motivoRoteamento: "Aguardando carregamento do contexto",
+            },
         };
     }
 
-    let resposta = "";
+    // MODO 1: CLASSICO (Naive Bayes puro sem travas OOD — comportamento baseline)
+    if (modoMotor === "CLASSICO") {
+        const tokens = extrairTokens(texto);
+        const regraContextual = detectarRegraContextual(texto, ultimoResultado);
 
-    switch (classificacao.intent) {
-        case "COMPARAR_MES_ANTERIOR":
-            resposta = gerarRespostaComparativoMesAnterior(ctx);
-            break;
+        if (regraContextual) {
+            return {
+                resposta: montarRespostaLocal(regraContextual, ctx),
+                classificacao: regraContextual,
+                metadados: {
+                    motorUsado: "NAIVE_BAYES",
+                    latenciaMs: Math.max(0.01, agoraMs() - inicio),
+                    motivoRoteamento: "Modo Clássico (regra contextual)",
+                    confianca: regraContextual.confidence,
+                    taxaOOV: 0,
+                },
+            };
+        }
 
-        case "ONDE_GASTEI_MAIS_E_MENOS":
-            resposta = gerarRespostaExtremosGastos(ctx, "AMBOS", classificacao.periodo);
-            break;
+        if (tokens.length === 0) {
+            const vazia: ResultadoClassificacao = {
+                intent: "DESCONHECIDO",
+                confidence: 0,
+                periodo: extrairPeriodo(texto),
+            };
+            return {
+                resposta: montarRespostaLocal(vazia, ctx),
+                classificacao: vazia,
+                metadados: {
+                    motorUsado: "NAIVE_BAYES",
+                    latenciaMs: Math.max(0.01, agoraMs() - inicio),
+                    motivoRoteamento: "Modo Clássico (entrada vazia)",
+                    confianca: 0,
+                    margem: 0,
+                    taxaOOV: 1,
+                },
+            };
+        }
 
-        case "ONDE_GASTEI_MAIS":
-            resposta = gerarRespostaExtremosGastos(ctx, "MAIS", classificacao.periodo);
-            break;
+        const nb = classificarNaiveBayesPuro(texto);
+        const classificacao = montarClassificacaoLocal(
+            texto,
+            nb.intencao as IntencaoBufunfa,
+            nb.confianca
+        );
 
-        case "ONDE_GASTEI_MENOS":
-            resposta = gerarRespostaExtremosGastos(ctx, "MENOS", classificacao.periodo);
-            break;
-
-        case "GASTO_CATEGORIA":
-            resposta = gerarRespostaGastoCategoria(
-                ctx,
-                classificacao.categoriaSugerida,
-                classificacao.periodo
-            );
-            break;
-
-        case "CONSULTAR_SALDO":
-            resposta = gerarRespostaSaldo(ctx);
-            break;
-
-        case "CONSULTAR_GASTOS":
-            resposta = gerarRespostaGastos(ctx, classificacao.periodo);
-            break;
-
-        case "CONSULTAR_RECEITAS":
-            resposta = gerarRespostaReceitas(ctx, classificacao.periodo);
-            break;
-
-        case "SAUDE_FINANCEIRA":
-            resposta = gerarRespostaSaudeFinanceira(ctx);
-            break;
-
-        case "CORTAR_GASTOS":
-            resposta = gerarRespostaOndeCortarGastos(ctx);
-            break;
-
-        default:
-            resposta = `Entendido! 📝 Analisei suas finanças atuais (Saldo total: ${formatarMoeda(
-                ctx.saldoTotal
-            )}, Despesas no mês: ${formatarMoeda(ctx.despesasMes)}).\n\nVocê pode me perguntar coisas como:\n• "Compara meus gastos desse mês com mês passado"\n• "Onde gastei mais e onde gastei menos no mês passado"\n• "Quanto gastei com alimentação?"\n• "Qual é o meu saldo atual?" 💡`;
-            break;
+        return {
+            resposta: montarRespostaLocal(classificacao, ctx),
+            classificacao,
+            metadados: {
+                motorUsado: "NAIVE_BAYES",
+                latenciaMs: Math.max(0.01, agoraMs() - inicio),
+                motivoRoteamento: "Modo Clássico (NB sem travas)",
+                confianca: nb.confianca,
+                margem: nb.margem,
+                taxaOOV: nb.taxaOOV,
+            },
+        };
     }
 
-    return { resposta, classificacao };
+    // MODO 2: APENAS LLM (Gemini 2.5 Flash direto)
+    if (modoMotor === "LLM") {
+        const classificacaoOOD: ResultadoClassificacao = {
+            intent: "DESCONHECIDO",
+            confidence: 0,
+            periodo: extrairPeriodo(texto),
+        };
+        try {
+            const resGemini = await consultarGemini(texto, ctx, historico);
+            return {
+                resposta: resGemini.texto,
+                classificacao: classificacaoOOD,
+                metadados: {
+                    motorUsado: "GEMINI_FLASH",
+                    latenciaMs: Math.max(1, agoraMs() - inicio),
+                    motivoRoteamento: "Modo Apenas LLM",
+                    tokensTotal: resGemini.tokensTotal,
+                },
+            };
+        } catch (err) {
+            console.warn("[Bufunfa LLM] Falha ao consultar Gemini:", err);
+            return {
+                resposta: gerarMensagemFallbackOffline(ctx),
+                classificacao: classificacaoOOD,
+                metadados: {
+                    motorUsado: "FALLBACK_OFFLINE",
+                    latenciaMs: Math.max(1, agoraMs() - inicio),
+                    motivoRoteamento: "Modo Apenas LLM (Offline)",
+                },
+            };
+        }
+    }
+
+    // MODO 3: HIBRIDO (Padrão — Regras contextuais + Naive Bayes On-Device + Travas OOD + Gemini 2.5 Flash)
+    const regraContextual = detectarRegraContextual(texto, ultimoResultado);
+    if (regraContextual) {
+        return {
+            resposta: montarRespostaLocal(regraContextual, ctx),
+            classificacao: regraContextual,
+            metadados: {
+                motorUsado: "NAIVE_BAYES",
+                latenciaMs: Math.max(0.01, agoraMs() - inicio),
+                motivoRoteamento: "Regra contextual (follow-up/extremos)",
+                confianca: regraContextual.confidence,
+                taxaOOV: 0,
+            },
+        };
+    }
+
+    const nb = classificarNaiveBayesPuro(texto);
+    const travas = avaliarTravasOOD(nb);
+
+    if (travas.aprovado) {
+        const classificacao = montarClassificacaoLocal(
+            texto,
+            nb.intencao as IntencaoBufunfa,
+            nb.confianca
+        );
+        return {
+            resposta: montarRespostaLocal(classificacao, ctx),
+            classificacao,
+            metadados: {
+                motorUsado: "NAIVE_BAYES",
+                latenciaMs: Math.max(0.01, agoraMs() - inicio),
+                motivoRoteamento: travas.motivoResumo,
+                confianca: nb.confianca,
+                margem: nb.margem,
+                taxaOOV: nb.taxaOOV,
+            },
+        };
+    }
+
+    // Falhou em alguma trava OOD -> encaminha para Gemini 2.5 Flash com contexto anonimizado
+    const classificacaoOOD: ResultadoClassificacao = {
+        intent: "DESCONHECIDO",
+        confidence: nb.confianca,
+        categoriaSugerida: extrairCategoria(texto),
+        periodo: extrairPeriodo(texto),
+    };
+
+    try {
+        const resGemini = await consultarGemini(texto, ctx, historico);
+        return {
+            resposta: resGemini.texto,
+            classificacao: classificacaoOOD,
+            metadados: {
+                motorUsado: "GEMINI_FLASH",
+                latenciaMs: Math.max(1, agoraMs() - inicio),
+                motivoRoteamento: travas.motivoResumo,
+                confianca: nb.confianca,
+                margem: nb.margem,
+                taxaOOV: nb.taxaOOV,
+                tokensTotal: resGemini.tokensTotal,
+            },
+        };
+    } catch (err) {
+        console.warn("[Bufunfa Híbrido] Gemini indisponível, acionando fallback offline:", err);
+        return {
+            resposta: gerarMensagemFallbackOffline(ctx),
+            classificacao: classificacaoOOD,
+            metadados: {
+                motorUsado: "FALLBACK_OFFLINE",
+                latenciaMs: Math.max(1, agoraMs() - inicio),
+                motivoRoteamento: `${travas.motivoResumo} (Offline)`,
+                confianca: nb.confianca,
+                margem: nb.margem,
+                taxaOOV: nb.taxaOOV,
+            },
+        };
+    }
 }

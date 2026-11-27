@@ -4,6 +4,12 @@ const VOCABULARIO_CONHECIDO = new Set(
     Object.keys((modelData.logLikelihoods && modelData.logLikelihoods[modelData.classes[0]]) || {})
 );
 
+const TRAVAS_OOD = {
+    CONFIANCA_MINIMA: 0.70,
+    MARGEM_MINIMA: 0.25,
+    TAXA_OOV_MAXIMA: 0.40,
+};
+
 /**
  * Normaliza o texto removendo acentos e pontuação.
  * @param {string} texto
@@ -116,8 +122,44 @@ function classificarNaiveBayesPuro(texto) {
     };
 }
 
+/**
+ * Avalia se a predição do Naive Bayes atende às travas matemáticas para detecção OOD.
+ * @param {{ intencao: string, confianca: number, margem: number, taxaOOV: number }} resultadoNB
+ * @returns {{ aprovado: boolean, motivos: string[], motivoResumo: string }}
+ */
+function avaliarTravasOOD(resultadoNB) {
+    const motivos = [];
+
+    if (!resultadoNB || resultadoNB.intencao === "DESCONHECIDO") {
+        motivos.push("Entrada vazia ou sem tokens");
+    } else {
+        if (resultadoNB.confianca < TRAVAS_OOD.CONFIANCA_MINIMA) {
+            motivos.push(`Conf ${(resultadoNB.confianca * 100).toFixed(0)}% < ${(TRAVAS_OOD.CONFIANCA_MINIMA * 100).toFixed(0)}%`);
+        }
+        if (resultadoNB.margem < TRAVAS_OOD.MARGEM_MINIMA) {
+            motivos.push(`Margem ${(resultadoNB.margem * 100).toFixed(0)}% < ${(TRAVAS_OOD.MARGEM_MINIMA * 100).toFixed(0)}%`);
+        }
+        if (resultadoNB.taxaOOV > TRAVAS_OOD.TAXA_OOV_MAXIMA) {
+            motivos.push(`OOV ${(resultadoNB.taxaOOV * 100).toFixed(0)}% > ${(TRAVAS_OOD.TAXA_OOV_MAXIMA * 100).toFixed(0)}%`);
+        }
+    }
+
+    const aprovado = motivos.length === 0;
+    const motivoResumo = aprovado
+        ? "Aprovado nas travas OOD"
+        : `Fallback OOD: ${motivos.join(", ")}`;
+
+    return {
+        aprovado,
+        motivos,
+        motivoResumo,
+    };
+}
+
 module.exports = {
+    TRAVAS_OOD,
     normalizar,
     extrairTokens,
     classificarNaiveBayesPuro,
+    avaliarTravasOOD,
 };

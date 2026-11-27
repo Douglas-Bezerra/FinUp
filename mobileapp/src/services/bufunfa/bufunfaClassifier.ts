@@ -1,12 +1,15 @@
 import {
+    avaliarTravasOOD,
     classificarNaiveBayesPuro,
     extrairTokens,
     normalizar,
+    TRAVAS_OOD,
+    type AvaliacaoTravasOOD,
     type ResultadoNaiveBayesPuro,
 } from "./naiveBayesCore";
 
-export { classificarNaiveBayesPuro, extrairTokens, normalizar };
-export type { ResultadoNaiveBayesPuro };
+export { avaliarTravasOOD, classificarNaiveBayesPuro, extrairTokens, normalizar, TRAVAS_OOD };
+export type { AvaliacaoTravasOOD, ResultadoNaiveBayesPuro };
 
 export type IntencaoBufunfa =
     | "COMPARAR_MES_ANTERIOR"
@@ -77,31 +80,33 @@ export function extrairCategoria(texto: string): string | undefined {
     return undefined;
 }
 
+const FRASES_FOLLOW_UP_PASSADO = [
+    "no mes passado",
+    "mes passado",
+    "e no mes passado",
+    "e mes passado",
+    "no anterior",
+    "mes anterior",
+    "e no anterior",
+    "e no mes anterior",
+    "do mes passado",
+];
+
 /**
- * Classifica a mensagem do usuário usando o modelo Naive Bayes pré-treinado e regras de contexto.
+ * Detecta regras determinísticas de contexto (follow-up de período e pergunta composta de extremos).
  */
-export function classificarMensagem(
+export function detectarRegraContextual(
     texto: string,
     ultimoResultado?: ResultadoClassificacao | null
-): ResultadoClassificacao {
+): ResultadoClassificacao | null {
     const limpo = normalizar(texto);
-    const tokens = extrairTokens(texto);
     const periodo = extrairPeriodo(texto);
 
-    // Tratar follow-ups curtos de conversa (ex: "no mês passado", "e no mês passado?", "e no anterior?")
-    const frasesFollowUpPassado = [
-        "no mes passado",
-        "mes passado",
-        "e no mes passado",
-        "e mes passado",
-        "no anterior",
-        "mes anterior",
-        "e no anterior",
-        "e no mes anterior",
-        "do mes passado",
-    ];
-
-    if (frasesFollowUpPassado.includes(limpo) && ultimoResultado) {
+    if (
+        FRASES_FOLLOW_UP_PASSADO.includes(limpo) &&
+        ultimoResultado &&
+        ultimoResultado.intent !== "DESCONHECIDO"
+    ) {
         return {
             intent: ultimoResultado.intent,
             confidence: 0.95,
@@ -110,21 +115,44 @@ export function classificarMensagem(
         };
     }
 
-    // Se o texto estiver vazio ou muito curto
-    if (tokens.length === 0) {
-        return { intent: "DESCONHECIDO", confidence: 0, periodo };
-    }
-
-    // Detectar pergunta composta de extremos (MAIS E MENOS juntos)
     const temMais = limpo.includes("mais") || limpo.includes("maior") || limpo.includes("pesou");
     const temMenos = limpo.includes("menos") || limpo.includes("menor") || limpo.includes("barato");
 
-    if (temMais && temMenos && !limpo.includes("compara") && !limpo.includes("comparativo") && !limpo.includes("diferenca")) {
+    if (
+        temMais &&
+        temMenos &&
+        !limpo.includes("compara") &&
+        !limpo.includes("comparativo") &&
+        !limpo.includes("diferenca")
+    ) {
         return {
             intent: "ONDE_GASTEI_MAIS_E_MENOS",
             confidence: 0.98,
             periodo,
         };
+    }
+
+    return null;
+}
+
+/**
+ * Classifica a mensagem do usuário usando o modelo Naive Bayes pré-treinado e regras de contexto.
+ */
+export function classificarMensagem(
+    texto: string,
+    ultimoResultado?: ResultadoClassificacao | null
+): ResultadoClassificacao {
+    const tokens = extrairTokens(texto);
+    const periodo = extrairPeriodo(texto);
+
+    const regraContextual = detectarRegraContextual(texto, ultimoResultado);
+    if (regraContextual) {
+        return regraContextual;
+    }
+
+    // Se o texto estiver vazio ou muito curto
+    if (tokens.length === 0) {
+        return { intent: "DESCONHECIDO", confidence: 0, periodo };
     }
 
     const resultadoNB = classificarNaiveBayesPuro(texto);
