@@ -76,10 +76,15 @@ const INITIAL: Msg[] = [
 ];
 
 const QUICK = [
-    "Compara meus gastos desse mês com mês passado",
-    "Onde gastei mais este mês?",
     "Qual é o meu saldo atual?",
+    "Onde gastei mais este mês?",
+    "Compara meus gastos desse mês com mês passado",
     "Como está minha saúde financeira?",
+    "Onde posso cortar gastos?",
+    "Por que meus gastos subiram tanto ultimamente?",
+    "Como faço para juntar mil reais até o fim do ano?",
+    "Consigo parcelar uma compra de R$ 1.500 em 10x?",
+    "Como organizar minhas finanças usando a regra 50 30 20?",
 ];
 
 const RESPONSES: Record<string, string> = {
@@ -107,6 +112,7 @@ export default function TelaAssistente() {
     const [permissionDenied, setPermissionDenied] = useState(false);
     const [contexto, setContexto] = useState<ContextoFinanceiroBufunfa | null>(null);
     const [modoMotor, setModoMotor] = useState<ModoMotorBufunfa>("HIBRIDO");
+    const [showSuggestions, setShowSuggestions] = useState(true);
     const lastClassificationRef = useRef<ResultadoClassificacao | null>(null);
 
     const scrollRef = useRef<any>(null);
@@ -311,6 +317,8 @@ export default function TelaAssistente() {
     async function send(text: string) {
         const textoLimpo = text.trim();
         if (!textoLimpo || typing) return;
+
+        setShowSuggestions(false);
 
         if (isListening && ExpoSpeechRecognitionModule) {
             try {
@@ -583,38 +591,63 @@ export default function TelaAssistente() {
                 )}
             </ScrollView>
 
-            {/* Respostas rápidas */}
-            {messages.length <= 2 && (
-                <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
+            {/* Sugestões recolhíveis a qualquer momento */}
+            <View
+                style={[
+                    styles.suggestionsSection,
+                    {
+                        alignSelf: "center",
+                        width: "100%",
+                        maxWidth: isTablet ? 960 : undefined,
+                    },
+                ]}
+            >
+                <View
                     style={[
-                        styles.quickScroll,
-                        {
-                            alignSelf: "center",
-                            width: "100%",
-                            maxWidth: isTablet ? 960 : undefined,
-                        },
-                    ]}
-                    contentContainerStyle={[
-                        styles.quickContent,
+                        styles.suggestionsToggleRow,
                         { paddingHorizontal: horizontalPadding },
                     ]}
-                    keyboardShouldPersistTaps="handled"
                 >
-                    {QUICK.map((question) => (
-                        <Pressable
-                            key={question}
-                            style={styles.quickButton}
-                            onPress={() => send(question)}
-                        >
-                            <Text style={styles.quickText}>
-                                {question}
-                            </Text>
-                        </Pressable>
-                    ))}
-                </ScrollView>
-            )}
+                    <Pressable
+                        style={styles.suggestionsToggleBtn}
+                        onPress={() => setShowSuggestions((prev) => !prev)}
+                        hitSlop={6}
+                    >
+                        <Text style={styles.suggestionsToggleText}>💡 Sugestões</Text>
+                        <Ionicons
+                            name={showSuggestions ? "chevron-down" : "chevron-up"}
+                            size={14}
+                            color={colors.secondaryForeground}
+                        />
+                    </Pressable>
+                </View>
+
+                {showSuggestions && (
+                    <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        style={styles.quickScroll}
+                        contentContainerStyle={[
+                            styles.quickContent,
+                            { paddingHorizontal: horizontalPadding },
+                        ]}
+                        keyboardShouldPersistTaps="handled"
+                    >
+                        {QUICK.map((question) => (
+                            <Pressable
+                                key={question}
+                                style={styles.quickButton}
+                                onPress={() => send(question)}
+                                disabled={typing}
+                            >
+                                <Text style={styles.quickText}>
+                                    {question}
+                                </Text>
+                            </Pressable>
+                        ))}
+                    </ScrollView>
+                )}
+            </View>
 
             {/* Banner se microfone bloqueado nas permissões do Android */}
             {permissionDenied && (
@@ -860,12 +893,40 @@ const styles = StyleSheet.create({
         borderRadius: 3,
         backgroundColor: colors.mutedForeground,
     },
-    /* Respostas rápidas */
+    /* Respostas rápidas e barra recolhível */
+    suggestionsSection: {
+        borderTopWidth: 1,
+        borderTopColor: colors.border,
+        backgroundColor: colors.background,
+    },
+    suggestionsToggleRow: {
+        paddingTop: 6,
+        paddingBottom: 4,
+        flexDirection: "row",
+        alignItems: "center",
+    },
+    suggestionsToggleBtn: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 5,
+        backgroundColor: colors.card,
+        borderWidth: 1,
+        borderColor: colors.border,
+        borderRadius: 999,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+    },
+    suggestionsToggleText: {
+        color: colors.secondaryForeground,
+        fontSize: 12,
+        fontWeight: "600",
+    },
     quickScroll: {
         flexGrow: 0,
     },
     quickContent: {
-        paddingVertical: 8,
+        paddingTop: 4,
+        paddingBottom: 8,
         gap: 8,
     },
     quickButton: {
@@ -874,12 +935,13 @@ const styles = StyleSheet.create({
         borderColor: colors.border,
         borderRadius: 12,
         paddingHorizontal: 12,
-        paddingVertical: 5,
-        maxWidth: 180,
+        paddingVertical: 7,
+        maxWidth: 220,
+        justifyContent: "center",
     },
     quickText: {
-        color: colors.mutedForeground,
-        fontSize: 15,
+        color: colors.secondaryForeground,
+        fontSize: 13,
     },
     /* Banner de Permissão */
     permissionBanner: {
