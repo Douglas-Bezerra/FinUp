@@ -4,8 +4,23 @@ import {
     obterUsuario,
     listarContas,
     obterExtrato,
+    listarCartoesPlasticos,
+    listarFaturasCartao,
+    listarParcelamentos,
+    listarRecorrencias,
+    listarOrcamentosMetas,
+    listarCategorias,
 } from "../../../../shared/services/finupService";
-import type { Conta, Transacao } from "../../../../shared/types/finup";
+import type {
+    CartaoPlastico,
+    Categoria,
+    Conta,
+    FaturaCartao,
+    OrcamentoMeta,
+    Parcelamento,
+    Recorrencia,
+    Transacao,
+} from "../../../../shared/types/finup";
 import {
     avaliarTravasOOD,
     classificarNaiveBayesPuro,
@@ -58,6 +73,79 @@ export interface ResumoMesAnterior {
     menorGasto: CategoriaGasto | null;
 }
 
+export interface ResumoFaturaCartao {
+    mesReferencia: string;
+    valorTotal: number;
+    valorPago: number;
+    valorRestante: number;
+    status: "ABERTA" | "FECHADA" | "PAGA";
+}
+
+export interface ResumoCartaoCredito {
+    nome: string;
+    bandeiras: Array<{ nomeExibicao: string; bandeira: string }>;
+    limiteTotal: number;
+    limiteUtilizado: number;
+    limiteDisponivel: number;
+    faturaAtual: number;
+    diaFechamento: number | null;
+    diaVencimento: number | null;
+    faturas: ResumoFaturaCartao[];
+}
+
+export interface ResumoCaixinha {
+    nome: string;
+    saldoAtual: number;
+}
+
+export interface ResumoParcelamento {
+    descricao: string;
+    valorTotal: number;
+    totalParcelas: number;
+    valorParcelaEstimado: number;
+    parcelasRegistradas: number;
+    parcelasRestantesEstimadas: number;
+    contaNome: string;
+    categoriaNome: string;
+    tipoMovimentacao: "RECEITA" | "DESPESA";
+}
+
+export interface ResumoRecorrencia {
+    descricao: string;
+    valorEstimado: number;
+    diaVencimento: number;
+    tipoMovimentacao: "RECEITA" | "DESPESA";
+    contaNome: string;
+    categoriaNome: string;
+}
+
+export interface ResumoOrcamentoMes {
+    categoriaNome: string;
+    mesAno: string;
+    valorTeto: number;
+    gastoAtual: number;
+    restante: number;
+}
+
+export interface ResumoMesHistorico {
+    mesAno: string;
+    receitas: number;
+    despesas: number;
+    saldoLiquido: number;
+}
+
+export interface ResumoTransacaoRecente {
+    data: string;
+    descricao: string;
+    valor: number;
+    tipoMovimentacao: string;
+    categoria: string;
+    contaNome: string;
+    status: string;
+    parcelaAtual?: number;
+    parcelas?: number;
+}
+
 export interface ContextoFinanceiroBufunfa {
     nomeUsuario: string;
     saldoTotal: number;
@@ -77,6 +165,14 @@ export interface ContextoFinanceiroBufunfa {
     totalTransacoesMes: number;
     mesReferencia: string;
     mesAnterior: ResumoMesAnterior | null;
+    cartoesCredito: ResumoCartaoCredito[];
+    caixinhas: ResumoCaixinha[];
+    totalCaixinhas: number;
+    parcelamentosAtivos: ResumoParcelamento[];
+    contasFixasRecorrentes: ResumoRecorrencia[];
+    orcamentosMes: ResumoOrcamentoMes[];
+    historicoMensal: ResumoMesHistorico[];
+    ultimasTransacoes: ResumoTransacaoRecente[];
 }
 
 /**
@@ -91,14 +187,24 @@ export function formatarMoeda(valor: number): string {
 }
 
 /**
+ * Normaliza data para string AAAA-MM-DD
+ */
+function obterDataISO(data: any): string {
+    if (!data) return "";
+    if (data instanceof Date) {
+        return data.toISOString().slice(0, 10);
+    }
+    if (typeof data?.toDate === "function") {
+        return data.toDate().toISOString().slice(0, 10);
+    }
+    return String(data).slice(0, 10);
+}
+
+/**
  * Normaliza data para string AAAA-MM
  */
 function obterMesAno(data: any): string {
-    if (!data) return "";
-    if (data instanceof Date) {
-        return data.toISOString().slice(0, 7);
-    }
-    return String(data).slice(0, 7);
+    return obterDataISO(data).slice(0, 7);
 }
 
 /**
@@ -117,9 +223,24 @@ export async function carregarContextoBufunfa(
         throw new Error("Perfil financeiro não encontrado.");
     }
 
-    const [contas, transacoes] = await Promise.all([
+    const [
+        contas,
+        transacoes,
+        cartoesPlasticos,
+        faturasCartao,
+        parcelamentos,
+        recorrencias,
+        orcamentos,
+        categorias,
+    ] = await Promise.all([
         listarContas(db, perfil.familiaId),
         obterExtrato(db, perfil.familiaId),
+        listarCartoesPlasticos(db, perfil.familiaId).catch((): CartaoPlastico[] => []),
+        listarFaturasCartao(db, perfil.familiaId).catch((): FaturaCartao[] => []),
+        listarParcelamentos(db, perfil.familiaId).catch((): Parcelamento[] => []),
+        listarRecorrencias(db, perfil.familiaId).catch((): Recorrencia[] => []),
+        listarOrcamentosMetas(db, perfil.familiaId).catch((): OrcamentoMeta[] => []),
+        listarCategorias(db, perfil.familiaId).catch((): Categoria[] => []),
     ]);
 
     const saldoTotal = contas
@@ -251,15 +372,170 @@ export async function carregarContextoBufunfa(
         menorGasto: menorGastoAnt,
     };
 
+    const contaNomeById = new Map<string, string>(contas.map((c) => [c.id, c.nome]));
+    const categoriaNomeById = new Map<string, string>(categorias.map((cat) => [cat.id, cat.nome]));
+
+    // Cartões de crédito: limites, fechamento/vencimento, bandeiras e faturas
+    const cartoesCredito: ResumoCartaoCredito[] = contas
+        .filter((c) => c.ativo !== false && c.tipoConta === "CARTAO_CREDITO")
+        .map((contaCartao) => {
+            const faturasDaConta = faturasCartao
+                .filter((f) => f.contaId === contaCartao.id)
+                .sort((a, b) => b.mesReferencia.localeCompare(a.mesReferencia));
+
+            const limiteTotal = contaCartao.limiteTotal ?? 0;
+            const limiteUtilizado = faturasDaConta
+                .filter((f) => f.status !== "PAGA")
+                .reduce(
+                    (total, f) => total + Math.max((f.valorTotal || 0) - (f.valorPago ?? 0), 0),
+                    0
+                );
+            const limiteDisponivel = Math.max(limiteTotal - limiteUtilizado, 0);
+
+            const faturaDoMes = faturasDaConta.find((f) => f.mesReferencia === mesAnoAtual);
+            const faturaAtual = faturaDoMes
+                ? Math.max((faturaDoMes.valorTotal || 0) - (faturaDoMes.valorPago ?? 0), 0)
+                : 0;
+
+            const bandeiras = cartoesPlasticos
+                .filter((p) => p.contaId === contaCartao.id && p.ativo !== false)
+                .map((p) => ({
+                    nomeExibicao: p.nomeExibicao,
+                    bandeira: p.bandeira,
+                }));
+
+            const faturasResumo: ResumoFaturaCartao[] = faturasDaConta.slice(0, 6).map((f) => ({
+                mesReferencia: f.mesReferencia,
+                valorTotal: f.valorTotal || 0,
+                valorPago: f.valorPago ?? 0,
+                valorRestante: Math.max((f.valorTotal || 0) - (f.valorPago ?? 0), 0),
+                status: f.status,
+            }));
+
+            return {
+                nome: contaCartao.nome,
+                bandeiras,
+                limiteTotal,
+                limiteUtilizado,
+                limiteDisponivel,
+                faturaAtual,
+                diaFechamento: contaCartao.diaFechamento ?? null,
+                diaVencimento: contaCartao.diaVencimento ?? null,
+                faturas: faturasResumo,
+            };
+        });
+
+    // Caixinhas
+    const caixinhas: ResumoCaixinha[] = contas
+        .filter((c) => c.ativo !== false && c.tipoConta === "CAIXINHA")
+        .map((c) => ({
+            nome: c.nome,
+            saldoAtual: c.saldoAtual || 0,
+        }));
+    const totalCaixinhas = caixinhas.reduce((sum, cx) => sum + cx.saldoAtual, 0);
+
+    // Parcelamentos ativos
+    const parcelamentosAtivos: ResumoParcelamento[] = parcelamentos
+        .filter((p) => p.ativo !== false)
+        .slice(0, 15)
+        .map((p) => {
+            const totalParcelas = Math.max(p.totalParcelas || 1, 1);
+            const parcelasRegistradas = transacoes.filter(
+                (t) => !t.estornado && t.parcelamentoId === p.id
+            ).length;
+            return {
+                descricao: p.descricao,
+                valorTotal: p.valorTotal || 0,
+                totalParcelas,
+                valorParcelaEstimado: Number(((p.valorTotal || 0) / totalParcelas).toFixed(2)),
+                parcelasRegistradas,
+                parcelasRestantesEstimadas: Math.max(totalParcelas - parcelasRegistradas, 0),
+                contaNome: contaNomeById.get(p.contaId) || "Conta não identificada",
+                categoriaNome: categoriaNomeById.get(p.categoriaId) || "Outros",
+                tipoMovimentacao: p.tipoMovimentacao,
+            };
+        });
+
+    // Contas fixas / recorrências ativas
+    const contasFixasRecorrentes: ResumoRecorrencia[] = recorrencias
+        .filter((r) => r.ativo !== false)
+        .slice(0, 15)
+        .map((r) => ({
+            descricao: r.descricao,
+            valorEstimado: r.valorEstimado || 0,
+            diaVencimento: r.diaVencimento,
+            tipoMovimentacao: r.tipoMovimentacao,
+            contaNome: contaNomeById.get(r.contaId) || "Conta não identificada",
+            categoriaNome: categoriaNomeById.get(r.categoriaId) || "Outros",
+        }));
+
+    // Orçamentos/Metas do mês atual
+    const orcamentosMes: ResumoOrcamentoMes[] = orcamentos
+        .filter((o) => o.ativo !== false && o.mesAno === mesAnoAtual)
+        .slice(0, 15)
+        .map((o) => {
+            const categoriaNome = categoriaNomeById.get(o.categoriaId) || "Outros";
+            const gastoAtual = mapaCatAtual[categoriaNome] || 0;
+            const valorTeto = o.valorTeto || 0;
+            return {
+                categoriaNome,
+                mesAno: o.mesAno,
+                valorTeto,
+                gastoAtual,
+                restante: valorTeto - gastoAtual,
+            };
+        });
+
+    // Histórico dos últimos 6 meses
+    const historicoMensal: ResumoMesHistorico[] = [];
+    for (let offset = 0; offset < 6; offset++) {
+        const ref = new Date(anoAtual, mesAtualNum - offset, 1);
+        const mesAno = `${ref.getFullYear()}-${String(ref.getMonth() + 1).padStart(2, "0")}`;
+        const doMes = transacoes.filter(
+            (t) => obterMesAno(t.dataTransacao) === mesAno && t.status === "EFETIVADO" && !t.estornado
+        );
+        const receitas = doMes
+            .filter((t) => t.tipoMovimentacao === "RECEITA")
+            .reduce((acc, t) => acc + (t.valor || 0), 0);
+        const despesas = doMes
+            .filter((t) => t.tipoMovimentacao === "DESPESA")
+            .reduce((acc, t) => acc + (t.valor || 0), 0);
+        historicoMensal.push({
+            mesAno,
+            receitas,
+            despesas,
+            saldoLiquido: receitas - despesas,
+        });
+    }
+
+    // Últimas 20 transações não estornadas
+    const ultimasTransacoes: ResumoTransacaoRecente[] = transacoes
+        .filter((t) => !t.estornado)
+        .map((t) => ({
+            data: obterDataISO(t.dataTransacao),
+            descricao: t.descricao,
+            valor: t.valor || 0,
+            tipoMovimentacao: t.tipoMovimentacao,
+            categoria: t.categoriaNome || "Outros",
+            contaNome: (t.contaId && contaNomeById.get(t.contaId)) || "Sem conta",
+            status: t.status,
+            ...(t.parcelaAtual !== undefined ? { parcelaAtual: t.parcelaAtual } : {}),
+            ...(t.parcelas !== undefined ? { parcelas: t.parcelas } : {}),
+        }))
+        .sort((a, b) => b.data.localeCompare(a.data))
+        .slice(0, 20);
+
     return {
         nomeUsuario: perfil.nome || "Usuário",
         saldoTotal,
-        contas: contas.map((c) => ({
-            id: c.id,
-            nome: c.nome,
-            saldoAtual: c.saldoAtual || 0,
-            tipoConta: c.tipoConta,
-        })),
+        contas: contas
+            .filter((c) => c.ativo !== false)
+            .map((c) => ({
+                id: c.id,
+                nome: c.nome,
+                saldoAtual: c.saldoAtual || 0,
+                tipoConta: c.tipoConta,
+            })),
         receitasMes,
         despesasMes,
         saldoLiquidoMes,
@@ -270,6 +546,14 @@ export async function carregarContextoBufunfa(
         totalTransacoesMes: transacoesMesAtual.length,
         mesReferencia: nomeMesAtual,
         mesAnterior: mesAnteriorResumo,
+        cartoesCredito,
+        caixinhas,
+        totalCaixinhas,
+        parcelamentosAtivos,
+        contasFixasRecorrentes,
+        orcamentosMes,
+        historicoMensal,
+        ultimasTransacoes,
     };
 }
 

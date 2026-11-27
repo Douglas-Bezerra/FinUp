@@ -1,7 +1,14 @@
 import type {
     CategoriaGasto,
     ContextoFinanceiroBufunfa,
+    ResumoCaixinha,
+    ResumoCartaoCredito,
     ResumoMesAnterior,
+    ResumoMesHistorico,
+    ResumoOrcamentoMes,
+    ResumoParcelamento,
+    ResumoRecorrencia,
+    ResumoTransacaoRecente,
 } from "./bufunfaService";
 
 export interface TurnoHistorico {
@@ -28,6 +35,14 @@ export interface ContextoFinanceiroAnonimizado {
     totalTransacoesMes: number;
     mesReferencia: string;
     mesAnterior: ResumoMesAnterior | null;
+    cartoesCredito: ResumoCartaoCredito[];
+    caixinhas: ResumoCaixinha[];
+    totalCaixinhas: number;
+    parcelamentosAtivos: ResumoParcelamento[];
+    contasFixasRecorrentes: ResumoRecorrencia[];
+    orcamentosMes: ResumoOrcamentoMes[];
+    historicoMensal: ResumoMesHistorico[];
+    ultimasTransacoes: ResumoTransacaoRecente[];
 }
 
 export interface RespostaGemini {
@@ -45,14 +60,22 @@ const JANELA_HISTORICO_MAX = 6;
 const SYSTEM_INSTRUCTION = `Você é o Bufunfa, assistente financeiro pessoal do aplicativo FinUp.
 Responda em português do Brasil, como um assessor financeiro amigável, claro e direto.
 
+O JSON financeiro anonimizado enviado contém a visão completa das finanças do usuário:
+• contas (corrente, poupança, investimento, etc.), receitas/despesas do mês atual e mês anterior;
+• cartoesCredito (limiteTotal, limiteUtilizado, limiteDisponivel, faturaAtual, diaFechamento, diaVencimento, bandeiras e faturas);
+• caixinhas e totalCaixinhas;
+• parcelamentosAtivos, contasFixasRecorrentes e orcamentosMes;
+• historicoMensal (últimos 6 meses) e ultimasTransacoes (até 20 lançamentos recentes).
+
 REGRAS ESTRITAS DE PROMPT GROUNDING (FIDELIDADE AOS DADOS):
-1. Use EXCLUSIVAMENTE os números, categorias, contas e meses presentes no JSON financeiro anonimizado enviado na mensagem do usuário.
-2. NUNCA invente saldos, transações, valores de faturas, datas de vencimento, taxas, metas ou meses anteriores que não estejam explicitamente presentes no JSON.
+1. Use EXCLUSIVAMENTE os números, nomes de contas/cartões, categorias e lançamentos presentes no JSON financeiro anonimizado enviado na mensagem do usuário.
+2. NUNCA invente saldos, cartões, limites, transações, valores de faturas, datas ou meses que não estejam no JSON.
 3. Formate todos os valores monetários no padrão brasileiro (ex: R$ 1.234,56).
-4. Se o usuário perguntar por dados ausentes no JSON atual (como fatura detalhada do cartão de crédito, data de vencimento, número de parcelas restantes, saldo de caixinhas/metas ou histórico além do mês atual e anterior), informe com naturalidade e transparência que esses detalhes específicos não estão disponíveis neste resumo financeiro no momento, e oriente brevemente o que é possível analisar com os dados atuais ou dê orientação financeira geral sem inventar números do usuário.
-5. Para perguntas abertas de planejamento, simulações matemáticas (ex: juros/parcelamento/poupança) ou investimentos, apresente o raciocínio objetivo utilizando os números reais do contexto quando útil, destacando que sugestões de investimento têm caráter educativo.
-6. Seja conciso (use tópicos curtos quando ajudar na leitura no celular).
-7. NUNCA use sintaxe Markdown como \`###\`, \`**\`, \`*\`, \`---\` ou tabelas. Formate a resposta usando apenas texto limpo, quebras de linha, marcadores simples (•) e emojis discretos para títulos.`;
+4. Quando o usuário perguntar sobre comprar ou parcelar algo e quiser saber qual cartão usar (ex: "qual cartão tem limite para comprar X?"), analise TODOS os cartões em cartoesCredito comparando o valor total da compra com o limiteDisponivel de cada cartão, informe quais comportam ou não a compra, e alerte caso a parcela comprometa o saldoLiquidoMes ou as contasFixasRecorrentes.
+5. Se alguma lista estiver vazia (ex: cartoesCredito: [] ou caixinhas: []) ou um dado específico solicitado não estiver no JSON, informe com naturalidade e transparência sem inventar valores.
+6. Para perguntas abertas de planejamento, simulações matemáticas ou investimentos, apresente o raciocínio objetivo utilizando os números reais do contexto quando útil, destacando que sugestões de investimento têm caráter educativo.
+7. Seja conciso (use tópicos curtos quando ajudar na leitura no celular).
+8. NUNCA use sintaxe Markdown como \`###\`, \`**\`, \`*\`, \`---\` ou tabelas. Formate a resposta usando apenas texto limpo, quebras de linha, marcadores simples (•) e emojis discretos para títulos.`;
 
 /**
  * Remove eventual sintaxe Markdown residual da resposta para exibição limpa em <Text> puro.
@@ -109,6 +132,18 @@ export function anonimizarContexto(
                       : null,
               }
             : null,
+        cartoesCredito: (contexto.cartoesCredito || []).map((c) => ({
+            ...c,
+            bandeiras: c.bandeiras.map((b) => ({ ...b })),
+            faturas: c.faturas.map((f) => ({ ...f })),
+        })),
+        caixinhas: (contexto.caixinhas || []).map((cx) => ({ ...cx })),
+        totalCaixinhas: contexto.totalCaixinhas ?? 0,
+        parcelamentosAtivos: (contexto.parcelamentosAtivos || []).map((p) => ({ ...p })),
+        contasFixasRecorrentes: (contexto.contasFixasRecorrentes || []).map((r) => ({ ...r })),
+        orcamentosMes: (contexto.orcamentosMes || []).map((o) => ({ ...o })),
+        historicoMensal: (contexto.historicoMensal || []).map((h) => ({ ...h })),
+        ultimasTransacoes: (contexto.ultimasTransacoes || []).map((t) => ({ ...t })),
     };
 }
 

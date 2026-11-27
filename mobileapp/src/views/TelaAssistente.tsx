@@ -77,6 +77,7 @@ const INITIAL: Msg[] = [
 
 const QUICK = [
     "Qual é o meu saldo atual?",
+    "Qual cartão tem limite disponível para uma compra?",
     "Onde gastei mais este mês?",
     "Compara meus gastos desse mês com mês passado",
     "Como está minha saúde financeira?",
