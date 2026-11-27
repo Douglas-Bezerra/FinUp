@@ -6,8 +6,15 @@ export interface ResultadoNaiveBayesPuro {
     probabilidades: Record<string, number>;
 }
 
+export interface AnaliseMultiIntent {
+    multiIntent: boolean;
+    sinais: string[];
+    motivo: string | null;
+}
+
 export interface AvaliacaoTravasOOD {
     aprovado: boolean;
+    multiIntent: boolean;
     motivos: string[];
     motivoResumo: string;
 }
@@ -20,5 +27,9 @@ export const TRAVAS_OOD: {
 
 export function normalizar(texto: string): string;
 export function extrairTokens(texto: string): string[];
+export function detectarMultiIntent(texto: string): AnaliseMultiIntent;
 export function classificarNaiveBayesPuro(texto: string): ResultadoNaiveBayesPuro;
-export function avaliarTravasOOD(resultadoNB: ResultadoNaiveBayesPuro): AvaliacaoTravasOOD;
+export function avaliarTravasOOD(
+    resultadoNB: ResultadoNaiveBayesPuro,
+    texto?: string
+): AvaliacaoTravasOOD;

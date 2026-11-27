@@ -717,7 +717,7 @@ export async function responderPerguntaComIA(
     }
 
     const nb = classificarNaiveBayesPuro(texto);
-    const travas = avaliarTravasOOD(nb);
+    const travas = avaliarTravasOOD(nb, texto);
 
     if (travas.aprovado) {
         const classificacao = montarClassificacaoLocal(

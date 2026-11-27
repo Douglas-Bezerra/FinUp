@@ -122,12 +122,134 @@ function classificarNaiveBayesPuro(texto) {
     };
 }
 
+const ROTULOS_SINAIS = {
+    COMPARACAO: "Comparação",
+    EXTREMOS: "Extremos",
+    CATEGORIA_ESPECIFICA: "Categoria",
+    SALDO: "Saldo",
+    RECEITAS: "Receitas",
+    SAUDE: "Saúde",
+    CORTES: "Cortes",
+};
+
 /**
- * Avalia se a predição do Naive Bayes atende às travas matemáticas para detecção OOD.
- * @param {{ intencao: string, confianca: number, margem: number, taxaOOV: number }} resultadoNB
- * @returns {{ aprovado: boolean, motivos: string[], motivoResumo: string }}
+ * Detecta se a frase combina múltiplas intenções financeiras distintas (Multi-Intent),
+ * caso em que o Naive Bayes Single-Intent responderia apenas parte do pedido.
+ * Preserva perguntas puras de extremos ("onde gastei mais e onde gastei menos") como intenção única.
+ * @param {string} texto
+ * @returns {{ multiIntent: boolean, sinais: string[], motivo: string | null }}
  */
-function avaliarTravasOOD(resultadoNB) {
+function detectarMultiIntent(texto) {
+    const limpo = normalizar(texto);
+    if (!limpo) {
+        return { multiIntent: false, sinais: [], motivo: null };
+    }
+
+    const sinais = [];
+
+    if (/\b(compar\w*|diferenca|versus|vs|em relacao ao|evolucao)\b/.test(limpo)) {
+        sinais.push("COMPARACAO");
+    }
+
+    const temExtremosExplicito =
+        /\b(maior gasto|menor gasto|maior despesa|menor despesa|gastei mais|gastei menos|mais gastei|menos gastei|mais pesou|mais cara|mais baixa|mais barata|torrei mais|onde mais|onde menos)\b/.test(
+            limpo
+        );
+    const temExtremosContextual =
+        /\b(onde|qual categoria|em qual|em que categoria)\b/.test(limpo) &&
+        /\b(gast\w*|despes\w*|dinheiro)\b/.test(limpo) &&
+        /\b(mais|maior|menos|menor)\b/.test(limpo) &&
+        !/\beconomizar mais\b/.test(limpo) &&
+        !/\bcortar gasto\w*\b/.test(limpo);
+
+    if (temExtremosExplicito || temExtremosContextual) {
+        sinais.push("EXTREMOS");
+    }
+
+    const temCategoriaComum =
+        /\b(alimentacao|comida|mercado|supermercado|restaurante|lanche|almoco|jantar|ifood|padaria|transporte|uber|gasolina|combustivel|onibus|metro|passagem|aluguel|moradia|condominio|farmacia|remedio|medico|consulta|dentista|hospital|lazer|cinema|viagem|educacao|curso|faculdade|escola|assinatura|assinaturas|streaming|netflix|spotify|shopping)\b/.test(
+            limpo
+        );
+    const temSaudeCategoria = /\bsaude\b/.test(limpo) && !/\bsaude financeira\b/.test(limpo);
+
+    if (temCategoriaComum || temSaudeCategoria) {
+        sinais.push("CATEGORIA_ESPECIFICA");
+    }
+
+    if (/\b(saldo|quanto tenho|quanto sobrou na conta|dinheiro disponivel)\b/.test(limpo)) {
+        sinais.push("SALDO");
+    }
+
+    if (
+        /\b(receita|receitas|salario|salarios|quanto ganhei|quanto recebi|total de entradas|faturei)\b/.test(
+            limpo
+        )
+    ) {
+        sinais.push("RECEITAS");
+    }
+
+    if (
+        /\b(saude financeira|situacao financeira|taxa de poupanca|no azul|no vermelho|diagnostico)\b/.test(
+            limpo
+        )
+    ) {
+        sinais.push("SAUDE");
+    }
+
+    if (
+        /\b(cortar gasto\w*|cortar despesa\w*|corte de gasto\w*|enxugar|reduzir custo\w*|dicas para economizar|onde posso economizar)\b/.test(
+            limpo
+        )
+    ) {
+        sinais.push("CORTES");
+    }
+
+    const temConectivoForte =
+        /\b(e me diga|e diga|e diz|e me mostra|e mostra|e tambem|alem disso|e ainda)\b/.test(
+            limpo
+        );
+
+    const multiIntent = sinais.length >= 2 || (temConectivoForte && sinais.length >= 1);
+
+    let motivo = null;
+    if (multiIntent) {
+        if (sinais.includes("COMPARACAO")) {
+            motivo = "Multi-Intent: Comparação + Detalhes";
+        } else if (sinais.length >= 2) {
+            const rotulos = sinais.slice(0, 2).map((s) => ROTULOS_SINAIS[s] || s);
+            motivo = `Multi-Intent: ${rotulos.join(" + ")}`;
+        } else {
+            motivo = "Multi-Intent: Pergunta Composta";
+        }
+    }
+
+    return {
+        multiIntent,
+        sinais,
+        motivo,
+    };
+}
+
+/**
+ * Avalia se a predição do Naive Bayes atende às travas matemáticas para detecção OOD
+ * e verifica se a frase é composta (Multi-Intent).
+ * @param {{ intencao: string, confianca: number, margem: number, taxaOOV: number }} resultadoNB
+ * @param {string} [texto]
+ * @returns {{ aprovado: boolean, multiIntent: boolean, motivos: string[], motivoResumo: string }}
+ */
+function avaliarTravasOOD(resultadoNB, texto = "") {
+    if (texto) {
+        const analiseMulti = detectarMultiIntent(texto);
+        if (analiseMulti.multiIntent && analiseMulti.motivo) {
+            return {
+                aprovado: false,
+                multiIntent: true,
+                motivos: [analiseMulti.motivo],
+                motivoResumo: analiseMulti.motivo,
+            };
+        }
+    }
+
     const motivos = [];
 
     if (!resultadoNB || resultadoNB.intencao === "DESCONHECIDO") {
@@ -151,6 +273,7 @@ function avaliarTravasOOD(resultadoNB) {
 
     return {
         aprovado,
+        multiIntent: false,
         motivos,
         motivoResumo,
     };
@@ -160,6 +283,7 @@ module.exports = {
     TRAVAS_OOD,
     normalizar,
     extrairTokens,
+    detectarMultiIntent,
     classificarNaiveBayesPuro,
     avaliarTravasOOD,
 };

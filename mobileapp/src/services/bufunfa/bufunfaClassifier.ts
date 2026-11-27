@@ -1,15 +1,24 @@
 import {
     avaliarTravasOOD,
     classificarNaiveBayesPuro,
+    detectarMultiIntent,
     extrairTokens,
     normalizar,
     TRAVAS_OOD,
+    type AnaliseMultiIntent,
     type AvaliacaoTravasOOD,
     type ResultadoNaiveBayesPuro,
 } from "./naiveBayesCore";
 
-export { avaliarTravasOOD, classificarNaiveBayesPuro, extrairTokens, normalizar, TRAVAS_OOD };
-export type { AvaliacaoTravasOOD, ResultadoNaiveBayesPuro };
+export {
+    avaliarTravasOOD,
+    classificarNaiveBayesPuro,
+    detectarMultiIntent,
+    extrairTokens,
+    normalizar,
+    TRAVAS_OOD,
+};
+export type { AnaliseMultiIntent, AvaliacaoTravasOOD, ResultadoNaiveBayesPuro };
 
 export type IntencaoBufunfa =
     | "COMPARAR_MES_ANTERIOR"
@@ -115,14 +124,17 @@ export function detectarRegraContextual(
         };
     }
 
+    if (detectarMultiIntent(texto).multiIntent) {
+        return null;
+    }
+
     const temMais = limpo.includes("mais") || limpo.includes("maior") || limpo.includes("pesou");
     const temMenos = limpo.includes("menos") || limpo.includes("menor") || limpo.includes("barato");
 
     if (
         temMais &&
         temMenos &&
-        !limpo.includes("compara") &&
-        !limpo.includes("comparativo") &&
+        !limpo.includes("compar") &&
         !limpo.includes("diferenca")
     ) {
         return {

@@ -351,7 +351,7 @@ async function executar() {
     for (const item of benchmarkData.perguntas) {
         const inicioLocal = performance.now();
         const nb = classificarNaiveBayesPuro(item.pergunta);
-        const travas = avaliarTravasOOD(nb);
+        const travas = avaliarTravasOOD(nb, item.pergunta);
         const latenciaLocalMs = performance.now() - inicioLocal;
 
         if (travas.aprovado) {
